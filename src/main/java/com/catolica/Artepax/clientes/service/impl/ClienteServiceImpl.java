@@ -9,6 +9,9 @@ import com.catolica.Artepax.clientes.mapper.ClienteMapper;
 import com.catolica.Artepax.clientes.repository.ClienteRepository;
 import com.catolica.Artepax.clientes.service.ClienteService;
 
+import com.catolica.Artepax.evento.dto.EventoResponseDTO;
+import com.catolica.Artepax.evento.mapper.EventoMapper;
+import com.catolica.Artepax.evento.repository.EventoRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -18,12 +21,29 @@ public class ClienteServiceImpl implements ClienteService {
 
     private final ClienteRepository clienteRepository;
     private final ClienteMapper clienteMapper;
+    private final EventoRepository eventoRepository;
+    private final EventoMapper eventoMapper;
 
-    public ClienteServiceImpl(ClienteRepository clienteRepository, ClienteMapper clienteMapper) {
+    public ClienteServiceImpl(ClienteRepository clienteRepository,
+                              ClienteMapper clienteMapper,
+                              EventoRepository eventoRepository,
+                              EventoMapper eventoMapper) {
         this.clienteRepository = clienteRepository;
         this.clienteMapper = clienteMapper;
+        this.eventoRepository = eventoRepository;
+        this.eventoMapper = eventoMapper;
     }
 
+    @Override
+    public List<EventoResponseDTO> obtenerEventosPorCliente(Long clienteId) {
+        if (!clienteRepository.existsById(clienteId)) {
+            throw new ClienteNotFoundException(clienteId);
+        }
+        return eventoRepository.findByClienteId(clienteId)
+                .stream()
+                .map(eventoMapper::toResponseDTO)
+                .toList();
+    }
     // ✅ Crear cliente
     @Override
     public ClienteResponseDTO crearCliente(ClienteRequestDTO dto) {
@@ -91,5 +111,13 @@ public class ClienteServiceImpl implements ClienteService {
         }
 
         clienteRepository.deleteById(id);
+    }
+
+    @Override
+    public List<ClienteResponseDTO> buscarPorNombre(String nombre) {
+        return clienteRepository.findByNombreContainingIgnoreCase(nombre)
+                .stream()
+                .map(clienteMapper::toDTO)
+                .toList();
     }
 }
