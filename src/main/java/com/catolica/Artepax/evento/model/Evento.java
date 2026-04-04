@@ -1,6 +1,7 @@
 package com.catolica.Artepax.evento.model;
 
 import com.catolica.Artepax.clientes.entity.Cliente;
+import com.catolica.Artepax.inventario.decoracion.entity.Decoracion;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -13,19 +14,22 @@ import java.time.LocalTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Evento {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_evento")
-    private Long id;
+public class Evento { @Id
+@GeneratedValue(strategy = GenerationType.IDENTITY)
+@Column(name = "id_evento")
+private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_cliente")
     private Cliente cliente;
 
-    @Column(name = "id_decoracion")
-    private Long decoracionId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_decoracion")
+    private Decoracion decoracion;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_estadoevento")
+    private EstadoEvento estadoEvento;
 
     @Column(name = "event_fechaevento", nullable = false)
     private LocalDate fecha;
@@ -36,24 +40,22 @@ public class Evento {
     @Column(name = "event_horafin")
     private LocalTime horaFin;
 
-    @Column(name = "event_ubicacion")
+    @Column(name = "event_ubicacion", length = 255)
     private String ubicacion;
 
-    @Column(name = "capacidad", nullable = false)
-    private Integer capacidad;
-
-    @Column(name = "descripcion", nullable = false)
-    private String descripcion;
-
-    @Column(name = "motivo_cancelacion")
+    @Column(name = "motivo_cancelacion", length = 255)
     private String motivoCancelacion;
 
-    @Column(name = "id_estadoevento", nullable = false)
-    private Long estadoEventoId;
-
-    @Column(name = "event_nota")
+    @Column(name = "event_nota", length = 255)
     private String nota;
 
     @Column(name = "event_creacion")
     private LocalDate fechaCreacion;
+
+    @PrePersist
+    public void prePersist() {
+        if (this.fechaCreacion == null) {
+            this.fechaCreacion = LocalDate.now();
+        }
+    }
 }

@@ -12,6 +12,5 @@ public class EventoRequestDTO {
     private LocalTime horaInicio;
     private LocalTime horaFin;
     private String ubicacion;
-    private Integer capacidad;
-    private String descripcion;
+    private String nota;
 }

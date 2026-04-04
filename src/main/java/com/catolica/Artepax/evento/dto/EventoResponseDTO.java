@@ -12,11 +12,16 @@ public class EventoResponseDTO {
     private LocalTime horaInicio;
     private LocalTime horaFin;
     private String ubicacion;
-    private Integer capacidad;
-    private String descripcion;
+    private String nota;
+    private String motivoCancelacion;
+    private LocalDate fechaCreacion;
 
     private Long clienteId;
     private String clienteNombre;
 
+    private Long decoracionId;
+    private String decoracionNombre;
+
     private Long estadoEventoId;
+    private String estadoEventoNombre;
 }
