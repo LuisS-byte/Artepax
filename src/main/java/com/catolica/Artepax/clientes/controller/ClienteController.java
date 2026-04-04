@@ -8,6 +8,7 @@ import com.catolica.Artepax.clientes.service.ClienteService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import com.catolica.Artepax.evento.dto.EventoResponseDTO;
 
 import jakarta.validation.Valid;
 import java.util.List;
@@ -65,5 +66,22 @@ public class ClienteController {
 
         clienteService.eliminar(id);
         return ResponseEntity.noContent().build();
+    }
+    // ✅ Historial de eventos por cliente
+    @GetMapping("/{id}/eventos")
+    public ResponseEntity<List<EventoResponseDTO>> obtenerEventosPorCliente(
+            @PathVariable Long id) {
+
+        List<EventoResponseDTO> eventos = clienteService.obtenerEventosPorCliente(id);
+        return ResponseEntity.ok(eventos);
+    }
+
+    // GET /clientes?nombre=Juan
+    @GetMapping("/buscar")
+    public ResponseEntity<List<ClienteResponseDTO>> buscarPorNombre(
+            @RequestParam String nombre) {
+
+        List<ClienteResponseDTO> clientes = clienteService.buscarPorNombre(nombre);
+        return ResponseEntity.ok(clientes);
     }
 }

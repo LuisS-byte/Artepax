@@ -12,6 +12,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 @RestController
@@ -74,5 +76,43 @@ public class EventoController {
 
         eventoService.eliminarEvento(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // PUT /eventos/{id}/cancelar
+    @PutMapping("/{id}/cancelar")
+    public ResponseEntity<Void> cancelarEvento(
+            @PathVariable Long id,
+            @RequestParam String motivo) {
+
+        eventoService.cancelarEvento(id, motivo);
+        return ResponseEntity.noContent().build();
+    }
+
+    // PUT /eventos/{id}/finalizar
+    @PutMapping("/{id}/finalizar")
+    public ResponseEntity<Void> finalizarEvento(@PathVariable Long id) {
+        eventoService.finalizarEvento(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    // GET /eventos/disponibilidad?fecha=2026-05-01&horaInicio=10:00&ubicacion=Salon
+    @GetMapping("/disponibilidad")
+    public ResponseEntity<Boolean> verificarDisponibilidad(
+            @RequestParam LocalDate fecha,
+            @RequestParam LocalTime horaInicio,
+            @RequestParam String ubicacion) {
+
+        boolean disponible = eventoService.verificarDisponibilidad(fecha, horaInicio, ubicacion);
+        return ResponseEntity.ok(disponible);
+    }
+
+    // GET /eventos/calendario?inicio=2026-05-01&fin=2026-05-31
+    @GetMapping("/calendario")
+    public ResponseEntity<List<EventoResponseDTO>> obtenerCalendario(
+            @RequestParam LocalDate inicio,
+            @RequestParam LocalDate fin) {
+
+        List<EventoResponseDTO> eventos = eventoService.obtenerCalendario(inicio, fin);
+        return ResponseEntity.ok(eventos);
     }
 }

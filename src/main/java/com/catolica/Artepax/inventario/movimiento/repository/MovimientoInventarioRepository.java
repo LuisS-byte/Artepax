@@ -14,4 +14,5 @@ public interface MovimientoInventarioRepository extends JpaRepository<Movimiento
     // 🔍 Obtener todos los movimientos de un producto
     List<MovimientoInventario> findByProducto(Producto producto);
 
+    List<MovimientoInventario> findByProductoId(Long productoId);
 }

@@ -1,5 +1,6 @@
 package com.catolica.Artepax.cronograma.entity;
 
+import com.catolica.Artepax.evento.model.Evento;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -21,45 +22,23 @@ public class Cronograma {
     @Column(name = "fecha_fin")
     private LocalDateTime fechaFin;
 
-    @Column(name = "id_evento")
-    private Long idEvento;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_evento")
+    private Evento evento;
 
-    public Cronograma() {
-    }
+    public Cronograma() {}
 
-    public Long getId() {
-        return id;
-    }
+    public Long getId() { return id; }
 
-    public String getActividad() {
-        return actividad;
-    }
+    public String getActividad() { return actividad; }
+    public void setActividad(String actividad) { this.actividad = actividad; }
 
-    public void setActividad(String actividad) {
-        this.actividad = actividad;
-    }
+    public LocalDateTime getFechaInicio() { return fechaInicio; }
+    public void setFechaInicio(LocalDateTime fechaInicio) { this.fechaInicio = fechaInicio; }
 
-    public LocalDateTime getFechaInicio() {
-        return fechaInicio;
-    }
+    public LocalDateTime getFechaFin() { return fechaFin; }
+    public void setFechaFin(LocalDateTime fechaFin) { this.fechaFin = fechaFin; }
 
-    public void setFechaInicio(LocalDateTime fechaInicio) {
-        this.fechaInicio = fechaInicio;
-    }
-
-    public LocalDateTime getFechaFin() {
-        return fechaFin;
-    }
-
-    public void setFechaFin(LocalDateTime fechaFin) {
-        this.fechaFin = fechaFin;
-    }
-
-    public Long getIdEvento() {
-        return idEvento;
-    }
-
-    public void setIdEvento(Long idEvento) {
-        this.idEvento = idEvento;
-    }
+    public Evento getEvento() { return evento; }
+    public void setEvento(Evento evento) { this.evento = evento; }
 }

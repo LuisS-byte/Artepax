@@ -1,11 +1,14 @@
 package com.catolica.Artepax.inventario.movimiento.controller;
 
 import com.catolica.Artepax.inventario.movimiento.dto.MovimientoRequestDTO;
+import com.catolica.Artepax.inventario.movimiento.dto.MovimientoResponseDTO;
 import com.catolica.Artepax.inventario.movimiento.service.MovimientoService;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/inventario")
@@ -37,5 +40,15 @@ public class MovimientoController {
     public ResponseEntity<Integer> obtenerStock(@PathVariable Long id) {
         Integer stock = movimientoService.obtenerStock(id);
         return ResponseEntity.ok(stock);
+    }
+
+    // GET /inventario/productos/{id}/movimientos
+    @GetMapping("/productos/{id}/movimientos")
+    public ResponseEntity<List<MovimientoResponseDTO>> obtenerMovimientos(
+            @PathVariable Long id) {
+
+        List<MovimientoResponseDTO> movimientos =
+                movimientoService.obtenerMovimientosPorProducto(id);
+        return ResponseEntity.ok(movimientos);
     }
 }
