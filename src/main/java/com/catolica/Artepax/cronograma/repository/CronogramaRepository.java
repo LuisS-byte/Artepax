@@ -7,5 +7,5 @@ import java.util.List;
 
 public interface CronogramaRepository extends JpaRepository<Cronograma, Long> {
 
-    List<Cronograma> findByIdEvento(Long idEvento);
+    List<Cronograma> findByEventoId(Long eventoId);
 }

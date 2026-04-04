@@ -16,4 +16,10 @@ public interface EventoRepository extends JpaRepository<Evento, Long> {
     );
 
     List<Evento> findByClienteId(Long clienteId);
+
+    // para disponibilidad
+    List<Evento> findByFecha(LocalDate fecha);
+
+    // para calendario por rango de fechas
+    List<Evento> findByFechaBetween(LocalDate inicio, LocalDate fin);
 }
