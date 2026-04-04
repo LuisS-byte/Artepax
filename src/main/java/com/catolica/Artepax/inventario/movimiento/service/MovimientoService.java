@@ -1,6 +1,9 @@
 package com.catolica.Artepax.inventario.movimiento.service;
 
 import com.catolica.Artepax.inventario.movimiento.dto.MovimientoRequestDTO;
+import com.catolica.Artepax.inventario.movimiento.dto.MovimientoResponseDTO;
+
+import java.util.List;
 
 public interface MovimientoService {
 
@@ -12,4 +15,6 @@ public interface MovimientoService {
 
     // 📊 Obtener stock actual de un producto
     Integer obtenerStock(Long productoId);
+
+    List<MovimientoResponseDTO> obtenerMovimientosPorProducto(Long productoId);
 }

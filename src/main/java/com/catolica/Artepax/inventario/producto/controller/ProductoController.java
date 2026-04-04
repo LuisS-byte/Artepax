@@ -66,4 +66,13 @@ public class ProductoController {
         productoService.eliminar(id);
         return ResponseEntity.noContent().build();
     }
+
+    // GET /productos/buscar?nombre=globo
+    @GetMapping("/buscar")
+    public ResponseEntity<List<ProductoResponseDTO>> buscarPorNombre(
+            @RequestParam String nombre) {
+
+        List<ProductoResponseDTO> productos = productoService.buscarPorNombre(nombre);
+        return ResponseEntity.ok(productos);
+    }
 }
