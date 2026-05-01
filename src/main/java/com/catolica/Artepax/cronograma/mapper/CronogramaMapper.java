@@ -25,6 +25,8 @@ public class CronogramaMapper {
         dto.setActividad(cronograma.getActividad());
         dto.setFechaInicio(cronograma.getFechaInicio());
         dto.setFechaFin(cronograma.getFechaFin());
+        dto.setCronoEstado(cronograma.getCronoEstado());
+        dto.setCronoObservacion(cronograma.getCronoObservacion());
         return dto;
     }
 }
