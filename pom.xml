@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>4.0.5</version>
+		<version>3.5.14</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.catolica</groupId>
@@ -109,6 +109,38 @@
     		<groupId>com.google.http-client</groupId>
     		<artifactId>google-http-client-jackson2</artifactId>
     		<version>1.43.3</version>
+		</dependency>
+
+		<!-- Jakarta JSON Bind -->
+		<dependency>
+			<groupId>jakarta.json.bind</groupId>
+			<artifactId>jakarta.json.bind-api</artifactId>
+			<version>3.0.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-aop</artifactId>
+		</dependency>
+
+		<!-- OpenPDF core — generación de PDF, licencia LGPL/MPL -->
+		<dependency>
+			<groupId>com.github.librepdf</groupId>
+			<artifactId>openpdf</artifactId>
+			<version>3.0.3</version>
+		</dependency>
+
+		<!-- OpenPDF HTML — convierte HTML a PDF directamente -->
+		<dependency>
+			<groupId>com.github.librepdf</groupId>
+			<artifactId>openpdf-html</artifactId>
+			<version>3.0.3</version>
+		</dependency>
+
+		<!-- Spring Mail — envío de emails via SMTP -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-mail</artifactId>
 		</dependency>
 
 	</dependencies>
