@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 @Service
-public class ClienteServiceImpl implements ClienteService {
+public class ClienteServiceImpl  implements ClienteService {
 
     private final ClienteRepository clienteRepository;
     private final ClienteMapper clienteMapper;
@@ -35,89 +35,80 @@ public class ClienteServiceImpl implements ClienteService {
     }
 
     @Override
-    public List<EventoResponseDTO> obtenerEventosPorCliente(Long clienteId) {
-        if (!clienteRepository.existsById(clienteId)) {
-            throw new ClienteNotFoundException(clienteId);
-        }
-        return eventoRepository.findByClienteId(clienteId)
-                .stream()
-                .map(eventoMapper::toResponseDTO)
-                .toList();
-    }
-    // ✅ Crear cliente
-    @Override
     public ClienteResponseDTO crearCliente(ClienteRequestDTO dto) {
-
-        // 🔥 Validar correo único
         if (clienteRepository.existsByCorreo(dto.getCorreo())) {
-            throw new RuntimeException("El correo ya está en uso");
+            throw new IllegalArgumentException("El correo ya está en uso");
         }
-
-        Cliente cliente = clienteMapper.toEntity(dto);
-        Cliente guardado = clienteRepository.save(cliente);
-
-        return clienteMapper.toDTO(guardado);
+        return clienteMapper.toDTO(clienteRepository.save(clienteMapper.toEntity(dto)));
     }
 
-    // ✅ Obtener todos
     @Override
     public List<ClienteResponseDTO> obtenerTodos() {
-        return clienteRepository.findAll()
-                .stream()
-                .map(clienteMapper::toDTO)
-                .toList();
+        // Solo retorna activos
+        return clienteRepository.findByActivoTrue()
+                .stream().map(clienteMapper::toDTO).toList();
     }
 
-    // ✅ Obtener por ID
+    @Override
+    public List<ClienteResponseDTO> obtenerInactivos() {
+        return clienteRepository.findByActivoFalse()
+                .stream().map(clienteMapper::toDTO).toList();
+    }
+
     @Override
     public ClienteResponseDTO obtenerPorId(Long id) {
-        Cliente cliente = clienteRepository.findById(id)
-                .orElseThrow(() -> new ClienteNotFoundException(id));
-
-        return clienteMapper.toDTO(cliente);
+        return clienteMapper.toDTO(clienteRepository.findById(id)
+                .orElseThrow(() -> new ClienteNotFoundException(id)));
     }
 
-    // ✅ Actualizar
     @Override
     public ClienteResponseDTO actualizar(Long id, ClienteUpdateDTO dto) {
-
         Cliente cliente = clienteRepository.findById(id)
                 .orElseThrow(() -> new ClienteNotFoundException(id));
 
-        if (dto.getCorreo() != null &&
-                clienteRepository.existsByCorreo(dto.getCorreo()) &&
-                !cliente.getCorreo().equals(dto.getCorreo())) {
-
-            throw new RuntimeException("El correo ya está en uso");
+        if (dto.getCorreo() != null
+                && !dto.getCorreo().equals(cliente.getCorreo())
+                && clienteRepository.existsByCorreo(dto.getCorreo())) {
+            throw new IllegalArgumentException("El correo ya está en uso");
         }
 
-        // 🔥 actualizar campos
         cliente.setNombre(dto.getNombre());
         cliente.setTelefono(dto.getTelefono());
         cliente.setDireccion(dto.getDireccion());
         cliente.setCorreo(dto.getCorreo());
 
-        Cliente actualizado = clienteRepository.save(cliente);
-
-        return clienteMapper.toDTO(actualizado);
+        return clienteMapper.toDTO(clienteRepository.save(cliente));
     }
 
-    // ✅ Eliminar
     @Override
     public void eliminar(Long id) {
+        Cliente cliente = clienteRepository.findById(id)
+                .orElseThrow(() -> new ClienteNotFoundException(id));
+        // Soft delete — nunca DELETE físico
+        cliente.setActivo(false);
+        clienteRepository.save(cliente);
+    }
 
-        if (!clienteRepository.existsById(id)) {
-            throw new ClienteNotFoundException(id);
-        }
-
-        clienteRepository.deleteById(id);
+    @Override
+    public ClienteResponseDTO reactivar(Long id) {
+        Cliente cliente = clienteRepository.findById(id)
+                .orElseThrow(() -> new ClienteNotFoundException(id));
+        cliente.setActivo(true);
+        return clienteMapper.toDTO(clienteRepository.save(cliente));
     }
 
     @Override
     public List<ClienteResponseDTO> buscarPorNombre(String nombre) {
-        return clienteRepository.findByNombreContainingIgnoreCase(nombre)
-                .stream()
-                .map(clienteMapper::toDTO)
-                .toList();
+        return clienteRepository.findByNombreContainingIgnoreCaseAndActivoTrue(nombre)
+                .stream().map(clienteMapper::toDTO).toList();
+    }
+
+    @Override
+    public List<EventoResponseDTO> obtenerEventosPorCliente(Long clienteId) {
+        if (!clienteRepository.existsById(clienteId)) {
+            throw new ClienteNotFoundException(clienteId);
+        }
+        return eventoRepository.findByClienteId(clienteId)
+                .stream().map(eventoMapper::toResponseDTO).toList();
     }
 }

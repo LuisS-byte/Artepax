@@ -10,11 +10,13 @@ import java.util.Optional;
 @Repository
 public interface ClienteRepository extends JpaRepository<Cliente, Long> {
 
-    // 🔍 Buscar por correo (para validación)
     Optional<Cliente> findByCorreo(String correo);
-
-    // 🔍 Verificar si ya existe un correo
     boolean existsByCorreo(String correo);
 
-    List<Cliente> findByNombreContainingIgnoreCase(String nombre);
+    // Solo activos
+    List<Cliente> findByActivoTrue();
+    List<Cliente> findByNombreContainingIgnoreCaseAndActivoTrue(String nombre);
+
+    // Para admin — ver inactivos
+    List<Cliente> findByActivoFalse();
 }

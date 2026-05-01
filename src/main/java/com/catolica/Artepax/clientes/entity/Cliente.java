@@ -1,7 +1,9 @@
 package com.catolica.Artepax.clientes.entity;
 
 import jakarta.persistence.*;
-import java.time.LocalDate;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "cliente")
@@ -18,70 +20,37 @@ public class Cliente {
     @Column(name = "cli_telefono", length = 20)
     private String telefono;
 
-    @Column(name = "cli_direccion", length = 255)
-    private String direccion;
-
-    @Column(name = "cli_fechacreacion")
-    private LocalDate fechaCreacion;
-
     @Column(name = "cli_correo", length = 100)
     private String correo;
 
-    // 🔹 Constructor vacío
-    public Cliente() {
-    }
+    @Column(name = "cli_direccion", length = 255)
+    private String direccion;
 
-    // 🔹 Getters y Setters
+    @Column(name = "cli_activo", nullable = false)
+    private Boolean activo = true;
 
-    public Long getId() {
-        return id;
-    }
+    @CreationTimestamp
+    @Column(name = "cli_fechacreacion", nullable = false, updatable = false)
+    private LocalDateTime fechaCreacion;
 
-    public String getNombre() {
-        return nombre;
-    }
+    public Cliente() {}
 
-    public void setNombre(String nombre) {
-        this.nombre = nombre;
-    }
+    public Long getId() { return id; }
 
-    public String getTelefono() {
-        return telefono;
-    }
+    public String getNombre() { return nombre; }
+    public void setNombre(String nombre) { this.nombre = nombre; }
 
-    public void setTelefono(String telefono) {
-        this.telefono = telefono;
-    }
+    public String getTelefono() { return telefono; }
+    public void setTelefono(String telefono) { this.telefono = telefono; }
 
-    public String getDireccion() {
-        return direccion;
-    }
+    public String getCorreo() { return correo; }
+    public void setCorreo(String correo) { this.correo = correo; }
 
-    public void setDireccion(String direccion) {
-        this.direccion = direccion;
-    }
+    public String getDireccion() { return direccion; }
+    public void setDireccion(String direccion) { this.direccion = direccion; }
 
-    public LocalDate getFechaCreacion() {
-        return fechaCreacion;
-    }
+    public Boolean getActivo() { return activo; }
+    public void setActivo(Boolean activo) { this.activo = activo; }
 
-    public void setFechaCreacion(LocalDate fechaCreacion) {
-        this.fechaCreacion = fechaCreacion;
-    }
-
-    public String getCorreo() {
-        return correo;
-    }
-
-    public void setCorreo(String correo) {
-        this.correo = correo;
-    }
-
-    // 🔥 Automático como en la BD
-    @PrePersist
-    public void prePersist() {
-        if (this.fechaCreacion == null) {
-            this.fechaCreacion = LocalDate.now();
-        }
-    }
+    public LocalDateTime getFechaCreacion() { return fechaCreacion; }
 }

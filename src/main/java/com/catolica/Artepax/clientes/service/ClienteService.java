@@ -10,17 +10,12 @@ import java.util.List;
 public interface ClienteService {
 
     ClienteResponseDTO crearCliente(ClienteRequestDTO dto);
-
     List<ClienteResponseDTO> obtenerTodos();
-
+    List<ClienteResponseDTO> obtenerInactivos();
     ClienteResponseDTO obtenerPorId(Long id);
-
     ClienteResponseDTO actualizar(Long id, ClienteUpdateDTO dto);
-
-    void eliminar(Long id);
-
-
-    List<EventoResponseDTO> obtenerEventosPorCliente(Long clienteId);
-
+    void eliminar(Long id);          // ahora es soft delete
+    ClienteResponseDTO reactivar(Long id);
     List<ClienteResponseDTO> buscarPorNombre(String nombre);
+    List<EventoResponseDTO> obtenerEventosPorCliente(Long clienteId);
 }
