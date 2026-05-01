@@ -14,7 +14,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 
 @RestController
-@RequestMapping("/clientes")
+@RequestMapping("/api/clientes")
 @PreAuthorize("hasRole('ADMIN')")
 public class ClienteController {
 
@@ -83,5 +83,15 @@ public class ClienteController {
 
         List<ClienteResponseDTO> clientes = clienteService.buscarPorNombre(nombre);
         return ResponseEntity.ok(clientes);
+    }
+
+    @GetMapping("/inactivos")
+    public List<ClienteResponseDTO> listarInactivos() {
+        return clienteService.obtenerInactivos();
+    }
+
+    @PatchMapping("/{id}/reactivar")
+    public ResponseEntity<ClienteResponseDTO> reactivar(@PathVariable Long id) {
+        return ResponseEntity.ok(clienteService.reactivar(id));
     }
 }
