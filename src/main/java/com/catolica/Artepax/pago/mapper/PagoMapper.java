@@ -8,16 +8,22 @@ import org.springframework.stereotype.Component;
 public class PagoMapper {
 
     public PagoResponseDTO toDTO(Pago pago) {
-    PagoResponseDTO dto = new PagoResponseDTO();
-    dto.setId(pago.getId());
-    dto.setMonto(pago.getMonto());
-    dto.setFecha(pago.getFecha());
-    dto.setMetodo(pago.getMetodo());
-    dto.setEventoId(pago.getEvento().getId());
+        PagoResponseDTO dto = new PagoResponseDTO();
+        dto.setId(pago.getId());
+        dto.setMonto(pago.getMonto());
+        dto.setFecha(pago.getFecha());
+        dto.setEventoId(pago.getEvento().getId());
 
-    // si tiene fecha es PAGADO, si no es PENDIENTE
-    dto.setEstadoPago(pago.getFecha() != null ? "PAGADO" : "PENDIENTE");
+        if (pago.getEstadoPago() != null) {
+            dto.setEstadoPago(pago.getEstadoPago().getEstadoNombre());
+        }
+        if (pago.getConceptoPago() != null) {
+            dto.setConceptoPago(pago.getConceptoPago().getConceptoNombre());
+        }
+        if (pago.getMetodoPago() != null) {
+            dto.setMetodoPago(pago.getMetodoPago().getMetodoNombre());
+        }
 
-    return dto;
-}
+        return dto;
+    }
 }

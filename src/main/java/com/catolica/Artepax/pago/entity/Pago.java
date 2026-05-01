@@ -1,44 +1,61 @@
 package com.catolica.Artepax.pago.entity;
 
-
 import com.catolica.Artepax.evento.model.Evento;
 import jakarta.persistence.*;
+
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "pago")
-public class Pago { @Id
-@GeneratedValue(strategy = GenerationType.IDENTITY)
-@Column(name = "id_pago")
-private Long id;
+public class Pago {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_pago")
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_evento", nullable = false)
+    private Evento evento;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_estado_pago", nullable = false)
+    private EstadoPago estadoPago;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_concepto_pago", nullable = false)
+    private ConceptoPago conceptoPago;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_metodo_pago", nullable = false)
+    private MetodoPago metodoPago;
 
     @Column(name = "pago_monto", nullable = false, precision = 10, scale = 2)
     private BigDecimal monto;
 
     @Column(name = "pago_fecha")
-    private LocalDate fecha;
-
-    @Column(name = "pago_metodo", length = 50)
-    private String metodo;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_evento")
-    private Evento evento;
+    private LocalDateTime fecha;
 
     public Pago() {}
 
     public Long getId() { return id; }
 
+    public Evento getEvento() { return evento; }
+    public void setEvento(Evento evento) { this.evento = evento; }
+
+    public EstadoPago getEstadoPago() { return estadoPago; }
+    public void setEstadoPago(EstadoPago estadoPago) { this.estadoPago = estadoPago; }
+
+    public ConceptoPago getConceptoPago() { return conceptoPago; }
+    public void setConceptoPago(ConceptoPago conceptoPago) { this.conceptoPago = conceptoPago; }
+
+    public MetodoPago getMetodoPago() { return metodoPago; }
+    public void setMetodoPago(MetodoPago metodoPago) { this.metodoPago = metodoPago; }
+
     public BigDecimal getMonto() { return monto; }
     public void setMonto(BigDecimal monto) { this.monto = monto; }
 
-    public LocalDate getFecha() { return fecha; }
-    public void setFecha(LocalDate fecha) { this.fecha = fecha; }
-
-    public String getMetodo() { return metodo; }
-    public void setMetodo(String metodo) { this.metodo = metodo; }
-
-    public Evento getEvento() { return evento; }
-    public void setEvento(Evento evento) { this.evento = evento; }
+    public LocalDateTime getFecha() { return fecha; }
+    public void setFecha(LocalDateTime fecha) { this.fecha = fecha; }
 }
