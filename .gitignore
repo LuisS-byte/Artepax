@@ -37,3 +37,4 @@ build/
 *.env
 !*.env.example
 .claude/
+src/main/resources/application.properties
