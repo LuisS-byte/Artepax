@@ -9,44 +9,27 @@ public class CronogramaResponseDTO {
     private String actividad;
     private LocalDateTime fechaInicio;
     private LocalDateTime fechaFin;
+    private String cronoEstado;
+    private String cronoObservacion;
 
-    public Long getId() {
-        return id;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public Long getIdEvento() { return idEvento; }
+    public void setIdEvento(Long idEvento) { this.idEvento = idEvento; }
 
-    public Long getIdEvento() {
-        return idEvento;
-    }
+    public String getActividad() { return actividad; }
+    public void setActividad(String actividad) { this.actividad = actividad; }
 
-    public void setIdEvento(Long idEvento) {
-        this.idEvento = idEvento;
-    }
+    public LocalDateTime getFechaInicio() { return fechaInicio; }
+    public void setFechaInicio(LocalDateTime fechaInicio) { this.fechaInicio = fechaInicio; }
 
-    public String getActividad() {
-        return actividad;
-    }
+    public LocalDateTime getFechaFin() { return fechaFin; }
+    public void setFechaFin(LocalDateTime fechaFin) { this.fechaFin = fechaFin; }
 
-    public void setActividad(String actividad) {
-        this.actividad = actividad;
-    }
+    public String getCronoEstado() { return cronoEstado; }
+    public void setCronoEstado(String cronoEstado) { this.cronoEstado = cronoEstado; }
 
-    public LocalDateTime getFechaInicio() {
-        return fechaInicio;
-    }
-
-    public void setFechaInicio(LocalDateTime fechaInicio) {
-        this.fechaInicio = fechaInicio;
-    }
-
-    public LocalDateTime getFechaFin() {
-        return fechaFin;
-    }
-
-    public void setFechaFin(LocalDateTime fechaFin) {
-        this.fechaFin = fechaFin;
-    }
+    public String getCronoObservacion() { return cronoObservacion; }
+    public void setCronoObservacion(String cronoObservacion) { this.cronoObservacion = cronoObservacion; }
 }

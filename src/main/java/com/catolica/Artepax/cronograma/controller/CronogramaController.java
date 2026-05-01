@@ -1,8 +1,6 @@
 package com.catolica.Artepax.cronograma.controller;
 
-import com.catolica.Artepax.cronograma.dto.CronogramaRequestDTO;
-import com.catolica.Artepax.cronograma.dto.CronogramaResponseDTO;
-import com.catolica.Artepax.cronograma.dto.CronogramaUpdateDTO;
+import com.catolica.Artepax.cronograma.dto.*;
 import com.catolica.Artepax.cronograma.service.CronogramaService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -10,51 +8,80 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
-@RequestMapping("/cronogramas")
+@RequestMapping("/api/cronogramas")
 @PreAuthorize("hasRole('ADMIN')")
-public class CronogramaController {
-
-    private final CronogramaService cronogramaService;
+public class CronogramaController {private final CronogramaService cronogramaService;
 
     public CronogramaController(CronogramaService cronogramaService) {
         this.cronogramaService = cronogramaService;
     }
 
-    // Crear actividad de cronograma
+    // ─── CRUD ACTIVIDADES ─────────────────────────────────────────────────────
+
     @PostMapping
     public ResponseEntity<CronogramaResponseDTO> crear(
-            @Valid @RequestBody CronogramaRequestDTO requestDTO) {
-        return ResponseEntity.status(201).body(cronogramaService.crear(requestDTO));
+            @Valid @RequestBody CronogramaRequestDTO dto) {
+        return ResponseEntity.status(201).body(cronogramaService.crear(dto));
     }
 
-    // Obtener cronograma completo de un evento
     @GetMapping("/evento/{idEvento}")
     public ResponseEntity<List<CronogramaResponseDTO>> obtenerPorEvento(
             @PathVariable Long idEvento) {
         return ResponseEntity.ok(cronogramaService.obtenerPorEvento(idEvento));
     }
 
-    // Obtener actividad por ID
     @GetMapping("/{id}")
-    public ResponseEntity<CronogramaResponseDTO> obtenerPorId(
-            @PathVariable Long id) {
+    public ResponseEntity<CronogramaResponseDTO> obtenerPorId(@PathVariable Long id) {
         return ResponseEntity.ok(cronogramaService.obtenerPorId(id));
     }
 
-    // Actualizar actividad
     @PutMapping("/{id}")
     public ResponseEntity<CronogramaResponseDTO> actualizar(
             @PathVariable Long id,
-            @RequestBody CronogramaUpdateDTO updateDTO) {
-        return ResponseEntity.ok(cronogramaService.actualizar(id, updateDTO));
+            @RequestBody CronogramaUpdateDTO dto) {
+        return ResponseEntity.ok(cronogramaService.actualizar(id, dto));
     }
 
-    // Eliminar actividad
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
-        cronogramaService.eliminar(id);
+    // ─── ESTADOS ──────────────────────────────────────────────────────────────
+
+    @PatchMapping("/{id}/estado")
+    public ResponseEntity<CronogramaResponseDTO> cambiarEstado(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body) {
+        String nuevoEstado = body.get("estado");
+        return ResponseEntity.ok(cronogramaService.cambiarEstado(id, nuevoEstado));
+    }
+
+    @PatchMapping("/{id}/cancelar")
+    public ResponseEntity<Void> cancelar(@PathVariable Long id) {
+        cronogramaService.cancelar(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ─── USUARIOS ASIGNADOS ───────────────────────────────────────────────────
+
+    @PostMapping("/{id}/usuarios")
+    public ResponseEntity<CronogramaUsuarioResponseDTO> asignarUsuario(
+            @PathVariable Long id,
+            @Valid @RequestBody CronogramaUsuarioRequestDTO dto) {
+        return ResponseEntity.status(201).body(
+                cronogramaService.asignarUsuario(id, dto));
+    }
+
+    @GetMapping("/{id}/usuarios")
+    public ResponseEntity<List<CronogramaUsuarioResponseDTO>> obtenerUsuarios(
+            @PathVariable Long id) {
+        return ResponseEntity.ok(cronogramaService.obtenerUsuarios(id));
+    }
+
+    @DeleteMapping("/{id}/usuarios/{usuarioId}")
+    public ResponseEntity<Void> removerUsuario(
+            @PathVariable Long id,
+            @PathVariable Long usuarioId) {
+        cronogramaService.removerUsuario(id, usuarioId);
         return ResponseEntity.noContent().build();
     }
 }

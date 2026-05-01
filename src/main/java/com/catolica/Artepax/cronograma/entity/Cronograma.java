@@ -13,22 +13,31 @@ public class Cronograma {
     @Column(name = "id_cronograma")
     private Long id;
 
-    @Column(name = "actividad", length = 150)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_evento", nullable = false)
+    private Evento evento;
+
+    @Column(name = "actividad", nullable = false, length = 255)
     private String actividad;
 
-    @Column(name = "fecha_inicio")
+    @Column(name = "fecha_inicio", nullable = false)
     private LocalDateTime fechaInicio;
 
-    @Column(name = "fecha_fin")
+    @Column(name = "fecha_fin", nullable = false)
     private LocalDateTime fechaFin;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_evento")
-    private Evento evento;
+    @Column(name = "crono_estado", nullable = false, length = 15)
+    private String cronoEstado = "PENDIENTE";
+
+    @Column(name = "crono_observacion", length = 255)
+    private String cronoObservacion;
 
     public Cronograma() {}
 
     public Long getId() { return id; }
+
+    public Evento getEvento() { return evento; }
+    public void setEvento(Evento evento) { this.evento = evento; }
 
     public String getActividad() { return actividad; }
     public void setActividad(String actividad) { this.actividad = actividad; }
@@ -39,6 +48,9 @@ public class Cronograma {
     public LocalDateTime getFechaFin() { return fechaFin; }
     public void setFechaFin(LocalDateTime fechaFin) { this.fechaFin = fechaFin; }
 
-    public Evento getEvento() { return evento; }
-    public void setEvento(Evento evento) { this.evento = evento; }
+    public String getCronoEstado() { return cronoEstado; }
+    public void setCronoEstado(String cronoEstado) { this.cronoEstado = cronoEstado; }
+
+    public String getCronoObservacion() { return cronoObservacion; }
+    public void setCronoObservacion(String cronoObservacion) { this.cronoObservacion = cronoObservacion; }
 }
