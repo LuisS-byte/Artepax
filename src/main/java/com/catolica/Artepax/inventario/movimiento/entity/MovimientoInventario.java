@@ -1,7 +1,10 @@
 package com.catolica.Artepax.inventario.movimiento.entity;
 
+import com.catolica.Artepax.authentication.user.entity.Usuario;
+import com.catolica.Artepax.evento.model.Evento;
 import com.catolica.Artepax.inventario.producto.entity.Producto;
 import jakarta.persistence.*;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
@@ -18,73 +21,54 @@ public class MovimientoInventario {
     @JoinColumn(name = "id_producto", nullable = false)
     private Producto producto;
 
-    @Column(name = "tipo_movimiento", nullable = false, length = 20)
-    private String tipoMovimiento; // ENTRADA o SALIDA
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_evento")
+    private Evento evento;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "registrado_por")
+    private Usuario registradoPor;
+
+    @Column(name = "tipo_movimiento", nullable = false, length = 10)
+    private String tipoMovimiento;
+
+    @Column(name = "tipo_origen", nullable = false, length = 20)
+    private String tipoOrigen = "REPOSICION";
 
     @Column(nullable = false)
     private Integer cantidad;
 
-    @Column(name = "fecha")
+    @CreationTimestamp
+    @Column(name = "fecha", nullable = false, updatable = false)
     private LocalDateTime fecha;
 
     @Column(length = 255)
     private String motivo;
 
-    // 🔹 Constructor vacío
-    public MovimientoInventario() {
-    }
+    public MovimientoInventario() {}
 
-    // 🔹 Getters y Setters
+    public Long getId() { return id; }
 
-    public Long getId() {
-        return id;
-    }
+    public Producto getProducto() { return producto; }
+    public void setProducto(Producto producto) { this.producto = producto; }
 
-    public Producto getProducto() {
-        return producto;
-    }
+    public Evento getEvento() { return evento; }
+    public void setEvento(Evento evento) { this.evento = evento; }
 
-    public void setProducto(Producto producto) {
-        this.producto = producto;
-    }
+    public Usuario getRegistradoPor() { return registradoPor; }
+    public void setRegistradoPor(Usuario registradoPor) { this.registradoPor = registradoPor; }
 
-    public String getTipoMovimiento() {
-        return tipoMovimiento;
-    }
+    public String getTipoMovimiento() { return tipoMovimiento; }
+    public void setTipoMovimiento(String tipoMovimiento) { this.tipoMovimiento = tipoMovimiento; }
 
-    public void setTipoMovimiento(String tipoMovimiento) {
-        this.tipoMovimiento = tipoMovimiento;
-    }
+    public String getTipoOrigen() { return tipoOrigen; }
+    public void setTipoOrigen(String tipoOrigen) { this.tipoOrigen = tipoOrigen; }
 
-    public Integer getCantidad() {
-        return cantidad;
-    }
+    public Integer getCantidad() { return cantidad; }
+    public void setCantidad(Integer cantidad) { this.cantidad = cantidad; }
 
-    public void setCantidad(Integer cantidad) {
-        this.cantidad = cantidad;
-    }
+    public LocalDateTime getFecha() { return fecha; }
 
-    public LocalDateTime getFecha() {
-        return fecha;
-    }
-
-    public void setFecha(LocalDateTime fecha) {
-        this.fecha = fecha;
-    }
-
-    public String getMotivo() {
-        return motivo;
-    }
-
-    public void setMotivo(String motivo) {
-        this.motivo = motivo;
-    }
-
-    // 🔥 Fecha automática como en la BD
-    @PrePersist
-    public void prePersist() {
-        if (this.fecha == null) {
-            this.fecha = LocalDateTime.now();
-        }
-    }
+    public String getMotivo() { return motivo; }
+    public void setMotivo(String motivo) { this.motivo = motivo; }
 }

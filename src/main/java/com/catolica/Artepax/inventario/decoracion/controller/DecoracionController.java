@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/decoraciones")
+@RequestMapping("/api/decoraciones")
 @PreAuthorize("hasRole('ADMIN')")
 @RequiredArgsConstructor
 public class DecoracionController {private final DecoracionService decoracionService;

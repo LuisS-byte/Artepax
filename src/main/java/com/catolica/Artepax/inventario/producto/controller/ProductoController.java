@@ -13,7 +13,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 
 @RestController
-@RequestMapping("/productos")
+@RequestMapping("/api/productos")
 @PreAuthorize("hasRole('ADMIN')")
 public class ProductoController {
 
@@ -58,14 +58,6 @@ public class ProductoController {
         return ResponseEntity.ok(actualizado);
     }
 
-    // ✅ Eliminar producto
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> eliminarProducto(
-            @PathVariable Long id) {
-
-        productoService.eliminar(id);
-        return ResponseEntity.noContent().build();
-    }
 
     // GET /productos/buscar?nombre=globo
     @GetMapping("/buscar")
@@ -75,4 +67,15 @@ public class ProductoController {
         List<ProductoResponseDTO> productos = productoService.buscarPorNombre(nombre);
         return ResponseEntity.ok(productos);
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminarProducto(@PathVariable Long id) {
+        productoService.eliminar(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/reactivar")
+    public ResponseEntity<ProductoResponseDTO> reactivar(@PathVariable Long id) {
+        return ResponseEntity.ok(productoService.reactivar(id));
+}
 }

@@ -14,29 +14,18 @@ public class MovimientoRequestDTO {
 
     private String motivo;
 
-    // 🔹 Getters y Setters
+    // REPOSICION, AJUSTE_MANUAL, DAÑO, PERDIDA
+    private String tipoOrigen = "REPOSICION";
 
-    public Long getProductoId() {
-        return productoId;
-    }
+    public Long getProductoId() { return productoId; }
+    public void setProductoId(Long productoId) { this.productoId = productoId; }
 
-    public void setProductoId(Long productoId) {
-        this.productoId = productoId;
-    }
+    public Integer getCantidad() { return cantidad; }
+    public void setCantidad(Integer cantidad) { this.cantidad = cantidad; }
 
-    public Integer getCantidad() {
-        return cantidad;
-    }
+    public String getMotivo() { return motivo; }
+    public void setMotivo(String motivo) { this.motivo = motivo; }
 
-    public void setCantidad(Integer cantidad) {
-        this.cantidad = cantidad;
-    }
-
-    public String getMotivo() {
-        return motivo;
-    }
-
-    public void setMotivo(String motivo) {
-        this.motivo = motivo;
-    }
+    public String getTipoOrigen() { return tipoOrigen; }
+    public void setTipoOrigen(String tipoOrigen) { this.tipoOrigen = tipoOrigen; }
 }

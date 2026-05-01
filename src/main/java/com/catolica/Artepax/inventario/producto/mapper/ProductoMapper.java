@@ -10,7 +10,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class ProductoMapper {
 
-    // 🔹 DTO → Entity (crear producto)
     public Producto toEntity(ProductoRequestDTO dto) {
         Producto producto = new Producto();
         producto.setNombre(dto.getNombre());
@@ -20,19 +19,19 @@ public class ProductoMapper {
         return producto;
     }
 
-    // 🔹 Entity → DTO (respuesta)
     public ProductoResponseDTO toDTO(Producto producto) {
         ProductoResponseDTO dto = new ProductoResponseDTO();
         dto.setId(producto.getId());
         dto.setNombre(producto.getNombre());
         dto.setDescripcion(producto.getDescripcion());
         dto.setCantidadTotal(producto.getCantidadTotal());
+        dto.setPrecioUnitario(producto.getPrecioUnitario());
+        dto.setStockMinimo(producto.getStockMinimo());
         dto.setEstado(producto.getEstado());
         dto.setFechaCreacion(producto.getFechaCreacion());
         return dto;
     }
 
-    // 🔥 Update limpio (muy importante)
     public void updateEntity(Producto producto, ProductoUpdateDTO dto) {
         producto.setNombre(dto.getNombre());
         producto.setDescripcion(dto.getDescripcion());

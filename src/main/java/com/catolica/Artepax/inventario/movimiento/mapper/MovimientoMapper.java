@@ -11,7 +11,11 @@ public class MovimientoMapper {
         MovimientoResponseDTO dto = new MovimientoResponseDTO();
         dto.setId(movimiento.getId());
         dto.setProductoId(movimiento.getProducto().getId());
+        if (movimiento.getEvento() != null) {
+            dto.setEventoId(movimiento.getEvento().getId());
+        }
         dto.setTipoMovimiento(movimiento.getTipoMovimiento());
+        dto.setTipoOrigen(movimiento.getTipoOrigen());
         dto.setCantidad(movimiento.getCantidad());
         dto.setFecha(movimiento.getFecha());
         dto.setMotivo(movimiento.getMotivo());

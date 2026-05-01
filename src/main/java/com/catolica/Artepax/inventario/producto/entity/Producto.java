@@ -1,7 +1,10 @@
 package com.catolica.Artepax.inventario.producto.entity;
 
 import jakarta.persistence.*;
-import java.time.LocalDate;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "producto")
@@ -21,67 +24,40 @@ public class Producto {
     @Column(name = "produ_cantidad_total", nullable = false)
     private Integer cantidadTotal;
 
-    @Column(name = "produ_estado", length = 50)
+    @Column(name = "produ_precio_unitario", nullable = false, precision = 10, scale = 2)
+    private BigDecimal precioUnitario = BigDecimal.ZERO;
+
+    @Column(name = "produ_stock_minimo", nullable = false)
+    private Integer stockMinimo = 0;
+
+    @Column(name = "produ_estado", length = 10)
     private String estado;
 
-    @Column(name = "produ_creacion")
-    private LocalDate fechaCreacion;
+    @CreationTimestamp
+    @Column(name = "produ_creacion", nullable = false, updatable = false)
+    private LocalDateTime fechaCreacion;
 
-    // 🔹 Constructor vacío (JPA obligatorio)
-    public Producto() {
-    }
+    public Producto() {}
 
-    // 🔹 Getters y Setters
+    public Long getId() { return id; }
 
-    public Long getId() {
-        return id;
-    }
+    public String getNombre() { return nombre; }
+    public void setNombre(String nombre) { this.nombre = nombre; }
 
-    public String getNombre() {
-        return nombre;
-    }
+    public String getDescripcion() { return descripcion; }
+    public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
 
-    public void setNombre(String nombre) {
-        this.nombre = nombre;
-    }
+    public Integer getCantidadTotal() { return cantidadTotal; }
+    public void setCantidadTotal(Integer cantidadTotal) { this.cantidadTotal = cantidadTotal; }
 
-    public String getDescripcion() {
-        return descripcion;
-    }
+    public BigDecimal getPrecioUnitario() { return precioUnitario; }
+    public void setPrecioUnitario(BigDecimal precioUnitario) { this.precioUnitario = precioUnitario; }
 
-    public void setDescripcion(String descripcion) {
-        this.descripcion = descripcion;
-    }
+    public Integer getStockMinimo() { return stockMinimo; }
+    public void setStockMinimo(Integer stockMinimo) { this.stockMinimo = stockMinimo; }
 
-    public Integer getCantidadTotal() {
-        return cantidadTotal;
-    }
+    public String getEstado() { return estado; }
+    public void setEstado(String estado) { this.estado = estado; }
 
-    public void setCantidadTotal(Integer cantidadTotal) {
-        this.cantidadTotal = cantidadTotal;
-    }
-
-    public String getEstado() {
-        return estado;
-    }
-
-    public void setEstado(String estado) {
-        this.estado = estado;
-    }
-
-    public LocalDate getFechaCreacion() {
-        return fechaCreacion;
-    }
-
-    public void setFechaCreacion(LocalDate fechaCreacion) {
-        this.fechaCreacion = fechaCreacion;
-    }
-
-    // 🔥 Se asigna automáticamente como en la BD
-    @PrePersist
-    public void prePersist() {
-        if (this.fechaCreacion == null) {
-            this.fechaCreacion = LocalDate.now();
-        }
-    }
+    public LocalDateTime getFechaCreacion() { return fechaCreacion; }
 }
