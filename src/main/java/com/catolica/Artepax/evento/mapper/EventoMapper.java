@@ -6,6 +6,7 @@ import com.catolica.Artepax.evento.model.Evento;
 import com.catolica.Artepax.evento.model.EstadoEvento;
 import com.catolica.Artepax.inventario.decoracion.entity.Decoracion;
 import org.springframework.stereotype.Component;
+
 @Component
 public class EventoMapper {
 
@@ -29,8 +30,16 @@ public class EventoMapper {
         dto.setHoraFin(evento.getHoraFin());
         dto.setUbicacion(evento.getUbicacion());
         dto.setNota(evento.getNota());
+        dto.setNotaPrecio(evento.getNotaPrecio());
         dto.setMotivoCancelacion(evento.getMotivoCancelacion());
         dto.setFechaCreacion(evento.getFechaCreacion());
+        dto.setPrecioBase(evento.getPrecioBase());
+        dto.setPrecioAdicional(evento.getPrecioAdicional());
+        dto.setPrecioTotal(evento.getPrecioTotal());
+        dto.setClienteNotificado(evento.getClienteNotificado());
+        dto.setFechaConfirmacion(evento.getFechaConfirmacion());
+        dto.setFechaCancelacion(evento.getFechaCancelacion());
+        dto.setFechaExpiracion(evento.getFechaExpiracion());
 
         if (evento.getCliente() != null) {
             dto.setClienteId(evento.getCliente().getId());
@@ -45,6 +54,11 @@ public class EventoMapper {
         if (evento.getEstadoEvento() != null) {
             dto.setEstadoEventoId(evento.getEstadoEvento().getId());
             dto.setEstadoEventoNombre(evento.getEstadoEvento().getNombre());
+        }
+
+        if (evento.getTipoEvento() != null) {
+            dto.setTipoEventoId(evento.getTipoEvento().getId());
+            dto.setTipoEventoNombre(evento.getTipoEvento().getTipoNombre());
         }
 
         return dto;
