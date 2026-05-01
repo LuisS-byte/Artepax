@@ -1,0 +1,78 @@
+package com.catolica.Artepax.pago.service.impl;
+
+import com.catolica.Artepax.pago.dto.*;
+import com.catolica.Artepax.pago.entity.*;
+import com.catolica.Artepax.pago.repository.*;
+import com.catolica.Artepax.pago.service.CatalogosPagoService;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class CatalogosPagoServiceImpl implements CatalogosPagoService {
+
+    private final EstadoPagoRepository estadoRepo;
+    private final ConceptoPagoRepository conceptoRepo;
+    private final MetodoPagoRepository metodoRepo;
+
+    public CatalogosPagoServiceImpl(EstadoPagoRepository estadoRepo,
+                                    ConceptoPagoRepository conceptoRepo,
+                                    MetodoPagoRepository metodoRepo) {
+        this.estadoRepo = estadoRepo;
+        this.conceptoRepo = conceptoRepo;
+        this.metodoRepo = metodoRepo;
+    }
+
+    @Override
+    public List<EstadoPagoResponseDTO> listarEstados() {
+        return estadoRepo.findAll().stream().map(e -> {
+            EstadoPagoResponseDTO dto = new EstadoPagoResponseDTO();
+            dto.setId(e.getId());
+            dto.setEstadoNombre(e.getEstadoNombre());
+            dto.setEstadoDescripcion(e.getEstadoDescripcion());
+            return dto;
+        }).toList();
+    }
+
+    @Override
+    public List<ConceptoPagoResponseDTO> listarConceptos() {
+        return conceptoRepo.findAll().stream().map(c -> {
+            ConceptoPagoResponseDTO dto = new ConceptoPagoResponseDTO();
+            dto.setId(c.getId());
+            dto.setConceptoNombre(c.getConceptoNombre());
+            dto.setConceptoDescripcion(c.getConceptoDescripcion());
+            return dto;
+        }).toList();
+    }
+
+    @Override
+    public List<MetodoPagoResponseDTO> listarMetodos() {
+        return metodoRepo.findAll().stream().map(this::toMetodoDTO).toList();
+    }
+
+    @Override
+    public MetodoPagoResponseDTO crearMetodo(String nombre, String descripcion) {
+        MetodoPago m = new MetodoPago();
+        m.setMetodoNombre(nombre);
+        m.setMetodoDescripcion(descripcion);
+        m.setMetodoActivo(true);
+        return toMetodoDTO(metodoRepo.save(m));
+    }
+
+    @Override
+    public MetodoPagoResponseDTO toggleMetodo(Long id) {
+        MetodoPago m = metodoRepo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Método de pago no encontrado: " + id));
+        m.setMetodoActivo(!m.getMetodoActivo());
+        return toMetodoDTO(metodoRepo.save(m));
+    }
+
+    private MetodoPagoResponseDTO toMetodoDTO(MetodoPago m) {
+        MetodoPagoResponseDTO dto = new MetodoPagoResponseDTO();
+        dto.setId(m.getId());
+        dto.setMetodoNombre(m.getMetodoNombre());
+        dto.setMetodoDescripcion(m.getMetodoDescripcion());
+        dto.setMetodoActivo(m.getMetodoActivo());
+        return dto;
+    }
+}
