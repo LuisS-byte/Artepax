@@ -14,7 +14,7 @@ import java.util.List;
 
 @Component
 public class DecoracionMapper {
-    // DTO → Entity
+
     public Decoracion toEntity(DecoracionRequestDTO dto) {
         Decoracion decoracion = new Decoracion();
         decoracion.setNombre(dto.getNombre());
@@ -24,13 +24,13 @@ public class DecoracionMapper {
         return decoracion;
     }
 
-    // Entity → DTO
     public DecoracionResponseDTO toDTO(Decoracion decoracion, List<DecoracionProducto> productos) {
         DecoracionResponseDTO dto = new DecoracionResponseDTO();
         dto.setId(decoracion.getId());
         dto.setNombre(decoracion.getNombre());
         dto.setDescripcion(decoracion.getDescripcion());
         dto.setPrecio(decoracion.getPrecio());
+        dto.setImagenUrl(decoracion.getImagenUrl());
         dto.setEstado(decoracion.getEstado());
         dto.setFechaCreacion(decoracion.getFechaCreacion());
 
@@ -41,7 +41,6 @@ public class DecoracionMapper {
         return dto;
     }
 
-    // DecoracionProducto → DTO
     public DecoracionProductoResponseDTO toProductoDTO(DecoracionProducto dp) {
         DecoracionProductoResponseDTO dto = new DecoracionProductoResponseDTO();
         dto.setProductoId(dp.getProducto().getId());
@@ -50,7 +49,6 @@ public class DecoracionMapper {
         return dto;
     }
 
-    // Update
     public void updateEntity(Decoracion decoracion, DecoracionUpdateDTO dto) {
         decoracion.setNombre(dto.getNombre());
         if (dto.getDescripcion() != null) decoracion.setDescripcion(dto.getDescripcion());

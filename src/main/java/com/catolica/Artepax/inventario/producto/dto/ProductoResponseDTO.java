@@ -1,6 +1,7 @@
 package com.catolica.Artepax.inventario.producto.dto;
 
-import java.time.LocalDate;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 public class ProductoResponseDTO {
 
@@ -8,56 +9,32 @@ public class ProductoResponseDTO {
     private String nombre;
     private String descripcion;
     private Integer cantidadTotal;
+    private BigDecimal precioUnitario;
+    private Integer stockMinimo;
     private String estado;
-    private LocalDate fechaCreacion;
+    private LocalDateTime fechaCreacion;
 
-    // 🔹 Getters y Setters
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public Long getId() {
-        return id;
-    }
+    public String getNombre() { return nombre; }
+    public void setNombre(String nombre) { this.nombre = nombre; }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public String getDescripcion() { return descripcion; }
+    public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
 
-    public String getNombre() {
-        return nombre;
-    }
+    public Integer getCantidadTotal() { return cantidadTotal; }
+    public void setCantidadTotal(Integer cantidadTotal) { this.cantidadTotal = cantidadTotal; }
 
-    public void setNombre(String nombre) {
-        this.nombre = nombre;
-    }
+    public BigDecimal getPrecioUnitario() { return precioUnitario; }
+    public void setPrecioUnitario(BigDecimal precioUnitario) { this.precioUnitario = precioUnitario; }
 
-    public String getDescripcion() {
-        return descripcion;
-    }
+    public Integer getStockMinimo() { return stockMinimo; }
+    public void setStockMinimo(Integer stockMinimo) { this.stockMinimo = stockMinimo; }
 
-    public void setDescripcion(String descripcion) {
-        this.descripcion = descripcion;
-    }
+    public String getEstado() { return estado; }
+    public void setEstado(String estado) { this.estado = estado; }
 
-    public Integer getCantidadTotal() {
-        return cantidadTotal;
-    }
-
-    public void setCantidadTotal(Integer cantidadTotal) {
-        this.cantidadTotal = cantidadTotal;
-    }
-
-    public String getEstado() {
-        return estado;
-    }
-
-    public void setEstado(String estado) {
-        this.estado = estado;
-    }
-
-    public LocalDate getFechaCreacion() {
-        return fechaCreacion;
-    }
-
-    public void setFechaCreacion(LocalDate fechaCreacion) {
-        this.fechaCreacion = fechaCreacion;
-    }
+    public LocalDateTime getFechaCreacion() { return fechaCreacion; }
+    public void setFechaCreacion(LocalDateTime fechaCreacion) { this.fechaCreacion = fechaCreacion; }
 }

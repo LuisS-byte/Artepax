@@ -1,5 +1,6 @@
 package com.catolica.Artepax.inventario.producto.service.impl;
 
+import com.catolica.Artepax.inventario.producto.exception.ProductoDuplicadoException;
 import com.catolica.Artepax.inventario.producto.dto.ProductoRequestDTO;
 import com.catolica.Artepax.inventario.producto.dto.ProductoResponseDTO;
 import com.catolica.Artepax.inventario.producto.dto.ProductoUpdateDTO;
@@ -31,7 +32,7 @@ public class ProductoServiceImpl implements ProductoService {
     public ProductoResponseDTO crearProducto(ProductoRequestDTO dto) {
 
         if (productoRepository.existsByNombre(dto.getNombre())) {
-            throw new RuntimeException("El producto ya existe");
+            throw new ProductoDuplicadoException(dto.getNombre());
         }
 
         Producto producto = productoMapper.toEntity(dto);
@@ -67,15 +68,24 @@ public class ProductoServiceImpl implements ProductoService {
         return productoMapper.toDTO(actualizado);
     }
 
+    // Reemplazar eliminar():
     @Override
     @Transactional
     public void eliminar(Long id) {
+        Producto producto = productoRepository.findById(id)
+                .orElseThrow(() -> new ProductoNotFoundException(id));
+        producto.setEstado("INACTIVO");
+        productoRepository.save(producto);
+    }
 
-        if (!productoRepository.existsById(id)) {
-            throw new ProductoNotFoundException(id);
-        }
-
-        productoRepository.deleteById(id);
+    // Agregar reactivar():
+    @Override
+    @Transactional
+    public ProductoResponseDTO reactivar(Long id) {
+        Producto producto = productoRepository.findById(id)
+                .orElseThrow(() -> new ProductoNotFoundException(id));
+        producto.setEstado("ACTIVO");
+        return productoMapper.toDTO(productoRepository.save(producto));
     }
 
     @Override

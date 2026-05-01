@@ -8,15 +8,12 @@ import java.util.List;
 
 public interface ProductoService {
 
+
     ProductoResponseDTO crearProducto(ProductoRequestDTO dto);
-
     List<ProductoResponseDTO> obtenerTodos();
-
     ProductoResponseDTO obtenerPorId(Long id);
-
     ProductoResponseDTO actualizar(Long id, ProductoUpdateDTO dto);
-
     void eliminar(Long id);
-
+    ProductoResponseDTO reactivar(Long id); // ← cambiar void por ProductoResponseDTO
     List<ProductoResponseDTO> buscarPorNombre(String nombre);
 }

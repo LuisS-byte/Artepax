@@ -127,16 +127,10 @@ public class DecoracionServiceImpl implements DecoracionService {
     @Override
     @Transactional
     public void eliminar(Long id) {
+        Decoracion decoracion = decoracionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Decoracion no encontrada con ID: " + id));
 
-        if (!decoracionRepository.existsById(id)) {
-            throw new RuntimeException("Decoracion no encontrada con ID: " + id);
-        }
-
-        // borrar asociaciones primero
-        List<DecoracionProducto> productos =
-                decoracionProductoRepository.findByDecoracionId(id);
-        decoracionProductoRepository.deleteAll(productos);
-
-        decoracionRepository.deleteById(id);
+        decoracion.setEstado("INACTIVO");
+        decoracionRepository.save(decoracion);
     }
 }

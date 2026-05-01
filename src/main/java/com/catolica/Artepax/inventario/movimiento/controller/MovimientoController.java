@@ -3,15 +3,17 @@ package com.catolica.Artepax.inventario.movimiento.controller;
 import com.catolica.Artepax.inventario.movimiento.dto.MovimientoRequestDTO;
 import com.catolica.Artepax.inventario.movimiento.dto.MovimientoResponseDTO;
 import com.catolica.Artepax.inventario.movimiento.service.MovimientoService;
-
+import com.catolica.Artepax.inventario.producto.dto.StockProductoResponseDTO;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
-@RequestMapping("/inventario")
+@RequestMapping("/api/inventario")
 @PreAuthorize("hasRole('ADMIN')")
 public class MovimientoController {
 
@@ -21,34 +23,41 @@ public class MovimientoController {
         this.movimientoService = movimientoService;
     }
 
-    // ✅ Entrada de inventario (suma stock)
+    // REPOSICION o AJUSTE_MANUAL
     @PostMapping("/entrada")
-    public ResponseEntity<String> entrada(@RequestBody MovimientoRequestDTO dto) {
+    public ResponseEntity<Void> entrada(@Valid @RequestBody MovimientoRequestDTO dto) {
         movimientoService.registrarEntrada(dto);
-        return ResponseEntity.ok("Entrada registrada correctamente");
+        return ResponseEntity.noContent().build();
     }
 
-    // ✅ Salida de inventario (resta stock)
+    // DAÑO, PERDIDA o AJUSTE_MANUAL
     @PostMapping("/salida")
-    public ResponseEntity<String> salida(@RequestBody MovimientoRequestDTO dto) {
+    public ResponseEntity<Void> salida(@Valid @RequestBody MovimientoRequestDTO dto) {
         movimientoService.registrarSalida(dto);
-        return ResponseEntity.ok("Salida registrada correctamente");
+        return ResponseEntity.noContent().build();
     }
 
-    // ✅ Consultar stock actual
+    // Ajuste por conteo físico — calcula diferencia automáticamente
+    @PostMapping("/ajuste/{productoId}")
+    public ResponseEntity<Void> ajuste(
+            @PathVariable Long productoId,
+            @RequestBody Map<String, Object> body) {
+        Integer cantidadFisica = (Integer) body.get("cantidadFisica");
+        String motivo = (String) body.getOrDefault("motivo", "Ajuste manual");
+        movimientoService.registrarAjuste(productoId, cantidadFisica, motivo);
+        return ResponseEntity.noContent().build();
+    }
+
+    // Stock real desde vista_stock_producto
     @GetMapping("/productos/{id}/stock")
-    public ResponseEntity<Integer> obtenerStock(@PathVariable Long id) {
-        Integer stock = movimientoService.obtenerStock(id);
-        return ResponseEntity.ok(stock);
+    public ResponseEntity<StockProductoResponseDTO> obtenerStock(@PathVariable Long id) {
+        return ResponseEntity.ok(movimientoService.obtenerStock(id));
     }
 
-    // GET /inventario/productos/{id}/movimientos
+    // Historial de movimientos
     @GetMapping("/productos/{id}/movimientos")
     public ResponseEntity<List<MovimientoResponseDTO>> obtenerMovimientos(
             @PathVariable Long id) {
-
-        List<MovimientoResponseDTO> movimientos =
-                movimientoService.obtenerMovimientosPorProducto(id);
-        return ResponseEntity.ok(movimientos);
+        return ResponseEntity.ok(movimientoService.obtenerMovimientosPorProducto(id));
     }
 }
