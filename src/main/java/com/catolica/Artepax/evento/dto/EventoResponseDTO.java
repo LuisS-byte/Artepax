@@ -2,7 +2,9 @@ package com.catolica.Artepax.evento.dto;
 
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 @Data
@@ -14,7 +16,7 @@ public class EventoResponseDTO {
     private String ubicacion;
     private String nota;
     private String motivoCancelacion;
-    private LocalDate fechaCreacion;
+    private LocalDateTime fechaCreacion;
 
     private Long clienteId;
     private String clienteNombre;
@@ -24,4 +26,17 @@ public class EventoResponseDTO {
 
     private Long estadoEventoId;
     private String estadoEventoNombre;
+
+    private Long tipoEventoId;
+    private String tipoEventoNombre;
+
+    private BigDecimal precioBase;
+    private BigDecimal precioAdicional;
+    private BigDecimal precioTotal;
+    private String notaPrecio;
+
+    private Boolean clienteNotificado;
+    private LocalDateTime fechaConfirmacion;
+    private LocalDateTime fechaCancelacion;
+    private LocalDate fechaExpiracion;
 }

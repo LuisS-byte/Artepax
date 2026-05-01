@@ -1,5 +1,6 @@
 package com.catolica.Artepax.evento.service;
 
+import com.catolica.Artepax.evento.dto.CalendarioEventoDTO;
 import com.catolica.Artepax.evento.dto.EventoRequestDTO;
 import com.catolica.Artepax.evento.dto.EventoResponseDTO;
 import com.catolica.Artepax.evento.dto.EventoUpdateDTO;
@@ -18,12 +19,16 @@ public interface EventoService {
 
     EventoResponseDTO actualizarEvento(Long id, EventoUpdateDTO updateDTO);
 
-    void eliminarEvento(Long id);
-
-    void cancelarEvento(Long id, String motivo);
-
-    void finalizarEvento(Long id);
-
     boolean verificarDisponibilidad(LocalDate fecha, LocalTime horaInicio, String ubicacion);
-    List<EventoResponseDTO> obtenerCalendario(LocalDate inicio, LocalDate fin);
+    List<CalendarioEventoDTO> obtenerCalendario(LocalDate inicio, LocalDate fin);
+
+    EventoResponseDTO programarEvento(Long id);
+    EventoResponseDTO iniciarMontaje(Long id);
+    EventoResponseDTO finalizarEvento(Long id);
+    EventoResponseDTO iniciarCancelacion(Long id, String motivo);
+    EventoResponseDTO revertirCancelacion(Long id);
+    void confirmarCancelacion(Long id);
+    void confirmarDesdeAnticipo(Long id);
+
+    EventoResponseDTO confirmarEvento(Long id);
 }
