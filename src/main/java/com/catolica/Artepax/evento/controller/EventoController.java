@@ -27,7 +27,6 @@ public class EventoController {
 
     private final EventoService eventoService;
 
-    private final VistaRentabilidadEventoRepository vistaRentabilidadRepo;
 
     @PostMapping
     public ResponseEntity<EventoResponseDTO> crearEvento(
@@ -121,25 +120,6 @@ public class EventoController {
 
     @GetMapping("/{id}/rentabilidad")
     public ResponseEntity<RentabilidadEventoDTO> getRentabilidad(@PathVariable Long id) {
-        VistaRentabilidadEvento vista = vistaRentabilidadRepo.findByIdEvento(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "No se encontró rentabilidad para el evento " + id
-                ));
-
-        RentabilidadEventoDTO dto = new RentabilidadEventoDTO(
-                vista.getIdEvento(),
-                vista.getFechaEvento(),
-                vista.getEstado(),
-                vista.getPrecioAcordado(),
-                vista.getIngresoCobrado(),
-                vista.getCostoMateriales(),
-                vista.getCostoManoObra(),
-                vista.getGastosDesembolsados(),
-                vista.getGastosProyectados(),
-                vista.getGananciaNeta()
-        );
-
-        return ResponseEntity.ok(dto);
+        return ResponseEntity.ok(eventoService.getRentabilidad(id)); // P9
     }
 }

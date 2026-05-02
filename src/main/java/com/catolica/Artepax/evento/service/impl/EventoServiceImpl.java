@@ -2,10 +2,7 @@ package com.catolica.Artepax.evento.service.impl;
 
 import com.catolica.Artepax.common.service.ConfiguracionService;
 import com.catolica.Artepax.cronograma.service.CronogramaService;
-import com.catolica.Artepax.evento.dto.CalendarioEventoDTO;
-import com.catolica.Artepax.evento.dto.EventoRequestDTO;
-import com.catolica.Artepax.evento.dto.EventoResponseDTO;
-import com.catolica.Artepax.evento.dto.EventoUpdateDTO;
+import com.catolica.Artepax.evento.dto.*;
 import com.catolica.Artepax.evento.exception.EventoException;
 import com.catolica.Artepax.evento.mapper.EventoMapper;
 import com.catolica.Artepax.evento.model.*;
@@ -55,6 +52,7 @@ public class EventoServiceImpl implements EventoService {
     private final StockProductoRepository stockProductoRepository;
     private final CronogramaService cronogramaService;
     private final NotificacionService notificacionService;
+    private final VistaRentabilidadEventoRepository vistaRentabilidadEventoRepository;
     private final VistaEventosPeriodoRepository vistaEventosPeriodoRepository;
 
 
@@ -73,7 +71,8 @@ public class EventoServiceImpl implements EventoService {
                              StockProductoRepository stockProductoRepository,
                              @Lazy CronogramaService cronogramaService,
                              @Lazy NotificacionService notificacionService,
-                             VistaEventosPeriodoRepository vistaEventosPeriodoRepository
+                             VistaEventosPeriodoRepository vistaEventosPeriodoRepository,
+                             VistaRentabilidadEventoRepository vistaRentabilidadEventoRepository
     ) {
         this.eventoRepository = eventoRepository;
         this.clienteRepository = clienteRepository;
@@ -90,6 +89,7 @@ public class EventoServiceImpl implements EventoService {
         this.cronogramaService = cronogramaService;
         this.notificacionService = notificacionService;
         this.vistaEventosPeriodoRepository = vistaEventosPeriodoRepository;
+        this.vistaRentabilidadEventoRepository = vistaRentabilidadEventoRepository;
     }
 
     // ─── CREAR ───────────────────────────────────────────────────────────────
@@ -103,6 +103,11 @@ public class EventoServiceImpl implements EventoService {
 
         Decoracion decoracion = decoracionRepository.findById(dto.getDecoracionId())
                 .orElseThrow(() -> new EventoException("Decoración no encontrada"));
+
+        // Brecha: validar que la decoración esté activa
+        if (!"ACTIVO".equals(decoracion.getEstado())) {
+            throw new EventoException("La decoración seleccionada no está activa");
+        }
 
         TipoEvento tipoEvento = tipoEventoRepository.findById(dto.getTipoEventoId())
                 .filter(t -> t.getTipoActivo())
@@ -420,6 +425,25 @@ public class EventoServiceImpl implements EventoService {
     }
 
     @Override
+    public RentabilidadEventoDTO getRentabilidad(Long id) {
+        VistaRentabilidadEvento vista = vistaRentabilidadEventoRepository.findByIdEvento(id)
+                .orElseThrow(() -> new EventoException(
+                        "No se encontró rentabilidad para el evento " + id));
+        return new RentabilidadEventoDTO(
+                vista.getIdEvento(),
+                vista.getFechaEvento(),
+                vista.getEstado(),
+                vista.getPrecioAcordado(),
+                vista.getIngresoCobrado(),
+                vista.getCostoMateriales(),
+                vista.getCostoManoObra(),
+                vista.getGastosDesembolsados(),
+                vista.getGastosProyectados(),
+                vista.getGananciaNeta()
+        );
+    }
+
+    @Override
     @Transactional
     public EventoResponseDTO actualizarEvento(Long id, EventoUpdateDTO dto) {
         Evento evento = obtenerOFallar(id);
@@ -433,10 +457,15 @@ public class EventoServiceImpl implements EventoService {
                 .orElseThrow(() -> new EventoException("Cliente no encontrado"))
                 : null;
 
-        Decoracion decoracion = dto.getDecoracionId() != null
-                ? decoracionRepository.findById(dto.getDecoracionId())
-                .orElseThrow(() -> new EventoException("Decoración no encontrada"))
-                : null;
+        Decoracion decoracion = null;
+        if (dto.getDecoracionId() != null) {
+            decoracion = decoracionRepository.findById(dto.getDecoracionId())
+                    .orElseThrow(() -> new EventoException("Decoración no encontrada"));
+            // Brecha: validar que la decoración esté activa también al actualizar
+            if (!"ACTIVO".equals(decoracion.getEstado())) {
+                throw new EventoException("La decoración seleccionada no está activa");
+            }
+        }
 
         eventoMapper.updateEntityFromDTO(evento, dto, cliente, decoracion);
         return eventoMapper.toResponseDTO(eventoRepository.save(evento));

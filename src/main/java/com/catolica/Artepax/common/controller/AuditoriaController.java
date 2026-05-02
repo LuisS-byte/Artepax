@@ -2,6 +2,7 @@ package com.catolica.Artepax.common.controller;
 
 import com.catolica.Artepax.common.dto.AuditoriaResponseDTO;
 import com.catolica.Artepax.common.entity.Auditoria;
+import com.catolica.Artepax.common.mapper.AuditoriaMapper;
 import com.catolica.Artepax.common.repository.AuditoriaRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -18,11 +19,13 @@ import java.util.List;
 public class AuditoriaController {
 
     private final AuditoriaRepository auditoriaRepository;
+    private final AuditoriaMapper auditoriaMapper;
 
-    public AuditoriaController(AuditoriaRepository auditoriaRepository) {
+    public AuditoriaController(AuditoriaRepository auditoriaRepository,
+                               AuditoriaMapper auditoriaMapper) { // P7
         this.auditoriaRepository = auditoriaRepository;
+        this.auditoriaMapper = auditoriaMapper;
     }
-
     // Reemplazar el endpoint obtenerTodo()
     @GetMapping
     public ResponseEntity<List<AuditoriaResponseDTO>> obtenerTodo(
@@ -38,7 +41,7 @@ public class AuditoriaController {
         return ResponseEntity.ok(
                 auditoriaRepository.findAll(pageable)
                         .stream()
-                        .map(this::toDTO)
+                        .map(auditoriaMapper::toDTO)
                         .toList()
         );
     }
@@ -48,7 +51,7 @@ public class AuditoriaController {
         return ResponseEntity.ok(
                 auditoriaRepository.findByTablaAfectadaOrderByFechaDesc(tabla)
                         .stream()
-                        .map(this::toDTO)
+                        .map(auditoriaMapper::toDTO)
                         .toList()
         );
     }
@@ -60,22 +63,9 @@ public class AuditoriaController {
         return ResponseEntity.ok(
                 auditoriaRepository.findByIdRegistroAndTablaAfectadaOrderByFechaDesc(id, tabla)
                         .stream()
-                        .map(this::toDTO)
+                        .map(auditoriaMapper::toDTO)
                         .toList()
         );
     }
 
-    private AuditoriaResponseDTO toDTO(Auditoria a) {
-        AuditoriaResponseDTO dto = new AuditoriaResponseDTO();
-        dto.setId(a.getId());
-        dto.setUsuarioId(a.getUsuario() != null ? a.getUsuario().getIdUsuario() : null);
-        dto.setAccion(a.getAccion());
-        dto.setTablaAfectada(a.getTablaAfectada());
-        dto.setIdRegistro(a.getIdRegistro());
-        dto.setValorAnterior(a.getValorAnterior());
-        dto.setValorNuevo(a.getValorNuevo());
-        dto.setDescripcion(a.getDescripcion());
-        dto.setFecha(a.getFecha());
-        return dto;
-    }
 }

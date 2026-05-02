@@ -7,6 +7,7 @@ import com.catolica.Artepax.evento.service.EventoService;
 import com.catolica.Artepax.notificacion.service.NotificacionService;
 import com.catolica.Artepax.pago.dto.PagoRequestDTO;
 import com.catolica.Artepax.pago.dto.PagoResponseDTO;
+import com.catolica.Artepax.pago.dto.ResumenPagoEventoDTO;
 import com.catolica.Artepax.pago.entity.*;
 import com.catolica.Artepax.pago.mapper.PagoMapper;
 import com.catolica.Artepax.pago.repository.*;
@@ -32,6 +33,7 @@ public class PagoServiceImpl implements PagoService {
     private final ConfiguracionService configuracionService;
     private final EventoService eventoService;
     private final NotificacionService notificacionService;
+    private final VistaPagosEventoRepository vistaPagosEventoRepository; // P10
 
     public PagoServiceImpl(PagoRepository pagoRepository,
                            PagoMapper pagoMapper,
@@ -41,7 +43,8 @@ public class PagoServiceImpl implements PagoService {
                            ConceptoPagoRepository conceptoPagoRepository,
                            ConfiguracionService configuracionService,
                            @Lazy EventoService eventoService,
-                           NotificacionService notificacionService) {
+                           NotificacionService notificacionService,
+                           VistaPagosEventoRepository vistaPagosEventoRepository  ) {
         this.pagoRepository = pagoRepository;
         this.pagoMapper = pagoMapper;
         this.eventoRepository = eventoRepository;
@@ -51,6 +54,7 @@ public class PagoServiceImpl implements PagoService {
         this.configuracionService = configuracionService;
         this.eventoService = eventoService;
         this.notificacionService = notificacionService;
+        this.vistaPagosEventoRepository = vistaPagosEventoRepository;
     }
 
     @Override
@@ -157,6 +161,20 @@ public class PagoServiceImpl implements PagoService {
     public List<PagoResponseDTO> obtenerPorEvento(Long eventoId) {
         return pagoRepository.findByEventoId(eventoId)
                 .stream().map(pagoMapper::toDTO).toList();
+    }
+
+    @Override
+    public ResumenPagoEventoDTO getResumenPagos(Long eventoId) {
+        VistaPagosEvento vista = vistaPagosEventoRepository.findByIdEvento(eventoId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No se encontró resumen para el evento " + eventoId));
+        return new ResumenPagoEventoDTO(
+                vista.getIdEvento(),
+                vista.getPrecioTotal(),
+                vista.getTotalCobrado(),
+                vista.getSaldoPendiente(),
+                vista.getCobroCompleto()
+        );
     }
 
     // Auto-transición PROGRAMADO → CONFIRMADO si anticipo mínimo cumplido

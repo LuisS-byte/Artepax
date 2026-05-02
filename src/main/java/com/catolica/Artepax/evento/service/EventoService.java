@@ -1,9 +1,6 @@
 package com.catolica.Artepax.evento.service;
 
-import com.catolica.Artepax.evento.dto.CalendarioEventoDTO;
-import com.catolica.Artepax.evento.dto.EventoRequestDTO;
-import com.catolica.Artepax.evento.dto.EventoResponseDTO;
-import com.catolica.Artepax.evento.dto.EventoUpdateDTO;
+import com.catolica.Artepax.evento.dto.*;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -31,4 +28,6 @@ public interface EventoService {
     void confirmarDesdeAnticipo(Long id);
 
     EventoResponseDTO confirmarEvento(Long id);
+
+    RentabilidadEventoDTO getRentabilidad(Long id);
 }

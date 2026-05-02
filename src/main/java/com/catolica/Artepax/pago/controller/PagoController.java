@@ -20,14 +20,10 @@ import java.util.List;
 @PreAuthorize("hasRole('ADMIN')")
 public class PagoController {
 
-    //Inyeccion
     private final PagoService pagoService;
-    private final VistaPagosEventoRepository vistaPagosRepo;
 
-    public PagoController(PagoService pagoService, VistaPagosEventoRepository vistaPagosRepo) {
+    public PagoController(PagoService pagoService) {
         this.pagoService = pagoService;
-        this.vistaPagosRepo = vistaPagosRepo;
-
     }
 
     @PostMapping
@@ -52,20 +48,6 @@ public class PagoController {
 
     @GetMapping("/evento/{eventoId}/resumen")
     public ResponseEntity<ResumenPagoEventoDTO> getResumenPagos(@PathVariable Long eventoId) {
-        VistaPagosEvento vista = vistaPagosRepo.findByIdEvento(eventoId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "No se encontró resumen para el evento " + eventoId
-                ));
-
-        ResumenPagoEventoDTO dto = new ResumenPagoEventoDTO(
-                vista.getIdEvento(),
-                vista.getPrecioTotal(),
-                vista.getTotalCobrado(),
-                vista.getSaldoPendiente(),
-                vista.getCobroCompleto()
-        );
-
-        return ResponseEntity.ok(dto);
+        return ResponseEntity.ok(pagoService.getResumenPagos(eventoId)); // P10
     }
 }
