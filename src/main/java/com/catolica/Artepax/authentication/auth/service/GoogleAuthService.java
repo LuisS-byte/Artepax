@@ -51,7 +51,7 @@ public class GoogleAuthService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Usuario no autorizado");
         }
 
-        if (!usuario.getEstado()) {
+        if (!Boolean.TRUE.equals(usuario.getEstado())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Usuario inactivo");
         }
 

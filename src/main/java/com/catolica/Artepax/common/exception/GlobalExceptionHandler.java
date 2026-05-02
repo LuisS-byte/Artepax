@@ -3,6 +3,7 @@ package com.catolica.Artepax.common.exception;
 import com.catolica.Artepax.clientes.exception.ClienteNotFoundException;
 import com.catolica.Artepax.cronograma.exception.CronogramaNotFoundException;
 import com.catolica.Artepax.evento.exception.EventoException;
+import com.catolica.Artepax.inventario.decoracion.exception.DecoracionNotFoundException;
 import com.catolica.Artepax.inventario.producto.exception.ProductoDuplicadoException;
 import com.catolica.Artepax.inventario.producto.exception.ProductoNotFoundException;
 import com.catolica.Artepax.inventario.producto.exception.StockInsuficienteException;
@@ -34,6 +35,12 @@ public class GlobalExceptionHandler {
         return ErrorResponse.of(HttpStatus.NOT_FOUND.value(), ex.getMessage());
     }
 
+    @ExceptionHandler(DecoracionNotFoundException.class) // P4
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponse handleDecoracionNotFound(DecoracionNotFoundException ex) {
+        return ErrorResponse.of(HttpStatus.NOT_FOUND.value(), ex.getMessage());
+    }
+
     @ExceptionHandler(EventoException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleEventoException(EventoException ex) {
@@ -46,10 +53,22 @@ public class GlobalExceptionHandler {
         return ErrorResponse.of(HttpStatus.CONFLICT.value(), ex.getMessage());
     }
 
+    @ExceptionHandler(ProductoDuplicadoException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorResponse handleProductoDuplicado(ProductoDuplicadoException ex) {
+        return ErrorResponse.of(HttpStatus.CONFLICT.value(), ex.getMessage());
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleIllegalArgument(IllegalArgumentException ex) {
         return ErrorResponse.of(HttpStatus.BAD_REQUEST.value(), ex.getMessage());
+    }
+
+    @ExceptionHandler(IllegalStateException.class) // P14
+    @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
+    public ErrorResponse handleIllegalState(IllegalStateException ex) {
+        return ErrorResponse.of(HttpStatus.UNPROCESSABLE_ENTITY.value(), ex.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -66,11 +85,5 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ErrorResponse handleGeneric(Exception ex) {
         return ErrorResponse.of(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Error interno del servidor");
-    }
-
-    @ExceptionHandler(ProductoDuplicadoException.class)
-    @ResponseStatus(HttpStatus.CONFLICT)
-    public ErrorResponse handleProductoDuplicado(ProductoDuplicadoException ex) {
-        return ErrorResponse.of(HttpStatus.CONFLICT.value(), ex.getMessage());
     }
 }
