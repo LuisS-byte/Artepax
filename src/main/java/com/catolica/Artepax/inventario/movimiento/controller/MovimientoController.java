@@ -42,7 +42,7 @@ public class MovimientoController {
     public ResponseEntity<Void> ajuste(
             @PathVariable Long productoId,
             @RequestBody Map<String, Object> body) {
-        Integer cantidadFisica = (Integer) body.get("cantidadFisica");
+        Integer cantidadFisica = ((Number) body.get("cantidadFisica")).intValue(); // P15: cast seguro
         String motivo = (String) body.getOrDefault("motivo", "Ajuste manual");
         movimientoService.registrarAjuste(productoId, cantidadFisica, motivo);
         return ResponseEntity.noContent().build();

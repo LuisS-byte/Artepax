@@ -30,8 +30,9 @@ public class DecoracionController {private final DecoracionService decoracionSer
     }
 
     @GetMapping
-    public ResponseEntity<List<DecoracionResponseDTO>> obtenerTodas() {
-        return ResponseEntity.ok(decoracionService.obtenerTodas());
+    public ResponseEntity<List<DecoracionResponseDTO>> obtenerTodas(
+            @RequestParam(required = false) String estado) {
+        return ResponseEntity.ok(decoracionService.obtenerTodas(estado));
     }
 
     @GetMapping("/{id}")

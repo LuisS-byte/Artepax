@@ -50,7 +50,7 @@ public class DecoracionMapper {
     }
 
     public void updateEntity(Decoracion decoracion, DecoracionUpdateDTO dto) {
-        decoracion.setNombre(dto.getNombre());
+        if (dto.getNombre() != null) decoracion.setNombre(dto.getNombre());
         if (dto.getDescripcion() != null) decoracion.setDescripcion(dto.getDescripcion());
         if (dto.getPrecio() != null) decoracion.setPrecio(dto.getPrecio());
         if (dto.getEstado() != null) decoracion.setEstado(dto.getEstado());

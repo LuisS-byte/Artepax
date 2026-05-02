@@ -33,8 +33,10 @@ public class ProductoMapper {
     }
 
     public void updateEntity(Producto producto, ProductoUpdateDTO dto) {
-        producto.setNombre(dto.getNombre());
-        producto.setDescripcion(dto.getDescripcion());
-        producto.setEstado(dto.getEstado());
+        if (dto.getNombre() != null) producto.setNombre(dto.getNombre());
+        if (dto.getDescripcion() != null) producto.setDescripcion(dto.getDescripcion());
+        if (dto.getEstado() != null) producto.setEstado(dto.getEstado());
+        if (dto.getPrecioUnitario() != null) producto.setPrecioUnitario(dto.getPrecioUnitario()); // P17
+        if (dto.getStockMinimo() != null) producto.setStockMinimo(dto.getStockMinimo());
     }
 }

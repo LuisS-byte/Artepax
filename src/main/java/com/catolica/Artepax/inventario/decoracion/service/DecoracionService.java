@@ -9,7 +9,7 @@ import java.util.List;
 public interface DecoracionService {
 
     DecoracionResponseDTO crearDecoracion(DecoracionRequestDTO dto);
-    List<DecoracionResponseDTO> obtenerTodas();
+    List<DecoracionResponseDTO> obtenerTodas(String estado);
     DecoracionResponseDTO obtenerPorId(Long id);
     DecoracionResponseDTO actualizar(Long id, DecoracionUpdateDTO dto);
     void eliminar(Long id);

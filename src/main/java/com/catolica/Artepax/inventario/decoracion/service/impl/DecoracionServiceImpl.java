@@ -8,6 +8,7 @@ import com.catolica.Artepax.inventario.decoracion.dto.DecoracionUpdateDTO;
 import com.catolica.Artepax.inventario.decoracion.entity.Decoracion;
 import com.catolica.Artepax.inventario.decoracion.entity.DecoracionProducto;
 import com.catolica.Artepax.inventario.decoracion.entity.DecoracionProductoId;
+import com.catolica.Artepax.inventario.decoracion.exception.DecoracionNotFoundException;
 import com.catolica.Artepax.inventario.decoracion.mapper.DecoracionMapper;
 import com.catolica.Artepax.inventario.decoracion.repository.DecoracionProductoRepository;
 import com.catolica.Artepax.inventario.decoracion.repository.DecoracionRepository;
@@ -21,6 +22,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -61,18 +64,28 @@ public class DecoracionServiceImpl implements DecoracionService {
     }
 
     @Override
-    public List<DecoracionResponseDTO> obtenerTodas() {
-        return decoracionRepository.findAll().stream().map(decoracion -> {
-            List<DecoracionProducto> productos =
-                    decoracionProductoRepository.findByDecoracionId(decoracion.getId());
-            return decoracionMapper.toDTO(decoracion, productos);
-        }).toList();
+    public List<DecoracionResponseDTO> obtenerTodas(String estado) {
+        List<Decoracion> decoraciones = estado != null
+                ? decoracionRepository.findByEstado(estado)
+                : decoracionRepository.findAll();
+
+        List<Long> ids = decoraciones.stream().map(Decoracion::getId).toList();
+
+        Map<Long, List<DecoracionProducto>> productosPorDecoracion =
+                decoracionProductoRepository.findByDecoracionIds(ids)
+                        .stream()
+                        .collect(Collectors.groupingBy(dp -> dp.getDecoracion().getId()));
+
+        return decoraciones.stream()
+                .map(d -> decoracionMapper.toDTO(d,
+                        productosPorDecoracion.getOrDefault(d.getId(), List.of())))
+                .toList();
     }
 
     @Override
     public DecoracionResponseDTO obtenerPorId(Long id) {
         Decoracion decoracion = decoracionRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Decoracion no encontrada con ID: " + id));
+                .orElseThrow(() -> new DecoracionNotFoundException(id)); // P4
 
         List<DecoracionProducto> productos =
                 decoracionProductoRepository.findByDecoracionId(id);
@@ -85,7 +98,7 @@ public class DecoracionServiceImpl implements DecoracionService {
     public DecoracionResponseDTO actualizar(Long id, DecoracionUpdateDTO dto) {
 
         Decoracion decoracion = decoracionRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Decoracion no encontrada con ID: " + id));
+                .orElseThrow(() -> new DecoracionNotFoundException(id)); // P4
 
         decoracionMapper.updateEntity(decoracion, dto);
         decoracionRepository.save(decoracion);
@@ -128,7 +141,7 @@ public class DecoracionServiceImpl implements DecoracionService {
     @Transactional
     public void eliminar(Long id) {
         Decoracion decoracion = decoracionRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Decoracion no encontrada con ID: " + id));
+                .orElseThrow(() -> new DecoracionNotFoundException(id)); // P4
 
         decoracion.setEstado("INACTIVO");
         decoracionRepository.save(decoracion);

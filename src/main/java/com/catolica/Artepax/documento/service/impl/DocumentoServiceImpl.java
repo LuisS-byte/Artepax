@@ -40,7 +40,7 @@ public class DocumentoServiceImpl implements DocumentoService {
     // -------------------------------------------------------------------------
 
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = RuntimeException.class) // P12: si el email falla el documento queda guardado
     public DocumentoResponseDTO generarDocumento(Long idEvento, String tipoDocumento) {
         Evento evento = eventoRepository.findById(idEvento)
                 .orElseThrow(() -> new IllegalArgumentException("Evento no encontrado: " + idEvento));
@@ -58,17 +58,15 @@ public class DocumentoServiceImpl implements DocumentoService {
         // Rellenar placeholders de la plantilla
         String contenidoGenerado = rellenarPlaceholders(plantilla.getContenidoBase(), evento);
 
-        // Crear registro del documento — envío y subida a Cloudinary son responsabilidad
-        // de un servicio externo (stub). Aquí solo guardamos el registro.
+        // Guardar el documento en PENDIENTE primero — así siempre queda persistido
         Documento documento = new Documento();
         documento.setEvento(evento);
         documento.setPlantilla(plantilla);
         documento.setDocuTipo(tipoDocumento);
         documento.setDocuEstadoEnvio("PENDIENTE");
         documento.setDocuIntentosEnvio(0);
-        // archivoUrl queda null hasta que el servicio externo suba el PDF
 
-        Documento guardado = documentoRepository.save(documento);
+        Documento guardado = documentoRepository.save(documento); // P12: commit garantizado por noRollbackFor
         log.info("Documento generado: id={}, tipo={}, evento={}", guardado.getIdDocumento(), tipoDocumento, idEvento);
 
         // Generar PDF desde el HTML con placeholders reemplazados
@@ -83,14 +81,24 @@ public class DocumentoServiceImpl implements DocumentoService {
                     + "Gracias por confiar en Artepax.</p>";
             String nombreArchivo = "confirmacion_evento_" + evento.getId() + ".pdf";
 
-            emailService.enviarConAdjunto(correo, asunto, cuerpoEmail, pdfBytes, nombreArchivo);
-            documento.setDocuEstadoEnvio("ENVIADO");
-            documento.setDocuFechaEnvio(LocalDateTime.now());
-            documento.setDocuIntentosEnvio(1);
+            try {
+                emailService.enviarConAdjunto(correo, asunto, cuerpoEmail, pdfBytes, nombreArchivo);
+                guardado.setDocuEstadoEnvio("ENVIADO");
+                guardado.setDocuFechaEnvio(LocalDateTime.now());
+                guardado.setDocuIntentosEnvio(1);
+                log.info("Email enviado para documento id={}", guardado.getIdDocumento());
+            } catch (RuntimeException e) {
+                guardado.setDocuEstadoEnvio("FALLIDO");
+                guardado.setDocuIntentosEnvio(1);
+                log.error("Error enviando email para documento id={}: {}", guardado.getIdDocumento(), e.getMessage());
+                // No relanzamos — el documento queda en FALLIDO y puede reintentarse con /reenviar
+            }
+
+            documentoRepository.save(guardado); // P12: persiste ENVIADO o FALLIDO
         } else {
             log.warn("Evento {}: cliente sin correo, PDF generado pero no enviado.", idEvento);
-            documento.setDocuEstadoEnvio("PENDIENTE");
         }
+
         return mapper.toDTO(guardado);
     }
 

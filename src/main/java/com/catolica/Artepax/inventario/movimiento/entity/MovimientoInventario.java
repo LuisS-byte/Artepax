@@ -17,7 +17,7 @@ public class MovimientoInventario {
     @Column(name = "id_movimiento")
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_producto", nullable = false)
     private Producto producto;
 

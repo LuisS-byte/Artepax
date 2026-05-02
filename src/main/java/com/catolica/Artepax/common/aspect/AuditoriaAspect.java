@@ -18,6 +18,8 @@ import org.aspectj.lang.annotation.Aspect;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+
+
 @Aspect
 @Component
 public class AuditoriaAspect {
@@ -85,21 +87,27 @@ public class AuditoriaAspect {
         }
     }
 
-    @AfterReturning(
-            pointcut = "execution(* com.catolica.Artepax.evento.service.impl.EventoServiceImpl.iniciarCancelacion(..))",
-            returning = "resultado")
-    public void auditarCancelarEvento(JoinPoint jp, Object resultado) {
+   //CANCELAR — captura estado anterior ANTES de ejecutar
+    @Around("execution(* com.catolica.Artepax.evento.service.impl.EventoServiceImpl.iniciarCancelacion(..))")
+    public Object auditarCancelarEvento(ProceedingJoinPoint pjp) throws Throwable {
         try {
-            EventoResponseDTO dto = (EventoResponseDTO) resultado;
-            Object[] args = jp.getArgs();
+            Long id = (Long) pjp.getArgs()[0];
+            String motivo = (String) pjp.getArgs()[1];
+            String valorAnterior = eventoRepository.findById(id)
+                    .map(this::toJson).orElse(null);
+
+            Object resultado = pjp.proceed();
+
             auditoriaService.registrar(
-                    "CANCELAR", "evento", dto.getId(),
-                    null,
+                    "CANCELAR", "evento", id,
+                    valorAnterior,
                     toJson(resultado),
-                    "Cancelación iniciada. Motivo: " + args[1]
+                    "Cancelación iniciada. Motivo: " + motivo
             );
+            return resultado;
         } catch (Exception e) {
             log.error("Error en aspecto iniciarCancelacion: {}", e.getMessage());
+            throw e;
         }
     }
 
