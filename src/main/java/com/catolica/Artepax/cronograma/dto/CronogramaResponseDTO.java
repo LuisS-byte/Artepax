@@ -2,6 +2,10 @@ package com.catolica.Artepax.cronograma.dto;
 
 import java.time.LocalDateTime;
 
+/**
+ * DTO de respuesta para una actividad del cronograma.
+ * Incluye datos denormalizados del evento (cliente, estado) para evitar joins adicionales.
+ */
 public class CronogramaResponseDTO {
 
     private Long id;
@@ -11,6 +15,8 @@ public class CronogramaResponseDTO {
     private LocalDateTime fechaFin;
     private String cronoEstado;
     private String cronoObservacion;
+    private String clienteNombre;
+    private String estadoEventoNombre;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -32,4 +38,10 @@ public class CronogramaResponseDTO {
 
     public String getCronoObservacion() { return cronoObservacion; }
     public void setCronoObservacion(String cronoObservacion) { this.cronoObservacion = cronoObservacion; }
+
+    public String getClienteNombre() { return clienteNombre; }
+    public void setClienteNombre(String clienteNombre) { this.clienteNombre = clienteNombre; }
+
+    public String getEstadoEventoNombre() { return estadoEventoNombre; }
+    public void setEstadoEventoNombre(String estadoEventoNombre) { this.estadoEventoNombre = estadoEventoNombre; }
 }

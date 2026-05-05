@@ -6,9 +6,16 @@ import com.catolica.Artepax.cronograma.entity.Cronograma;
 import com.catolica.Artepax.evento.model.Evento;
 import org.springframework.stereotype.Component;
 
+/**
+ * Mapper entre DTOs y entidades del módulo cronograma.
+ */
 @Component
 public class CronogramaMapper {
 
+    /**
+     * Convierte un request DTO a entidad Cronograma.
+     * El estado inicial se establece por defecto en la entidad (PENDIENTE).
+     */
     public Cronograma toEntity(CronogramaRequestDTO dto, Evento evento) {
         Cronograma cronograma = new Cronograma();
         cronograma.setEvento(evento);
@@ -18,15 +25,30 @@ public class CronogramaMapper {
         return cronograma;
     }
 
+    /**
+     * Convierte una entidad Cronograma a response DTO.
+     * Si el evento o sus relaciones son nulas, los campos denormalizados quedan null.
+     */
     public CronogramaResponseDTO toDTO(Cronograma cronograma) {
         CronogramaResponseDTO dto = new CronogramaResponseDTO();
         dto.setId(cronograma.getId());
-        dto.setIdEvento(cronograma.getEvento().getId());
         dto.setActividad(cronograma.getActividad());
         dto.setFechaInicio(cronograma.getFechaInicio());
         dto.setFechaFin(cronograma.getFechaFin());
         dto.setCronoEstado(cronograma.getCronoEstado());
         dto.setCronoObservacion(cronograma.getCronoObservacion());
+
+        Evento evento = cronograma.getEvento();
+        if (evento != null) {
+            dto.setIdEvento(evento.getId());
+            if (evento.getCliente() != null) {
+                dto.setClienteNombre(evento.getCliente().getNombre());
+            }
+            if (evento.getEstadoEvento() != null) {
+                dto.setEstadoEventoNombre(evento.getEstadoEvento().getNombre());
+            }
+        }
+
         return dto;
     }
 }

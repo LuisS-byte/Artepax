@@ -1,0 +1,46 @@
+package com.catolica.Artepax.cronograma.entity;
+
+import java.util.Set;
+
+/**
+ * Estados válidos para actividades del cronograma.
+ * Flujo: PENDIENTE → EN_PROGRESO → COMPLETADO (o CANCELADO en cualquier punto).
+ */
+public enum CronogramaEstado {
+
+    PENDIENTE("PENDIENTE"),
+    EN_PROGRESO("EN_PROGRESO"),
+    COMPLETADO("COMPLETADO"),
+    CANCELADO("CANCELADO");
+
+    private final String valor;
+
+    CronogramaEstado(String valor) {
+        this.valor = valor;
+    }
+
+    public String getValor() {
+        return valor;
+    }
+
+    /**
+     * Estados desde los cuales se puede crear una actividad de cronograma.
+     * Solo eventos CONFIRMADO o EN_MONTAJE permiten cronograma.
+     */
+    public static final Set<String> ESTADOS_EVENTO_PERMITIDOS = Set.of("CONFIRMADO", "EN_MONTAJE");
+
+    /**
+     * Estados terminales que no permiten transiciones posteriores.
+     */
+    public static final Set<String> ESTADOS_FINALES = Set.of(CANCELADO.valor, COMPLETADO.valor);
+
+    /**
+     * Verifica si un string corresponde a un estado válido del cronograma.
+     */
+    public static boolean isValid(String valor) {
+        for (CronogramaEstado e : values()) {
+            if (e.valor.equals(valor)) return true;
+        }
+        return false;
+    }
+}

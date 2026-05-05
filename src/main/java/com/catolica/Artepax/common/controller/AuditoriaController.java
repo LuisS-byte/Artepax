@@ -1,40 +1,38 @@
 package com.catolica.Artepax.common.controller;
 
 import com.catolica.Artepax.common.dto.AuditoriaResponseDTO;
-import com.catolica.Artepax.common.entity.Auditoria;
 import com.catolica.Artepax.common.mapper.AuditoriaMapper;
 import com.catolica.Artepax.common.repository.AuditoriaRepository;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * REST controller para consulta de registros de auditoría.
+ */
 @RestController
 @RequestMapping("/api/auditoria")
+@RequiredArgsConstructor
+@Slf4j
 @PreAuthorize("hasRole('ADMIN')")
 public class AuditoriaController {
 
     private final AuditoriaRepository auditoriaRepository;
     private final AuditoriaMapper auditoriaMapper;
 
-    public AuditoriaController(AuditoriaRepository auditoriaRepository,
-                               AuditoriaMapper auditoriaMapper) { // P7
-        this.auditoriaRepository = auditoriaRepository;
-        this.auditoriaMapper = auditoriaMapper;
-    }
-    // Reemplazar el endpoint obtenerTodo()
     @GetMapping
     public ResponseEntity<List<AuditoriaResponseDTO>> obtenerTodo(
             @RequestParam(defaultValue = "0") int pagina,
             @RequestParam(defaultValue = "50") int tamanio) {
 
-        // Máximo 100 registros por llamada para evitar OOM
         int tamanioSeguro = Math.min(tamanio, 100);
-
         Pageable pageable = PageRequest.of(pagina, tamanioSeguro,
                 Sort.by("fecha").descending());
 
@@ -48,6 +46,7 @@ public class AuditoriaController {
 
     @GetMapping("/tabla/{tabla}")
     public ResponseEntity<List<AuditoriaResponseDTO>> porTabla(@PathVariable String tabla) {
+        log.debug("Consultando auditoría para tabla {}", tabla);
         return ResponseEntity.ok(
                 auditoriaRepository.findByTablaAfectadaOrderByFechaDesc(tabla)
                         .stream()
@@ -60,6 +59,7 @@ public class AuditoriaController {
     public ResponseEntity<List<AuditoriaResponseDTO>> porRegistro(
             @PathVariable String tabla,
             @PathVariable Long id) {
+        log.debug("Consultando auditoría para tabla={} registro={}", tabla, id);
         return ResponseEntity.ok(
                 auditoriaRepository.findByIdRegistroAndTablaAfectadaOrderByFechaDesc(id, tabla)
                         .stream()
@@ -67,5 +67,4 @@ public class AuditoriaController {
                         .toList()
         );
     }
-
 }

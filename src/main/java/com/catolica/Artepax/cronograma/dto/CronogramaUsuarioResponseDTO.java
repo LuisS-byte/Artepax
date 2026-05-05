@@ -2,6 +2,10 @@ package com.catolica.Artepax.cronograma.dto;
 
 import java.math.BigDecimal;
 
+/**
+ * DTO de respuesta para la asignación de un usuario a una actividad del cronograma.
+ * Incluye el nombre del usuario y los detalles de pago asignado.
+ */
 public class CronogramaUsuarioResponseDTO {
 
     private Long cronogramaId;

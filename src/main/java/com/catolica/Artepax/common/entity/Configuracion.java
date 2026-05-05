@@ -1,9 +1,19 @@
 package com.catolica.Artepax.common.entity;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
+/**
+ * Parámetros globales editables por administración.
+ * Soporta tipos heterogéneos (INT, DECIMAL, BOOLEAN, STRING, JSON).
+ */
 @Entity
 @Table(name = "configuracion")
+@Getter
+@Setter
+@NoArgsConstructor
 public class Configuracion {
 
     @Id
@@ -18,18 +28,4 @@ public class Configuracion {
 
     @Column(name = "config_descripcion", length = 255)
     private String configDescripcion;
-
-    public Configuracion() {}
-
-    public String getConfigClave() { return configClave; }
-    public void setConfigClave(String configClave) { this.configClave = configClave; }
-
-    public String getConfigValor() { return configValor; }
-    public void setConfigValor(String configValor) { this.configValor = configValor; }
-
-    public String getConfigTipo() { return configTipo; }
-    public void setConfigTipo(String configTipo) { this.configTipo = configTipo; }
-
-    public String getConfigDescripcion() { return configDescripcion; }
-    public void setConfigDescripcion(String configDescripcion) { this.configDescripcion = configDescripcion; }
 }

@@ -1,18 +1,23 @@
 package com.catolica.Artepax.common.exception;
 
 import com.catolica.Artepax.clientes.exception.ClienteNotFoundException;
+import com.catolica.Artepax.cronograma.exception.CronogramaException;
 import com.catolica.Artepax.cronograma.exception.CronogramaNotFoundException;
 import com.catolica.Artepax.evento.exception.EventoException;
+import com.catolica.Artepax.evento.exception.GastoEventoException;
+import com.catolica.Artepax.evento.exception.TipoEventoException;
 import com.catolica.Artepax.inventario.decoracion.exception.DecoracionNotFoundException;
 import com.catolica.Artepax.inventario.producto.exception.ProductoDuplicadoException;
 import com.catolica.Artepax.inventario.producto.exception.ProductoNotFoundException;
 import com.catolica.Artepax.inventario.producto.exception.StockInsuficienteException;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -35,15 +40,39 @@ public class GlobalExceptionHandler {
         return ErrorResponse.of(HttpStatus.NOT_FOUND.value(), ex.getMessage());
     }
 
+    @ExceptionHandler(CronogramaException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleCronogramaException(CronogramaException ex) {
+        return ErrorResponse.of(HttpStatus.BAD_REQUEST.value(), ex.getMessage());
+    }
+
     @ExceptionHandler(DecoracionNotFoundException.class) // P4
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ErrorResponse handleDecoracionNotFound(DecoracionNotFoundException ex) {
         return ErrorResponse.of(HttpStatus.NOT_FOUND.value(), ex.getMessage());
     }
 
+    @ExceptionHandler(ConfiguracionNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponse handleConfiguracionNotFound(ConfiguracionNotFoundException ex) {
+        return ErrorResponse.of(HttpStatus.NOT_FOUND.value(), ex.getMessage());
+    }
+
     @ExceptionHandler(EventoException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleEventoException(EventoException ex) {
+        return ErrorResponse.of(HttpStatus.BAD_REQUEST.value(), ex.getMessage());
+    }
+
+    @ExceptionHandler(GastoEventoException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleGastoEventoException(GastoEventoException ex) {
+        return ErrorResponse.of(HttpStatus.BAD_REQUEST.value(), ex.getMessage());
+    }
+
+    @ExceptionHandler(TipoEventoException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleTipoEventoException(TipoEventoException ex) {
         return ErrorResponse.of(HttpStatus.BAD_REQUEST.value(), ex.getMessage());
     }
 
@@ -79,6 +108,12 @@ public class GlobalExceptionHandler {
                 .findFirst()
                 .orElse("Datos de entrada inválidos");
         return ErrorResponse.of(HttpStatus.BAD_REQUEST.value(), mensaje);
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ErrorResponse> handleResponseStatus(ResponseStatusException ex) {
+        ErrorResponse error = ErrorResponse.of(ex.getStatusCode().value(), ex.getReason());
+        return new ResponseEntity<>(error, ex.getStatusCode());
     }
 
     @ExceptionHandler(Exception.class)

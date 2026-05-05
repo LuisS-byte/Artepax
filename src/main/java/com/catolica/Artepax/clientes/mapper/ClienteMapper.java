@@ -27,6 +27,7 @@ public class ClienteMapper {
         dto.setTelefono(cliente.getTelefono());
         dto.setCorreo(cliente.getCorreo());
         dto.setDireccion(cliente.getDireccion());
+        dto.setActivo(cliente.getActivo());
         return dto;
     }
 }

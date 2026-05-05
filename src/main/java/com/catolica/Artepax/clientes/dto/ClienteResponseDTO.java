@@ -6,6 +6,8 @@ public class ClienteResponseDTO {
     private String nombre;
     private String telefono;
     private String correo;
+    private String direccion;
+    private Boolean activo;
 
     // 🔹 Getters y Setters
 
@@ -40,7 +42,6 @@ public class ClienteResponseDTO {
     public void setCorreo(String correo) {
         this.correo = correo;
     }
-     private String direccion;
 
     public String getDireccion() {
         return direccion;
@@ -48,5 +49,13 @@ public class ClienteResponseDTO {
 
     public void setDireccion(String direccion) {
         this.direccion = direccion;
+    }
+
+    public Boolean getActivo() {
+        return activo;
+    }
+
+    public void setActivo(Boolean activo) {
+        this.activo = activo;
     }
 }

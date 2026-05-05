@@ -1,5 +1,6 @@
 package com.catolica.Artepax.common.service.impl;
 
+import com.catolica.Artepax.common.exception.ConfiguracionNotFoundException;
 import com.catolica.Artepax.common.repository.ConfiguracionRepository;
 import com.catolica.Artepax.common.service.ConfiguracionService;
 import org.springframework.stereotype.Service;
@@ -70,15 +71,13 @@ public class ConfiguracionServiceImpl implements ConfiguracionService {
     public ConfiguracionResponseDTO obtener(String clave) {
         return repo.findById(clave)
                 .map(this::toDTO)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Configuración no encontrada: " + clave));
+                .orElseThrow(() -> new ConfiguracionNotFoundException(clave));
     }
 
     @Override
     public ConfiguracionResponseDTO actualizar(String clave, String valor) {
         Configuracion c = repo.findById(clave)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Configuración no encontrada: " + clave));
+                .orElseThrow(() -> new ConfiguracionNotFoundException(clave));
 
         switch (c.getConfigTipo()) {
             case "INT" -> {

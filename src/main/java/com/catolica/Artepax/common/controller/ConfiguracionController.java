@@ -2,23 +2,25 @@ package com.catolica.Artepax.common.controller;
 
 import com.catolica.Artepax.common.dto.ConfiguracionResponseDTO;
 import com.catolica.Artepax.common.service.ConfiguracionService;
-
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * REST controller para gestión de configuración global del sistema.
+ */
 @RestController
 @RequestMapping("/api/configuracion")
+@RequiredArgsConstructor
+@Slf4j
 @PreAuthorize("hasRole('ADMIN')")
 public class ConfiguracionController {
 
-    private final ConfiguracionService configuracionService; // P6: solo interfaz
-
-    public ConfiguracionController(ConfiguracionService configuracionService) {
-        this.configuracionService = configuracionService;
-    }
+    private final ConfiguracionService configuracionService;
 
     @GetMapping
     public List<ConfiguracionResponseDTO> listar() {
@@ -35,6 +37,7 @@ public class ConfiguracionController {
             @PathVariable String clave,
             @RequestBody String nuevoValor) {
         String valor = nuevoValor.trim().replace("\"", "");
+        log.info("Actualizando configuración: clave={}", clave);
         return ResponseEntity.ok(configuracionService.actualizar(clave, valor));
     }
 }

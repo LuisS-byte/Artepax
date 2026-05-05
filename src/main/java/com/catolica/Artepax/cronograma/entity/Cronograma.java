@@ -4,6 +4,10 @@ import com.catolica.Artepax.evento.model.Evento;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
+/**
+ * Actividad operativa asociada a un evento dentro del cronograma.
+ * Flujo de estados: PENDIENTE → EN_PROGRESO → COMPLETADO (o CANCELADO).
+ */
 @Entity
 @Table(name = "cronograma")
 public class Cronograma {
@@ -27,7 +31,7 @@ public class Cronograma {
     private LocalDateTime fechaFin;
 
     @Column(name = "crono_estado", nullable = false, length = 15)
-    private String cronoEstado = "PENDIENTE";
+    private String cronoEstado = CronogramaEstado.PENDIENTE.getValor();
 
     @Column(name = "crono_observacion", length = 255)
     private String cronoObservacion;

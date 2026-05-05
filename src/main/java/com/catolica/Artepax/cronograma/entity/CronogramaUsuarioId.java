@@ -6,6 +6,10 @@ import jakarta.persistence.Embeddable;
 import java.io.Serializable;
 import java.util.Objects;
 
+/**
+ * Clave compuesta para la tabla puente cronograma_usuario.
+ * Combina el ID de la actividad y el ID del usuario.
+ */
 @Embeddable
 public class CronogramaUsuarioId implements Serializable {
 

@@ -5,6 +5,10 @@ import jakarta.persistence.*;
 
 import java.math.BigDecimal;
 
+/**
+ * Asignación de un usuario a una actividad del cronograma con información de pago.
+ * El pago puede ser FIJO (monto por actividad) o POR_HORA (basado en horas).
+ */
 @Entity
 @Table(name = "cronograma_usuario")
 public class CronogramaUsuario {
@@ -26,7 +30,7 @@ public class CronogramaUsuario {
     private BigDecimal pagoAsignado = BigDecimal.ZERO;
 
     @Column(name = "pago_tipo", nullable = false, length = 10)
-    private String pagoTipo = "FIJO";
+    private String pagoTipo = CronogramaPagoTipo.FIJO.getValor();
 
     public CronogramaUsuario() {}
 

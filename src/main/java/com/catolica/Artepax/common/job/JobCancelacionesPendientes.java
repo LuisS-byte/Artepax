@@ -1,36 +1,32 @@
 package com.catolica.Artepax.common.job;
+
+import com.catolica.Artepax.common.service.ConfiguracionService;
 import com.catolica.Artepax.evento.model.Evento;
 import com.catolica.Artepax.evento.repository.EventoRepository;
 import com.catolica.Artepax.evento.service.EventoService;
-import com.catolica.Artepax.common.service.ConfiguracionService;
 import com.catolica.Artepax.notificacion.service.NotificacionService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * Job que procesa eventos en CANCELACION_PENDIENTE cuyo tiempo de gracia expiró.
+ * Se ejecuta cada minuto (configurable via {@code artepax.job.cancelacion.intervalo-ms}).
+ */
 @Component
-public class JobCancelacionesPendientes {private static final Logger log = LoggerFactory.getLogger(JobCancelacionesPendientes.class);
+@Slf4j
+@RequiredArgsConstructor
+public class JobCancelacionesPendientes {
 
     private final EventoRepository eventoRepository;
     private final EventoService eventoService;
     private final ConfiguracionService configuracionService;
     private final NotificacionService notificacionService;
 
-    public JobCancelacionesPendientes(EventoRepository eventoRepository,
-                                      EventoService eventoService,
-                                      ConfiguracionService configuracionService,
-                                      NotificacionService notificacionService) {
-        this.eventoRepository = eventoRepository;
-        this.eventoService = eventoService;
-        this.configuracionService = configuracionService;
-        this.notificacionService = notificacionService;
-    }
-
-    // Corre cada minuto
     @Scheduled(fixedDelayString = "${artepax.job.cancelacion.intervalo-ms:60000}")
     public void procesarCancelacionesPendientes() {
         int minutosGracia = configuracionService.getInt("TIEMPO_GRACIA_CANCELACION_MINUTOS");
