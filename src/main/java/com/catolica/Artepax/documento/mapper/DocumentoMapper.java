@@ -19,6 +19,12 @@ public class DocumentoMapper {
         dto.setDocuEstadoEnvio(doc.getDocuEstadoEnvio());
         dto.setDocuFechaEnvio(doc.getDocuFechaEnvio());
         dto.setDocuIntentosEnvio(doc.getDocuIntentosEnvio());
+
+        if (doc.getEvento() != null) {
+            dto.setClienteNombre(doc.getEvento().getCliente().getNombre());
+            dto.setEstadoEventoNombre(doc.getEvento().getEstadoEvento().getNombre());
+        }
+
         return dto;
     }
 

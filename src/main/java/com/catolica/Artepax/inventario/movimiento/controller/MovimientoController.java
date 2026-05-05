@@ -5,6 +5,9 @@ import com.catolica.Artepax.inventario.movimiento.dto.MovimientoResponseDTO;
 import com.catolica.Artepax.inventario.movimiento.service.MovimientoService;
 import com.catolica.Artepax.inventario.producto.dto.StockProductoResponseDTO;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -59,5 +62,11 @@ public class MovimientoController {
     public ResponseEntity<List<MovimientoResponseDTO>> obtenerMovimientos(
             @PathVariable Long id) {
         return ResponseEntity.ok(movimientoService.obtenerMovimientosPorProducto(id));
+    }
+
+    @GetMapping("/movimientos")
+    public ResponseEntity<Page<MovimientoResponseDTO>> obtenerTodosMovimientos(
+            @PageableDefault(size = 50, sort = "fecha") Pageable pageable) {
+        return ResponseEntity.ok(movimientoService.obtenerTodosMovimientos(pageable));
     }
 }

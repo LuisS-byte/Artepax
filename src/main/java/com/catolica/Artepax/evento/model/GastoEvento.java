@@ -1,13 +1,25 @@
 package com.catolica.Artepax.evento.model;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+import static com.catolica.Artepax.evento.model.GastoEstadoNames.PROYECTADO;
+
+/**
+ * Gastos variables atribuibles a un evento.
+ * Estados: PROYECTADO → DESEMBOLSADO.
+ */
 @Entity
 @Table(name = "gasto_evento")
+@Getter
+@Setter
+@NoArgsConstructor
 public class GastoEvento {
 
     @Id
@@ -26,7 +38,7 @@ public class GastoEvento {
     private BigDecimal gastoMonto;
 
     @Column(name = "gasto_estado", nullable = false, length = 15)
-    private String gastoEstado = "PROYECTADO";
+    private String gastoEstado = PROYECTADO;
 
     @Column(name = "gasto_fecha", nullable = false)
     @CreationTimestamp
@@ -34,26 +46,4 @@ public class GastoEvento {
 
     @Column(name = "gasto_nota", length = 255)
     private String gastoNota;
-
-    public GastoEvento() {}
-
-    public Long getId() { return id; }
-
-    public Evento getEvento() { return evento; }
-    public void setEvento(Evento evento) { this.evento = evento; }
-
-    public String getGastoConcepto() { return gastoConcepto; }
-    public void setGastoConcepto(String gastoConcepto) { this.gastoConcepto = gastoConcepto; }
-
-    public BigDecimal getGastoMonto() { return gastoMonto; }
-    public void setGastoMonto(BigDecimal gastoMonto) { this.gastoMonto = gastoMonto; }
-
-    public String getGastoEstado() { return gastoEstado; }
-    public void setGastoEstado(String gastoEstado) { this.gastoEstado = gastoEstado; }
-
-    public LocalDateTime getGastoFecha() { return gastoFecha; }
-    public void setGastoFecha(LocalDateTime gastoFecha) { this.gastoFecha = gastoFecha; }
-
-    public String getGastoNota() { return gastoNota; }
-    public void setGastoNota(String gastoNota) { this.gastoNota = gastoNota; }
 }

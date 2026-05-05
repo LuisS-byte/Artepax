@@ -6,28 +6,125 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 
+/**
+ * Servicio principal para la gestión del ciclo de vida de eventos.
+ * <p>
+ * Orquesta las transiciones de estado (COTIZACION → PROGRAMADO → CONFIRMADO →
+ * EN_MONTAJE → FINALIZADO), la reserva de stock, validación de anticipos,
+ * cancelaciones con tiempo de gracia y consultas de rentabilidad.
+ */
 public interface EventoService {
 
+    /**
+     * Crea un nuevo evento en estado COTIZACION.
+     *
+     * @param requestDTO datos de entrada del evento
+     * @return DTO con el evento creado
+     */
     EventoResponseDTO crearEvento(EventoRequestDTO requestDTO);
 
+    /**
+     * Retorna todos los eventos del sistema.
+     */
     List<EventoResponseDTO> obtenerEventos();
 
+    /**
+     * Retorna un evento por su identificador.
+     *
+     * @param id identificador del evento
+     * @return DTO del evento
+     */
     EventoResponseDTO obtenerEventoPorId(Long id);
 
+    /**
+     * Actualiza los datos de un evento que se encuentra en estado COTIZACION.
+     *
+     * @param id identificador del evento
+     * @param updateDTO datos a actualizar
+     * @return DTO del evento actualizado
+     */
     EventoResponseDTO actualizarEvento(Long id, EventoUpdateDTO updateDTO);
 
+    /**
+     * Verifica si existe disponibilidad en una fecha, hora y ubicación.
+     */
     boolean verificarDisponibilidad(LocalDate fecha, LocalTime horaInicio, String ubicacion);
+
+    /**
+     * Retorna los eventos dentro de un rango de fechas para el calendario.
+     */
     List<CalendarioEventoDTO> obtenerCalendario(LocalDate inicio, LocalDate fin);
 
+    /**
+     * Transición: COTIZACION → PROGRAMADO. Reserva stock de productos.
+     *
+     * @param id identificador del evento
+     * @return DTO del evento actualizado
+     */
     EventoResponseDTO programarEvento(Long id);
+
+    /**
+     * Transición: CONFIRMADO → EN_MONTAJE.
+     *
+     * @param id identificador del evento
+     * @return DTO del evento actualizado
+     */
     EventoResponseDTO iniciarMontaje(Long id);
+
+    /**
+     * Transición: EN_MONTAJE → FINALIZADO. Genera movimientos de salida de inventario.
+     *
+     * @param id identificador del evento
+     * @return DTO del evento actualizado
+     */
     EventoResponseDTO finalizarEvento(Long id);
+
+    /**
+     * Inicia proceso de cancelación. Si el evento está en COTIZACION, cancela directamente.
+     * Para otros estados, pasa a CANCELACION_PENDIENTE con tiempo de gracia.
+     *
+     * @param id identificador del evento
+     * @param motivo razón de la cancelación
+     * @return DTO del evento actualizado
+     */
     EventoResponseDTO iniciarCancelacion(Long id, String motivo);
+
+    /**
+     * Revierte una cancelación pendiente, restaurando el estado anterior.
+     *
+     * @param id identificador del evento
+     * @return DTO del evento actualizado
+     */
     EventoResponseDTO revertirCancelacion(Long id);
+
+    /**
+     * Confirma la cancelación definitiva: CANCELACION_PENDIENTE → CANCELADO.
+     * Cancela el cronograma asociado.
+     *
+     * @param id identificador del evento
+     */
     void confirmarCancelacion(Long id);
+
+    /**
+     * Confirmación automática desde el módulo de pagos cuando se alcanza el anticipo mínimo.
+     *
+     * @param id identificador del evento
+     */
     void confirmarDesdeAnticipo(Long id);
 
+    /**
+     * Transición: PROGRAMADO → CONFIRMADO. Valida que se haya alcanzado el anticipo mínimo.
+     *
+     * @param id identificador del evento
+     * @return DTO del evento actualizado
+     */
     EventoResponseDTO confirmarEvento(Long id);
 
+    /**
+     * Retorna la rentabilidad calculada de un evento usando la vista de base de datos.
+     *
+     * @param id identificador del evento
+     * @return DTO con datos de rentabilidad
+     */
     RentabilidadEventoDTO getRentabilidad(Long id);
 }

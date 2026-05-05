@@ -7,8 +7,13 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
+/**
+ * DTO de salida para la representación completa de un evento en respuestas API.
+ * Incluye datos denormalizados del cliente, decoración, estado y tipo de evento.
+ */
 @Data
 public class EventoResponseDTO {
+
     private Long id;
     private LocalDate fecha;
     private LocalTime horaInicio;

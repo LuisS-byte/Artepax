@@ -12,6 +12,8 @@ public class PagoResponseDTO {
     private String estadoPago;
     private String conceptoPago;
     private String metodoPago;
+    private String clienteNombre;
+    private String estadoEventoNombre;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -33,4 +35,10 @@ public class PagoResponseDTO {
 
     public String getMetodoPago() { return metodoPago; }
     public void setMetodoPago(String metodoPago) { this.metodoPago = metodoPago; }
+
+    public String getClienteNombre() { return clienteNombre; }
+    public void setClienteNombre(String clienteNombre) { this.clienteNombre = clienteNombre; }
+
+    public String getEstadoEventoNombre() { return estadoEventoNombre; }
+    public void setEstadoEventoNombre(String estadoEventoNombre) { this.estadoEventoNombre = estadoEventoNombre; }
 }

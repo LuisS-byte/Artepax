@@ -1,9 +1,19 @@
 package com.catolica.Artepax.evento.model;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
+/**
+ * Catálogo editable de tipos de evento.
+ * Permite desactivar tipos sin borrar historial.
+ */
 @Entity
 @Table(name = "tipo_evento")
+@Getter
+@Setter
+@NoArgsConstructor
 public class TipoEvento {
 
     @Id
@@ -19,17 +29,4 @@ public class TipoEvento {
 
     @Column(name = "tipo_activo", nullable = false)
     private Boolean tipoActivo = true;
-
-    public TipoEvento() {}
-
-    public Long getId() { return id; }
-
-    public String getTipoNombre() { return tipoNombre; }
-    public void setTipoNombre(String tipoNombre) { this.tipoNombre = tipoNombre; }
-
-    public String getTipoDescripcion() { return tipoDescripcion; }
-    public void setTipoDescripcion(String tipoDescripcion) { this.tipoDescripcion = tipoDescripcion; }
-
-    public Boolean getTipoActivo() { return tipoActivo; }
-    public void setTipoActivo(Boolean tipoActivo) { this.tipoActivo = tipoActivo; }
 }

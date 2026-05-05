@@ -5,6 +5,9 @@ import com.catolica.Artepax.pago.dto.PagoResponseDTO;
 import com.catolica.Artepax.evento.model.Evento;
 import com.catolica.Artepax.pago.dto.ResumenPagoEventoDTO;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 
 
@@ -15,6 +18,7 @@ public interface PagoService {
     PagoResponseDTO anularPago(Long pagoId);
     List<PagoResponseDTO> obtenerPorEvento(Long eventoId);
 
+    Page<PagoResponseDTO> obtenerTodos(Pageable pageable);
 
     ResumenPagoEventoDTO getResumenPagos(Long eventoId);
 }

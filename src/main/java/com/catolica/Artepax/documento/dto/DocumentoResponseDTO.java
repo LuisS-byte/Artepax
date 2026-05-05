@@ -14,5 +14,7 @@ public class DocumentoResponseDTO {
     private String docuEstadoEnvio;
     private LocalDateTime docuFechaEnvio;
     private Integer docuIntentosEnvio;
+    private String clienteNombre;
+    private String estadoEventoNombre;
 
 }

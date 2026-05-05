@@ -12,6 +12,8 @@ public class MovimientoResponseDTO {
     private Integer cantidad;
     private LocalDateTime fecha;
     private String motivo;
+    private String productoNombre;
+    private String eventoNombre;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -36,4 +38,10 @@ public class MovimientoResponseDTO {
 
     public String getMotivo() { return motivo; }
     public void setMotivo(String motivo) { this.motivo = motivo; }
+
+    public String getProductoNombre() { return productoNombre; }
+    public void setProductoNombre(String productoNombre) { this.productoNombre = productoNombre; }
+
+    public String getEventoNombre() { return eventoNombre; }
+    public void setEventoNombre(String eventoNombre) { this.eventoNombre = eventoNombre; }
 }

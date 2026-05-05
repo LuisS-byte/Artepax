@@ -16,6 +16,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -103,7 +105,7 @@ public class DocumentoServiceImpl implements DocumentoService {
     }
 
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = RuntimeException.class)
     public DocumentoResponseDTO reenviarDocumento(Long idDocumento) {
         Documento documento = documentoRepository.findById(idDocumento)
                 .orElseThrow(() -> new IllegalArgumentException("Documento no encontrado: " + idDocumento));
@@ -166,6 +168,13 @@ public class DocumentoServiceImpl implements DocumentoService {
                 .stream()
                 .map(mapper::toDTO)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<DocumentoResponseDTO> obtenerTodos(Pageable pageable) {
+        return documentoRepository.findAllWithEvento(pageable)
+                .map(mapper::toDTO);
     }
 
     @Override

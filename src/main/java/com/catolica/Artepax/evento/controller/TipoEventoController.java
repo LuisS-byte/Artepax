@@ -1,23 +1,30 @@
 package com.catolica.Artepax.evento.controller;
 
+import com.catolica.Artepax.evento.dto.TipoEventoRequestDTO;
 import com.catolica.Artepax.evento.dto.TipoEventoResponseDTO;
 import com.catolica.Artepax.evento.service.TipoEventoService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
+/**
+ * REST controller para gestión de tipos de evento.
+ */
 @RestController
 @RequestMapping("/api/tipos-evento")
+@RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
 public class TipoEventoController {
-    private final TipoEventoService service;
 
-    public TipoEventoController(TipoEventoService service) {
-        this.service = service;
-    }
+    private static final Logger log = LoggerFactory.getLogger(TipoEventoController.class);
+
+    private final TipoEventoService service;
 
     @GetMapping
     public List<TipoEventoResponseDTO> listar() {
@@ -25,13 +32,14 @@ public class TipoEventoController {
     }
 
     @PostMapping
-    public ResponseEntity<TipoEventoResponseDTO> crear(@RequestBody Map<String, String> body) {
-        return ResponseEntity.ok(service.crear(body.get("nombre"), body.get("descripcion")));
+    public ResponseEntity<TipoEventoResponseDTO> crear(@Valid @RequestBody TipoEventoRequestDTO dto) {
+        log.info("POST /api/tipos-evento nombre={}", dto.getNombre());
+        return ResponseEntity.ok(service.crear(dto.getNombre(), dto.getDescripcion()));
     }
 
     @PatchMapping("/{id}/toggle")
     public ResponseEntity<TipoEventoResponseDTO> toggle(@PathVariable Long id) {
+        log.info("PATCH /api/tipos-evento/{}/toggle", id);
         return ResponseEntity.ok(service.toggle(id));
     }
 }
-

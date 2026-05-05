@@ -14,4 +14,5 @@ public class EventoUpdateDTO {
     private LocalTime horaFin;
     private String ubicacion;
     private String nota;
+    private String notaPrecio;
 }

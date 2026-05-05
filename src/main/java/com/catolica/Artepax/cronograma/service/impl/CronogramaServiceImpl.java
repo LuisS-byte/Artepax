@@ -2,23 +2,43 @@ package com.catolica.Artepax.cronograma.service.impl;
 
 import com.catolica.Artepax.authentication.user.entity.Usuario;
 import com.catolica.Artepax.authentication.user.repository.UsuarioRepository;
-import com.catolica.Artepax.cronograma.dto.*;
-import com.catolica.Artepax.cronograma.entity.*;
+import com.catolica.Artepax.cronograma.dto.CronogramaRequestDTO;
+import com.catolica.Artepax.cronograma.dto.CronogramaResponseDTO;
+import com.catolica.Artepax.cronograma.dto.CronogramaUpdateDTO;
+import com.catolica.Artepax.cronograma.dto.CronogramaUsuarioRequestDTO;
+import com.catolica.Artepax.cronograma.dto.CronogramaUsuarioResponseDTO;
+import com.catolica.Artepax.cronograma.entity.Cronograma;
+import com.catolica.Artepax.cronograma.entity.CronogramaEstado;
+import com.catolica.Artepax.cronograma.entity.CronogramaPagoTipo;
+import com.catolica.Artepax.cronograma.entity.CronogramaUsuario;
+import com.catolica.Artepax.cronograma.entity.CronogramaUsuarioId;
+import com.catolica.Artepax.cronograma.exception.CronogramaException;
 import com.catolica.Artepax.cronograma.exception.CronogramaNotFoundException;
 import com.catolica.Artepax.cronograma.mapper.CronogramaMapper;
-import com.catolica.Artepax.cronograma.repository.*;
+import com.catolica.Artepax.cronograma.repository.CronogramaRepository;
+import com.catolica.Artepax.cronograma.repository.CronogramaUsuarioRepository;
 import com.catolica.Artepax.cronograma.service.CronogramaService;
 import com.catolica.Artepax.evento.exception.EventoException;
 import com.catolica.Artepax.evento.model.Evento;
 import com.catolica.Artepax.evento.repository.EventoRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * Implementación del servicio de cronograma.
+ * Gestiona actividades operativas asociadas a eventos y su asignación de personal.
+ */
 @Service
 public class CronogramaServiceImpl implements CronogramaService {
+
+    private static final Logger log = LoggerFactory.getLogger(CronogramaServiceImpl.class);
 
     private final CronogramaRepository cronogramaRepository;
     private final CronogramaUsuarioRepository cronogramaUsuarioRepository;
@@ -27,10 +47,10 @@ public class CronogramaServiceImpl implements CronogramaService {
     private final UsuarioRepository usuarioRepository;
 
     public CronogramaServiceImpl(CronogramaRepository cronogramaRepository,
-            CronogramaUsuarioRepository cronogramaUsuarioRepository,
-            CronogramaMapper cronogramaMapper,
-            EventoRepository eventoRepository,
-            UsuarioRepository usuarioRepository) {
+                                 CronogramaUsuarioRepository cronogramaUsuarioRepository,
+                                 CronogramaMapper cronogramaMapper,
+                                 EventoRepository eventoRepository,
+                                 UsuarioRepository usuarioRepository) {
         this.cronogramaRepository = cronogramaRepository;
         this.cronogramaUsuarioRepository = cronogramaUsuarioRepository;
         this.cronogramaMapper = cronogramaMapper;
@@ -45,40 +65,48 @@ public class CronogramaServiceImpl implements CronogramaService {
                 .orElseThrow(() -> new EventoException(
                         "Evento no encontrado con ID: " + dto.getIdEvento()));
 
-        // Solo desde CONFIRMADO en adelante
         String estadoEvento = evento.getEstadoEvento().getNombre();
-        if (!List.of("CONFIRMADO", "EN_MONTAJE").contains(estadoEvento)) {
-            throw new IllegalArgumentException(
+        if (!CronogramaEstado.ESTADOS_EVENTO_PERMITIDOS.contains(estadoEvento)) {
+            throw new CronogramaException(
                     "Solo se pueden crear actividades en eventos CONFIRMADO o EN_MONTAJE. " +
                             "Estado actual: " + estadoEvento);
         }
 
         if (dto.getFechaInicio().isAfter(dto.getFechaFin())) {
-            throw new IllegalArgumentException(
+            throw new CronogramaException(
                     "La fecha de inicio no puede ser posterior a la fecha de fin");
         }
 
-        // B8 FIX — validar que las fechas estén dentro del rango del evento
         if (evento.getFecha() != null) {
             LocalDateTime fechaEvento = evento.getFecha().atStartOfDay();
             LocalDateTime fechaFinEvento = evento.getFecha().atTime(23, 59, 59);
 
             if (dto.getFechaInicio().isBefore(fechaEvento) ||
                     dto.getFechaFin().isAfter(fechaFinEvento)) {
-                throw new IllegalArgumentException(
+                throw new CronogramaException(
                         "Las fechas de la actividad deben estar dentro de la fecha del evento: "
                                 + evento.getFecha());
             }
         }
 
         Cronograma cronograma = cronogramaMapper.toEntity(dto, evento);
-        return cronogramaMapper.toDTO(cronogramaRepository.save(cronograma));
+        Cronograma saved = cronogramaRepository.save(cronograma);
+        log.info("Actividad de cronograma creada: id={}, evento={}, actividad={}",
+                saved.getId(), dto.getIdEvento(), dto.getActividad());
+        return cronogramaMapper.toDTO(saved);
     }
 
     @Override
     public List<CronogramaResponseDTO> obtenerPorEvento(Long idEvento) {
+        log.debug("Obteniendo cronograma para evento {}", idEvento);
         return cronogramaRepository.findByEventoId(idEvento)
                 .stream().map(cronogramaMapper::toDTO).toList();
+    }
+
+    @Override
+    public Page<CronogramaResponseDTO> obtenerTodos(Pageable pageable) {
+        return cronogramaRepository.findAllWithEvento(pageable)
+                .map(cronogramaMapper::toDTO);
     }
 
     @Override
@@ -91,9 +119,8 @@ public class CronogramaServiceImpl implements CronogramaService {
     public CronogramaResponseDTO actualizar(Long id, CronogramaUpdateDTO dto) {
         Cronograma cronograma = obtenerOFallar(id);
 
-        if (cronograma.getCronoEstado().equals("CANCELADO") ||
-                cronograma.getCronoEstado().equals("COMPLETADO")) {
-            throw new IllegalArgumentException(
+        if (CronogramaEstado.ESTADOS_FINALES.contains(cronograma.getCronoEstado())) {
+            throw new CronogramaException(
                     "No se puede editar una actividad en estado: " + cronograma.getCronoEstado());
         }
 
@@ -105,34 +132,34 @@ public class CronogramaServiceImpl implements CronogramaService {
         LocalDateTime inicio = cronograma.getFechaInicio();
         LocalDateTime fin = cronograma.getFechaFin();
         if (inicio != null && fin != null && inicio.isAfter(fin)) {
-            throw new IllegalArgumentException(
+            throw new CronogramaException(
                     "La fecha de inicio no puede ser posterior a la fecha de fin");
         }
 
-        return cronogramaMapper.toDTO(cronogramaRepository.save(cronograma));
+        Cronograma saved = cronogramaRepository.save(cronograma);
+        log.info("Actividad actualizada: id={}, estado={}", id, saved.getCronoEstado());
+        return cronogramaMapper.toDTO(saved);
     }
 
     @Override
     @Transactional
     public CronogramaResponseDTO cambiarEstado(Long id, String nuevoEstado) {
-        Cronograma cronograma = obtenerOFallar(id);
-
-        List<String> estadosValidos = List.of(
-                "PENDIENTE", "EN_PROGRESO", "COMPLETADO", "CANCELADO");
-        if (!estadosValidos.contains(nuevoEstado)) {
-            throw new IllegalArgumentException("Estado inválido: " + nuevoEstado);
+        if (!CronogramaEstado.isValid(nuevoEstado)) {
+            throw new CronogramaException("Estado inválido: " + nuevoEstado);
         }
 
-        // No se puede reactivar una actividad cancelada o completada
-        if (cronograma.getCronoEstado().equals("CANCELADO") ||
-                cronograma.getCronoEstado().equals("COMPLETADO")) {
-            throw new IllegalArgumentException(
+        Cronograma cronograma = obtenerOFallar(id);
+
+        if (CronogramaEstado.ESTADOS_FINALES.contains(cronograma.getCronoEstado())) {
+            throw new CronogramaException(
                     "No se puede cambiar el estado de una actividad " +
                             cronograma.getCronoEstado());
         }
 
         cronograma.setCronoEstado(nuevoEstado);
-        return cronogramaMapper.toDTO(cronogramaRepository.save(cronograma));
+        Cronograma saved = cronogramaRepository.save(cronograma);
+        log.info("Estado de actividad cambiado: id={}, nuevoEstado={}", id, nuevoEstado);
+        return cronogramaMapper.toDTO(saved);
     }
 
     @Override
@@ -140,56 +167,52 @@ public class CronogramaServiceImpl implements CronogramaService {
     public void cancelar(Long id) {
         Cronograma cronograma = obtenerOFallar(id);
 
-        if (cronograma.getCronoEstado().equals("CANCELADO")) return;
-        if (cronograma.getCronoEstado().equals("COMPLETADO")) {
-            throw new IllegalArgumentException(
+        if (cronograma.getCronoEstado().equals(CronogramaEstado.CANCELADO.getValor())) return;
+        if (cronograma.getCronoEstado().equals(CronogramaEstado.COMPLETADO.getValor())) {
+            throw new CronogramaException(
                     "No se puede cancelar una actividad ya completada");
         }
 
-        cronograma.setCronoEstado("CANCELADO");
+        cronograma.setCronoEstado(CronogramaEstado.CANCELADO.getValor());
         cronogramaRepository.save(cronograma);
+        log.info("Actividad cancelada: id={}", id);
     }
 
     @Override
     @Transactional
     public void cancelarPorEvento(Long eventoId) {
-        // Una sola query — cancela todas las actividades activas del evento
         cronogramaRepository.cancelarPorEvento(eventoId);
+        log.info("Cronograma cancelado en cascada para evento {}", eventoId);
     }
-
-    // ─── CRONOGRAMA USUARIO ───────────────────────────────────────────────────
 
     @Override
     @Transactional
     public CronogramaUsuarioResponseDTO asignarUsuario(Long cronogramaId,
-            CronogramaUsuarioRequestDTO dto) {
+                                                       CronogramaUsuarioRequestDTO dto) {
         Cronograma cronograma = obtenerOFallar(cronogramaId);
 
-        if (cronograma.getCronoEstado().equals("CANCELADO") ||
-                cronograma.getCronoEstado().equals("COMPLETADO")) {
-            throw new IllegalArgumentException(
+        if (CronogramaEstado.ESTADOS_FINALES.contains(cronograma.getCronoEstado())) {
+            throw new CronogramaException(
                     "No se puede asignar usuarios a una actividad " +
                             cronograma.getCronoEstado());
         }
 
         Usuario usuario = usuarioRepository.findById(dto.getUsuarioId())
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new CronogramaException(
                         "Usuario no encontrado: " + dto.getUsuarioId()));
 
-        if (usuario.getEstado() == null || !usuario.getEstado()){
-            throw new IllegalArgumentException("El usuario está inactivo");
+        if (!Boolean.TRUE.equals(usuario.getEstado())) {
+            throw new CronogramaException("El usuario está inactivo");
         }
 
-        // Validar tipo de pago
-        if (!List.of("FIJO", "POR_HORA").contains(dto.getPagoTipo())) {
-            throw new IllegalArgumentException("Tipo de pago inválido: " + dto.getPagoTipo());
+        if (!CronogramaPagoTipo.VALORES.contains(dto.getPagoTipo())) {
+            throw new CronogramaException("Tipo de pago inválido: " + dto.getPagoTipo());
         }
 
         CronogramaUsuarioId cuId = new CronogramaUsuarioId(cronogramaId, dto.getUsuarioId());
 
-        // Si ya está asignado, actualizar pago
         CronogramaUsuario cu = cronogramaUsuarioRepository.findById(cuId)
-                .orElse(new CronogramaUsuario());
+                .orElseGet(CronogramaUsuario::new);
 
         cu.setId(cuId);
         cu.setCronograma(cronograma);
@@ -197,12 +220,15 @@ public class CronogramaServiceImpl implements CronogramaService {
         cu.setPagoAsignado(dto.getPagoAsignado());
         cu.setPagoTipo(dto.getPagoTipo());
 
-        return toUsuarioDTO(cronogramaUsuarioRepository.save(cu));
+        CronogramaUsuario saved = cronogramaUsuarioRepository.save(cu);
+        log.info("Usuario asignado a actividad: cronograma={}, usuario={}, pago={}",
+                cronogramaId, dto.getUsuarioId(), dto.getPagoTipo());
+        return toUsuarioDTO(saved);
     }
 
     @Override
     public List<CronogramaUsuarioResponseDTO> obtenerUsuarios(Long cronogramaId) {
-        obtenerOFallar(cronogramaId); // validar que existe
+        obtenerOFallar(cronogramaId);
         return cronogramaUsuarioRepository.findByIdIdCronograma(cronogramaId)
                 .stream().map(this::toUsuarioDTO).toList();
     }
@@ -212,13 +238,14 @@ public class CronogramaServiceImpl implements CronogramaService {
     public void removerUsuario(Long cronogramaId, Long usuarioId) {
         CronogramaUsuarioId cuId = new CronogramaUsuarioId(cronogramaId, usuarioId);
         if (!cronogramaUsuarioRepository.existsById(cuId)) {
-            throw new IllegalArgumentException(
+            throw new CronogramaException(
                     "El usuario no está asignado a esta actividad");
         }
         cronogramaUsuarioRepository.deleteById(cuId);
+        log.info("Usuario removido de actividad: cronograma={}, usuario={}",
+                cronogramaId, usuarioId);
     }
 
-    // ─── HELPERS ──────────────────────────────────────────────────────────────
     private Cronograma obtenerOFallar(Long id) {
         return cronogramaRepository.findById(id)
                 .orElseThrow(() -> new CronogramaNotFoundException(id));

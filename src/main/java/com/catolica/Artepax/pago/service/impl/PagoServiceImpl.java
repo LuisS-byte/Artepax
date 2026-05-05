@@ -14,9 +14,11 @@ import com.catolica.Artepax.pago.repository.*;
 import com.catolica.Artepax.pago.service.PagoService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.catolica.Artepax.evento.service.EventoService;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -149,6 +151,12 @@ public class PagoServiceImpl implements PagoService {
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Pago no encontrado: " + pagoId));
 
+        String estadoActual = pago.getEstadoPago().getEstadoNombre();
+        if (!estadoActual.equals("PENDIENTE")) {
+            throw new IllegalArgumentException(
+                    "Solo se pueden anular pagos en estado PENDIENTE");
+        }
+
         EstadoPago estadoAnulado = estadoPagoRepository.findByEstadoNombre("CANCELADO")
                 .orElseThrow(() -> new IllegalStateException(
                         "Estado CANCELADO no encontrado en BD"));
@@ -164,27 +172,42 @@ public class PagoServiceImpl implements PagoService {
     }
 
     @Override
+    public Page<PagoResponseDTO> obtenerTodos(Pageable pageable) {
+        return pagoRepository.findAllWithEvento(pageable)
+                .map(pagoMapper::toDTO);
+    }
+
+    @Override
     public ResumenPagoEventoDTO getResumenPagos(Long eventoId) {
-        VistaPagosEvento vista = vistaPagosEventoRepository.findByIdEvento(eventoId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "No se encontró resumen para el evento " + eventoId));
-        return new ResumenPagoEventoDTO(
-                vista.getIdEvento(),
-                vista.getPrecioTotal(),
-                vista.getTotalCobrado(),
-                vista.getSaldoPendiente(),
-                vista.getCobroCompleto()
-        );
+        return vistaPagosEventoRepository.findByIdEvento(eventoId)
+                .map(vista -> new ResumenPagoEventoDTO(
+                        vista.getIdEvento(),
+                        vista.getPrecioTotal(),
+                        vista.getTotalCobrado(),
+                        vista.getSaldoPendiente(),
+                        vista.getCobroCompleto()))
+                .orElseGet(() -> {
+                    Evento evento = eventoRepository.findById(eventoId)
+                            .orElseThrow(() -> new IllegalArgumentException(
+                                    "Evento no encontrado: " + eventoId));
+                    return new ResumenPagoEventoDTO(
+                            eventoId,
+                            evento.getPrecioTotal(),
+                            BigDecimal.ZERO,
+                            evento.getPrecioTotal(),
+                            false);
+                });
     }
 
     // Auto-transición PROGRAMADO → CONFIRMADO si anticipo mínimo cumplido
+    // No lanza excepción si no alcanza — es seguro llamarlo tras confirmar un pago
     private void verificarAnticipo(Evento evento) {
         if (!evento.getEstadoEvento().getNombre().equals("PROGRAMADO")) return;
 
-        int porcentaje = configuracionService.getInt("PORCENTAJE_ANTICIPO_MINIMO");
+        BigDecimal porcentaje = configuracionService.getDecimal("PORCENTAJE_ANTICIPO_MINIMO");
         BigDecimal minimo = evento.getPrecioTotal()
-                .multiply(BigDecimal.valueOf(porcentaje))
-                .divide(BigDecimal.valueOf(100));
+                .multiply(porcentaje)
+                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
 
         BigDecimal totalPagado = pagoRepository
                 .sumMontoConfirmadoByEventoId(evento.getId());

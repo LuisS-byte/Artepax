@@ -1,19 +1,31 @@
 package com.catolica.Artepax.evento.service.impl;
+
 import com.catolica.Artepax.evento.dto.GastoEventoRequestDTO;
 import com.catolica.Artepax.evento.dto.GastoEventoResponseDTO;
 import com.catolica.Artepax.evento.exception.EventoException;
+import com.catolica.Artepax.evento.exception.GastoEventoException;
 import com.catolica.Artepax.evento.model.Evento;
 import com.catolica.Artepax.evento.model.GastoEvento;
 import com.catolica.Artepax.evento.repository.EventoRepository;
 import com.catolica.Artepax.evento.repository.GastoEventoRepository;
 import com.catolica.Artepax.evento.service.GastoEventoService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+import static com.catolica.Artepax.evento.model.EstadoEventoNames.ESTADOS_PERMITIDOS_GASTOS;
+import static com.catolica.Artepax.evento.model.GastoEstadoNames.DESEMBOLSADO;
+import static com.catolica.Artepax.evento.model.GastoEstadoNames.PROYECTADO;
+
 @Service
 public class GastoEventoServiceImpl implements GastoEventoService {
+
+    private static final Logger log = LoggerFactory.getLogger(GastoEventoServiceImpl.class);
 
     private final GastoEventoRepository gastoRepository;
     private final EventoRepository eventoRepository;
@@ -31,18 +43,16 @@ public class GastoEventoServiceImpl implements GastoEventoService {
                 .orElseThrow(() -> new EventoException(
                         "Evento no encontrado: " + dto.getEventoId()));
 
-        // Solo en estados activos — según DDL
         String estado = evento.getEstadoEvento().getNombre();
-        if (!List.of("PROGRAMADO", "CONFIRMADO", "EN_MONTAJE").contains(estado)) {
-            throw new IllegalArgumentException(
+        if (!ESTADOS_PERMITIDOS_GASTOS.contains(estado)) {
+            throw new GastoEventoException(
                     "Solo se pueden registrar gastos en eventos PROGRAMADO, " +
                             "CONFIRMADO o EN_MONTAJE. Estado actual: " + estado);
         }
 
-        // Validar estado del gasto
-        String gastoEstado = dto.getGastoEstado() != null ? dto.getGastoEstado() : "PROYECTADO";
-        if (!List.of("PROYECTADO", "DESEMBOLSADO").contains(gastoEstado)) {
-            throw new IllegalArgumentException("Estado de gasto inválido: " + gastoEstado);
+        String gastoEstado = dto.getGastoEstado() != null ? dto.getGastoEstado() : PROYECTADO;
+        if (!List.of(PROYECTADO, DESEMBOLSADO).contains(gastoEstado)) {
+            throw new GastoEventoException("Estado de gasto inválido: " + gastoEstado);
         }
 
         GastoEvento gasto = new GastoEvento();
@@ -52,13 +62,23 @@ public class GastoEventoServiceImpl implements GastoEventoService {
         gasto.setGastoEstado(gastoEstado);
         gasto.setGastoNota(dto.getGastoNota());
 
-        return toDTO(gastoRepository.save(gasto));
+        GastoEvento guardado = gastoRepository.save(gasto);
+        log.info("gasto_creado id={} evento={} monto={} estado={}",
+                guardado.getId(), dto.getEventoId(), dto.getGastoMonto(), gastoEstado);
+
+        return toDTO(guardado);
     }
 
     @Override
     public List<GastoEventoResponseDTO> obtenerPorEvento(Long eventoId) {
         return gastoRepository.findByEventoId(eventoId)
                 .stream().map(this::toDTO).toList();
+    }
+
+    @Override
+    public Page<GastoEventoResponseDTO> obtenerTodos(Pageable pageable) {
+        return gastoRepository.findAllWithEvento(pageable)
+                .map(this::toDTO);
     }
 
     @Override
@@ -71,12 +91,15 @@ public class GastoEventoServiceImpl implements GastoEventoService {
     public GastoEventoResponseDTO desembolsar(Long id) {
         GastoEvento gasto = obtenerOFallar(id);
 
-        if (gasto.getGastoEstado().equals("DESEMBOLSADO")) {
-            throw new IllegalArgumentException("El gasto ya fue desembolsado");
+        if (gasto.getGastoEstado().equals(DESEMBOLSADO)) {
+            throw new GastoEventoException("El gasto ya fue desembolsado");
         }
 
-        gasto.setGastoEstado("DESEMBOLSADO");
-        return toDTO(gastoRepository.save(gasto));
+        gasto.setGastoEstado(DESEMBOLSADO);
+        GastoEvento guardado = gastoRepository.save(gasto);
+        log.info("gasto_desembolsado id={}", id);
+
+        return toDTO(guardado);
     }
 
     @Override
@@ -84,18 +107,18 @@ public class GastoEventoServiceImpl implements GastoEventoService {
     public void eliminar(Long id) {
         GastoEvento gasto = obtenerOFallar(id);
 
-        if (gasto.getGastoEstado().equals("DESEMBOLSADO")) {
-            throw new IllegalArgumentException(
+        if (gasto.getGastoEstado().equals(DESEMBOLSADO)) {
+            throw new GastoEventoException(
                     "No se puede eliminar un gasto ya desembolsado");
         }
 
         gastoRepository.deleteById(id);
+        log.info("gasto_eliminado id={}", id);
     }
 
-    // ─── HELPERS ──────────────────────────────────────────────────────────────
     private GastoEvento obtenerOFallar(Long id) {
         return gastoRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new GastoEventoException(
                         "Gasto no encontrado: " + id));
     }
 
@@ -108,6 +131,12 @@ public class GastoEventoServiceImpl implements GastoEventoService {
         dto.setGastoEstado(g.getGastoEstado());
         dto.setGastoFecha(g.getGastoFecha());
         dto.setGastoNota(g.getGastoNota());
+
+        if (g.getEvento() != null) {
+            dto.setClienteNombre(g.getEvento().getCliente().getNombre());
+            dto.setEstadoEventoNombre(g.getEvento().getEstadoEvento().getNombre());
+        }
+
         return dto;
     }
 }

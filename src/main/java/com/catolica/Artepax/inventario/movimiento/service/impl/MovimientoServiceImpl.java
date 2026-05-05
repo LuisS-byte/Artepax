@@ -21,6 +21,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -149,6 +151,12 @@ public class MovimientoServiceImpl implements MovimientoService {
         }
         return movimientoRepository.findByProductoId(productoId)
                 .stream().map(movimientoMapper::toDTO).toList();
+    }
+
+    @Override
+    public Page<MovimientoResponseDTO> obtenerTodosMovimientos(Pageable pageable) {
+        return movimientoRepository.findAllWithProductoYEvento(pageable)
+                .map(movimientoMapper::toDTO);
     }
 
     // ─── HELPERS ──────────────────────────────────────────────────────────────

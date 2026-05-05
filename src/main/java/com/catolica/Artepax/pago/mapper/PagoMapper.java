@@ -24,6 +24,11 @@ public class PagoMapper {
             dto.setMetodoPago(pago.getMetodoPago().getMetodoNombre());
         }
 
+        if (pago.getEvento() != null) {
+            dto.setClienteNombre(pago.getEvento().getCliente().getNombre());
+            dto.setEstadoEventoNombre(pago.getEvento().getEstadoEvento().getNombre());
+        }
+
         return dto;
     }
 }

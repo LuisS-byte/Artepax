@@ -1,9 +1,19 @@
 package com.catolica.Artepax.evento.model;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
+/**
+ * Catálogo de estados del ciclo de vida del evento.
+ * Las transiciones válidas son responsabilidad del backend.
+ */
 @Entity
 @Table(name = "estado_evento")
+@Getter
+@Setter
+@NoArgsConstructor
 public class EstadoEvento {
 
     @Id
@@ -16,15 +26,4 @@ public class EstadoEvento {
 
     @Column(name = "estado_descripcion", length = 255)
     private String descripcion;
-
-    public EstadoEvento() {}
-
-    public Long getId() { return id; }
-
-    public String getNombre() { return nombre; }
-    public void setNombre(String nombre) { this.nombre = nombre; }
-
-    public String getDescripcion() { return descripcion; }
-    public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
-
 }

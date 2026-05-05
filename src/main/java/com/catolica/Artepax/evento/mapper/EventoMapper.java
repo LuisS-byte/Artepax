@@ -7,9 +7,18 @@ import com.catolica.Artepax.evento.model.EstadoEvento;
 import com.catolica.Artepax.inventario.decoracion.entity.Decoracion;
 import org.springframework.stereotype.Component;
 
+/**
+ * Mapper entre entidades de evento y sus DTOs.
+ * <p>
+ * Convierte {@link Evento} a {@link EventoResponseDTO} para respuestas API,
+ * y {@link EventoRequestDTO}/{@link EventoUpdateDTO} a entidad para persistencia.
+ */
 @Component
 public class EventoMapper {
 
+    /**
+     * Convierte un DTO de creación a entidad, asociando cliente y decoración.
+     */
     public Evento toEntity(EventoRequestDTO dto, Cliente cliente, Decoracion decoracion) {
         Evento evento = new Evento();
         evento.setCliente(cliente);
@@ -19,9 +28,13 @@ public class EventoMapper {
         evento.setHoraFin(dto.getHoraFin());
         evento.setUbicacion(dto.getUbicacion());
         evento.setNota(dto.getNota());
+        evento.setNotaPrecio(dto.getNotaPrecio());
         return evento;
     }
 
+    /**
+     * Convierte una entidad a DTO de respuesta, aplanando relaciones anidadas.
+     */
     public EventoResponseDTO toResponseDTO(Evento evento) {
         EventoResponseDTO dto = new EventoResponseDTO();
         dto.setId(evento.getId());
@@ -64,6 +77,10 @@ public class EventoMapper {
         return dto;
     }
 
+    /**
+     * Actualiza campos seleccionados de una entidad desde un DTO de actualización.
+     * Solo modifica campos no nulos del DTO.
+     */
     public void updateEntityFromDTO(Evento evento, EventoUpdateDTO dto,
                                     Cliente cliente, Decoracion decoracion) {
         if (dto.getFecha() != null) evento.setFecha(dto.getFecha());
@@ -71,6 +88,7 @@ public class EventoMapper {
         if (dto.getHoraFin() != null) evento.setHoraFin(dto.getHoraFin());
         if (dto.getUbicacion() != null) evento.setUbicacion(dto.getUbicacion());
         if (dto.getNota() != null) evento.setNota(dto.getNota());
+        if (dto.getNotaPrecio() != null) evento.setNotaPrecio(dto.getNotaPrecio());
         if (cliente != null) evento.setCliente(cliente);
         if (decoracion != null) evento.setDecoracion(decoracion);
     }

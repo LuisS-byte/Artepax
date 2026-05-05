@@ -19,6 +19,14 @@ public class MovimientoMapper {
         dto.setCantidad(movimiento.getCantidad());
         dto.setFecha(movimiento.getFecha());
         dto.setMotivo(movimiento.getMotivo());
+
+        if (movimiento.getProducto() != null) {
+            dto.setProductoNombre(movimiento.getProducto().getNombre());
+        }
+        if (movimiento.getEvento() != null) {
+            dto.setEventoNombre(movimiento.getEvento().getCliente().getNombre());
+        }
+
         return dto;
     }
 }

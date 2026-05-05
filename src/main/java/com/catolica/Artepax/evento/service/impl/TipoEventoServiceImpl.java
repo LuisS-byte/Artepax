@@ -1,19 +1,25 @@
 package com.catolica.Artepax.evento.service.impl;
+
 import com.catolica.Artepax.evento.dto.TipoEventoResponseDTO;
+import com.catolica.Artepax.evento.exception.TipoEventoException;
 import com.catolica.Artepax.evento.model.TipoEvento;
 import com.catolica.Artepax.evento.repository.TipoEventoRepository;
 import com.catolica.Artepax.evento.service.TipoEventoService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
 import java.util.List;
 
+/**
+ * Implementación del servicio de tipos de evento.
+ */
 @Service
+@RequiredArgsConstructor
+@Slf4j
 public class TipoEventoServiceImpl implements TipoEventoService {
 
     private final TipoEventoRepository repo;
-
-    public TipoEventoServiceImpl(TipoEventoRepository repo) {
-        this.repo = repo;
-    }
 
     @Override
     public List<TipoEventoResponseDTO> listar() {
@@ -26,15 +32,19 @@ public class TipoEventoServiceImpl implements TipoEventoService {
         t.setTipoNombre(nombre);
         t.setTipoDescripcion(descripcion);
         t.setTipoActivo(true);
-        return toDTO(repo.save(t));
+        TipoEvento saved = repo.save(t);
+        log.info("Tipo de evento creado: id={}, nombre={}", saved.getId(), nombre);
+        return toDTO(saved);
     }
 
     @Override
     public TipoEventoResponseDTO toggle(Long id) {
         TipoEvento t = repo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Tipo de evento no encontrado: " + id));
+                .orElseThrow(() -> new TipoEventoException("Tipo de evento no encontrado: " + id));
         t.setTipoActivo(!t.getTipoActivo());
-        return toDTO(repo.save(t));
+        TipoEvento saved = repo.save(t);
+        log.info("Tipo de evento toggleado: id={}, activo={}", id, saved.getTipoActivo());
+        return toDTO(saved);
     }
 
     private TipoEventoResponseDTO toDTO(TipoEvento t) {

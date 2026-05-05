@@ -1,13 +1,18 @@
 package com.catolica.Artepax.evento.dto;
 
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
-import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
+
+/**
+ * DTO de entrada para la creación de un nuevo evento en estado COTIZACION.
+ */
 @Data
 public class EventoRequestDTO {
+
     @NotNull(message = "El cliente es obligatorio")
     private Long clienteId;
 
@@ -25,8 +30,9 @@ public class EventoRequestDTO {
     private String ubicacion;
     private String nota;
 
-    // Cargo adicional sobre el precio base (opcional)
+    /** Cargo adicional sobre el precio base (opcional). */
     private BigDecimal precioAdicional;
 
+    /** Justificación obligatoria si {@code precioAdicional > 0}. */
     private String notaPrecio;
 }
