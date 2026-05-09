@@ -39,13 +39,8 @@ public class EventoPagoValidator {
      * @throws EventoException si el anticipo no alcanza el mínimo requerido
      */
     public void validarAnticipoMinimo(Evento evento) {
-        BigDecimal porcentaje = configuracionService.getDecimal("PORCENTAJE_ANTICIPO_MINIMO");
-
-        BigDecimal anticipoMinimo = evento.getPrecioTotal()
-                .multiply(porcentaje)
-                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
-
-        BigDecimal totalPagado = pagoRepository.sumMontoConfirmadoByEventoId(evento.getId());
+        BigDecimal anticipoMinimo = calcularAnticipoMinimo(evento);
+        BigDecimal totalPagado = getTotalPagado(evento.getId());
 
         if (totalPagado.compareTo(anticipoMinimo) < 0) {
             throw new EventoException(
@@ -56,6 +51,18 @@ public class EventoPagoValidator {
 
         log.info("anticipo_validado eventoId={} minimo={} pagado={}",
                 evento.getId(), anticipoMinimo, totalPagado);
+    }
+
+    public BigDecimal calcularAnticipoMinimo(Evento evento) {
+        BigDecimal porcentaje = configuracionService.getDecimal("PORCENTAJE_ANTICIPO_MINIMO");
+
+        return evento.getPrecioTotal()
+                .multiply(porcentaje)
+                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+    }
+
+    public boolean tieneAnticipoSuficiente(Evento evento) {
+        return getTotalPagado(evento.getId()).compareTo(calcularAnticipoMinimo(evento)) >= 0;
     }
 
     /**

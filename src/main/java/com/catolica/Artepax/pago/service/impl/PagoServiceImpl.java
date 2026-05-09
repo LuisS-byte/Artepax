@@ -1,10 +1,17 @@
 package com.catolica.Artepax.pago.service.impl;
 
-import com.catolica.Artepax.common.service.ConfiguracionService;
+import com.catolica.Artepax.evento.exception.EventoNotFoundException;
+import com.catolica.Artepax.evento.model.EstadoEventoNames;
 import com.catolica.Artepax.evento.model.Evento;
 import com.catolica.Artepax.evento.repository.EventoRepository;
 import com.catolica.Artepax.evento.service.EventoService;
+import com.catolica.Artepax.evento.service.handler.EventoPagoValidator;
 import com.catolica.Artepax.notificacion.service.NotificacionService;
+import com.catolica.Artepax.pago.exception.ConceptoPagoNotFoundException;
+import com.catolica.Artepax.pago.exception.EstadoPagoNoConfiguradoException;
+import com.catolica.Artepax.pago.exception.MetodoPagoNotFoundException;
+import com.catolica.Artepax.pago.exception.PagoException;
+import com.catolica.Artepax.pago.exception.PagoNotFoundException;
 import com.catolica.Artepax.pago.dto.PagoRequestDTO;
 import com.catolica.Artepax.pago.dto.PagoResponseDTO;
 import com.catolica.Artepax.pago.dto.ResumenPagoEventoDTO;
@@ -14,13 +21,12 @@ import com.catolica.Artepax.pago.repository.*;
 import com.catolica.Artepax.pago.service.PagoService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class PagoServiceImpl implements PagoService {
@@ -32,10 +38,17 @@ public class PagoServiceImpl implements PagoService {
     private final EstadoPagoRepository estadoPagoRepository;
     private final MetodoPagoRepository metodoPagoRepository;
     private final ConceptoPagoRepository conceptoPagoRepository;
-    private final ConfiguracionService configuracionService;
     private final EventoService eventoService;
     private final NotificacionService notificacionService;
     private final VistaPagosEventoRepository vistaPagosEventoRepository; // P10
+    private final EventoPagoValidator eventoPagoValidator;
+
+    private static final Set<String> ESTADOS_EVENTO_PERMITIDOS_PARA_CONFIRMAR = Set.of(
+            EstadoEventoNames.COTIZACION,
+            EstadoEventoNames.PROGRAMADO,
+            EstadoEventoNames.CONFIRMADO,
+            EstadoEventoNames.EN_MONTAJE
+    );
 
     public PagoServiceImpl(PagoRepository pagoRepository,
                            PagoMapper pagoMapper,
@@ -43,20 +56,20 @@ public class PagoServiceImpl implements PagoService {
                            EstadoPagoRepository estadoPagoRepository,
                            MetodoPagoRepository metodoPagoRepository,
                            ConceptoPagoRepository conceptoPagoRepository,
-                           ConfiguracionService configuracionService,
-                           @Lazy EventoService eventoService,
+                           EventoService eventoService,
                            NotificacionService notificacionService,
-                           VistaPagosEventoRepository vistaPagosEventoRepository  ) {
+                           VistaPagosEventoRepository vistaPagosEventoRepository,
+                           EventoPagoValidator eventoPagoValidator) {
         this.pagoRepository = pagoRepository;
         this.pagoMapper = pagoMapper;
         this.eventoRepository = eventoRepository;
         this.estadoPagoRepository = estadoPagoRepository;
         this.metodoPagoRepository = metodoPagoRepository;
         this.conceptoPagoRepository = conceptoPagoRepository;
-        this.configuracionService = configuracionService;
         this.eventoService = eventoService;
         this.notificacionService = notificacionService;
         this.vistaPagosEventoRepository = vistaPagosEventoRepository;
+        this.eventoPagoValidator = eventoPagoValidator;
     }
 
     @Override
@@ -64,36 +77,36 @@ public class PagoServiceImpl implements PagoService {
     public PagoResponseDTO registrarPago(PagoRequestDTO dto) {
 
         Evento evento = eventoRepository.findById(dto.getEventoId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Evento no encontrado: " + dto.getEventoId()));
+                .orElseThrow(() -> new EventoNotFoundException(dto.getEventoId()));
 
         String estadoActual = evento.getEstadoEvento().getNombre();
         if (estadoActual.equals("CANCELADO")
                 || estadoActual.equals("CANCELACION_PENDIENTE")
                 || estadoActual.equals("FINALIZADO")) {
-            throw new IllegalArgumentException(
+            throw new PagoException(
                     "No se pueden registrar pagos en eventos con estado: " + estadoActual);
         }
 
         BigDecimal totalPagado = pagoRepository.sumMontoConfirmadoByEventoId(dto.getEventoId());
         BigDecimal precioTotal = evento.getPrecioTotal();
         if (totalPagado.add(dto.getMonto()).compareTo(precioTotal) > 0) {
-            throw new IllegalArgumentException(
+            throw new PagoException(
                     "El pago excede el precio total del evento. " +
                             "Saldo pendiente: " + precioTotal.subtract(totalPagado));
         }
 
         EstadoPago estadoPendiente = estadoPagoRepository.findByEstadoNombre("PENDIENTE")
-                .orElseThrow(() -> new IllegalStateException(
-                        "Estado PENDIENTE no encontrado en BD"));
+                .orElseThrow(() -> new EstadoPagoNoConfiguradoException("PENDIENTE"));
 
         MetodoPago metodo = metodoPagoRepository.findById(dto.getMetodoPagoId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Método de pago no encontrado: " + dto.getMetodoPagoId()));
+                .orElseThrow(() -> new MetodoPagoNotFoundException(dto.getMetodoPagoId()));
+
+        if (!Boolean.TRUE.equals(metodo.getMetodoActivo())) {
+            throw new PagoException("El método de pago está inactivo");
+        }
 
         ConceptoPago concepto = conceptoPagoRepository.findById(dto.getConceptoPagoId())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Concepto de pago no encontrado: " + dto.getConceptoPagoId()));
+                .orElseThrow(() -> new ConceptoPagoNotFoundException(dto.getConceptoPagoId()));
 
         Pago pago = new Pago();
         pago.setEvento(evento);
@@ -111,23 +124,40 @@ public class PagoServiceImpl implements PagoService {
     public PagoResponseDTO confirmarPago(Long pagoId) {
 
         Pago pago = pagoRepository.findById(pagoId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Pago no encontrado: " + pagoId));
+                .orElseThrow(() -> new PagoNotFoundException(pagoId));
 
         if (!pago.getEstadoPago().getEstadoNombre().equals("PENDIENTE")) {
-            throw new IllegalArgumentException(
+            throw new PagoException(
                     "Solo se pueden confirmar pagos en estado PENDIENTE");
         }
 
+        Evento eventoActualizado = eventoRepository.findById(pago.getEvento().getId())
+                .orElseThrow(() -> new EventoNotFoundException(pago.getEvento().getId()));
+
+        String estadoEventoActual = eventoActualizado.getEstadoEvento().getNombre();
+        if (!ESTADOS_EVENTO_PERMITIDOS_PARA_CONFIRMAR.contains(estadoEventoActual)) {
+            throw new PagoException(
+                    "No se pueden confirmar pagos en eventos con estado: " + estadoEventoActual);
+        }
+
+        BigDecimal totalConfirmadoSinPagoActual = pagoRepository
+                .sumPagosConfirmadosPorEventoExcluyendoPago(eventoActualizado.getId(), pago.getId());
+
+        if (totalConfirmadoSinPagoActual.add(pago.getMonto())
+                .compareTo(eventoActualizado.getPrecioTotal()) > 0) {
+            throw new PagoException(
+                    "El pago excede el precio total del evento. Saldo pendiente: "
+                            + eventoActualizado.getPrecioTotal().subtract(totalConfirmadoSinPagoActual));
+        }
+
         EstadoPago estadoPagado = estadoPagoRepository.findByEstadoNombre("PAGADO")
-                .orElseThrow(() -> new IllegalStateException(
-                        "Estado PAGADO no encontrado en BD"));
+                .orElseThrow(() -> new EstadoPagoNoConfiguradoException("PAGADO"));
 
         pago.setEstadoPago(estadoPagado);
         pago.setFecha(LocalDateTime.now());
         pagoRepository.save(pago);
 
-        Evento evento = pago.getEvento();
+        Evento evento = eventoActualizado;
 
         // Notificar pago recibido
         notificacionService.notificarAdmins(
@@ -148,36 +178,37 @@ public class PagoServiceImpl implements PagoService {
     public PagoResponseDTO anularPago(Long pagoId) {
 
         Pago pago = pagoRepository.findById(pagoId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Pago no encontrado: " + pagoId));
+                .orElseThrow(() -> new PagoNotFoundException(pagoId));
 
         String estadoActual = pago.getEstadoPago().getEstadoNombre();
         if (!estadoActual.equals("PENDIENTE")) {
-            throw new IllegalArgumentException(
+            throw new PagoException(
                     "Solo se pueden anular pagos en estado PENDIENTE");
         }
 
         EstadoPago estadoAnulado = estadoPagoRepository.findByEstadoNombre("CANCELADO")
-                .orElseThrow(() -> new IllegalStateException(
-                        "Estado CANCELADO no encontrado en BD"));
+                .orElseThrow(() -> new EstadoPagoNoConfiguradoException("CANCELADO"));
 
         pago.setEstadoPago(estadoAnulado);
         return pagoMapper.toDTO(pagoRepository.save(pago));
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<PagoResponseDTO> obtenerPorEvento(Long eventoId) {
-        return pagoRepository.findByEventoId(eventoId)
+        return pagoRepository.findByEventoIdWithRelations(eventoId)
                 .stream().map(pagoMapper::toDTO).toList();
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<PagoResponseDTO> obtenerTodos(Pageable pageable) {
         return pagoRepository.findAllWithEvento(pageable)
                 .map(pagoMapper::toDTO);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ResumenPagoEventoDTO getResumenPagos(Long eventoId) {
         return vistaPagosEventoRepository.findByIdEvento(eventoId)
                 .map(vista -> new ResumenPagoEventoDTO(
@@ -188,8 +219,7 @@ public class PagoServiceImpl implements PagoService {
                         vista.getCobroCompleto()))
                 .orElseGet(() -> {
                     Evento evento = eventoRepository.findById(eventoId)
-                            .orElseThrow(() -> new IllegalArgumentException(
-                                    "Evento no encontrado: " + eventoId));
+                            .orElseThrow(() -> new EventoNotFoundException(eventoId));
                     return new ResumenPagoEventoDTO(
                             eventoId,
                             evento.getPrecioTotal(),
@@ -202,17 +232,11 @@ public class PagoServiceImpl implements PagoService {
     // Auto-transición PROGRAMADO → CONFIRMADO si anticipo mínimo cumplido
     // No lanza excepción si no alcanza — es seguro llamarlo tras confirmar un pago
     private void verificarAnticipo(Evento evento) {
-        if (!evento.getEstadoEvento().getNombre().equals("PROGRAMADO")) return;
+        if (!evento.getEstadoEvento().getNombre().equals(EstadoEventoNames.PROGRAMADO)) {
+            return;
+        }
 
-        BigDecimal porcentaje = configuracionService.getDecimal("PORCENTAJE_ANTICIPO_MINIMO");
-        BigDecimal minimo = evento.getPrecioTotal()
-                .multiply(porcentaje)
-                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
-
-        BigDecimal totalPagado = pagoRepository
-                .sumMontoConfirmadoByEventoId(evento.getId());
-
-        if (totalPagado.compareTo(minimo) >= 0) {
+        if (eventoPagoValidator.tieneAnticipoSuficiente(evento)) {
             eventoService.confirmarDesdeAnticipo(evento.getId());
         }
     }

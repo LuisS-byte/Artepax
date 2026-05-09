@@ -1,8 +1,11 @@
 package com.catolica.Artepax.inventario.decoracion.exception;
 
-public class DecoracionNotFoundException extends RuntimeException {
+import com.catolica.Artepax.common.exception.ArtepaxException;
+import org.springframework.http.HttpStatus;
+
+public class DecoracionNotFoundException extends ArtepaxException {
     public DecoracionNotFoundException(Long id) {
-        super("Decoración no encontrada con ID: " + id);
+        super(HttpStatus.NOT_FOUND, "Decoración no encontrada con ID: " + id);
     }
 }
 

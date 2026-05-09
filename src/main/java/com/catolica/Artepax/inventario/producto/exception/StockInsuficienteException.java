@@ -1,7 +1,10 @@
 package com.catolica.Artepax.inventario.producto.exception;
 
-public class StockInsuficienteException extends RuntimeException {
+import com.catolica.Artepax.common.exception.ArtepaxException;
+import org.springframework.http.HttpStatus;
+
+public class StockInsuficienteException extends ArtepaxException {
     public StockInsuficienteException(String nombre, Integer disponible, Integer solicitado) {
-        super("Stock insuficiente para '" + nombre + "'. Disponible: " + disponible + ", Solicitado: " + solicitado);
+        super(HttpStatus.CONFLICT, "Stock insuficiente para '" + nombre + "'. Disponible: " + disponible + ", Solicitado: " + solicitado);
     }
 }

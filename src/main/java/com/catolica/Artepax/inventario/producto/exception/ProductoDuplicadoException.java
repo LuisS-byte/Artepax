@@ -1,7 +1,10 @@
 package com.catolica.Artepax.inventario.producto.exception;
 
-public class ProductoDuplicadoException extends RuntimeException {
+import com.catolica.Artepax.common.exception.ArtepaxException;
+import org.springframework.http.HttpStatus;
+
+public class ProductoDuplicadoException extends ArtepaxException {
     public ProductoDuplicadoException(String nombre) {
-        super("Ya existe un producto con el nombre: " + nombre);
+        super(HttpStatus.CONFLICT, "Ya existe un producto con el nombre: " + nombre);
     }
 }

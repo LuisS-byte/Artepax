@@ -48,7 +48,11 @@ public interface EventoService {
     /**
      * Verifica si existe disponibilidad en una fecha, hora y ubicación.
      */
-    boolean verificarDisponibilidad(LocalDate fecha, LocalTime horaInicio, String ubicacion);
+    boolean verificarDisponibilidad(LocalDate fecha,
+                                    LocalTime horaInicio,
+                                    LocalTime horaFin,
+                                    String ubicacion,
+                                    Long eventoIdExcluir);
 
     /**
      * Retorna los eventos dentro de un rango de fechas para el calendario.

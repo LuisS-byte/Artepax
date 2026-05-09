@@ -12,7 +12,7 @@ public class PagoMapper {
         dto.setId(pago.getId());
         dto.setMonto(pago.getMonto());
         dto.setFecha(pago.getFecha());
-        dto.setEventoId(pago.getEvento().getId());
+        dto.setEventoId(pago.getEvento() != null ? pago.getEvento().getId() : null);
 
         if (pago.getEstadoPago() != null) {
             dto.setEstadoPago(pago.getEstadoPago().getEstadoNombre());
@@ -24,8 +24,11 @@ public class PagoMapper {
             dto.setMetodoPago(pago.getMetodoPago().getMetodoNombre());
         }
 
-        if (pago.getEvento() != null) {
+        if (pago.getEvento() != null && pago.getEvento().getCliente() != null) {
             dto.setClienteNombre(pago.getEvento().getCliente().getNombre());
+        }
+
+        if (pago.getEvento() != null && pago.getEvento().getEstadoEvento() != null) {
             dto.setEstadoEventoNombre(pago.getEvento().getEstadoEvento().getNombre());
         }
 

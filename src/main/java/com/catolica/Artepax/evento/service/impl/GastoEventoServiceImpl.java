@@ -3,7 +3,9 @@ package com.catolica.Artepax.evento.service.impl;
 import com.catolica.Artepax.evento.dto.GastoEventoRequestDTO;
 import com.catolica.Artepax.evento.dto.GastoEventoResponseDTO;
 import com.catolica.Artepax.evento.exception.EventoException;
+import com.catolica.Artepax.evento.exception.EventoNotFoundException;
 import com.catolica.Artepax.evento.exception.GastoEventoException;
+import com.catolica.Artepax.evento.exception.GastoEventoNotFoundException;
 import com.catolica.Artepax.evento.model.Evento;
 import com.catolica.Artepax.evento.model.GastoEvento;
 import com.catolica.Artepax.evento.repository.EventoRepository;
@@ -40,8 +42,7 @@ public class GastoEventoServiceImpl implements GastoEventoService {
     @Transactional
     public GastoEventoResponseDTO crear(GastoEventoRequestDTO dto) {
         Evento evento = eventoRepository.findById(dto.getEventoId())
-                .orElseThrow(() -> new EventoException(
-                        "Evento no encontrado: " + dto.getEventoId()));
+                .orElseThrow(() -> new EventoNotFoundException(dto.getEventoId()));
 
         String estado = evento.getEstadoEvento().getNombre();
         if (!ESTADOS_PERMITIDOS_GASTOS.contains(estado)) {
@@ -118,8 +119,7 @@ public class GastoEventoServiceImpl implements GastoEventoService {
 
     private GastoEvento obtenerOFallar(Long id) {
         return gastoRepository.findById(id)
-                .orElseThrow(() -> new GastoEventoException(
-                        "Gasto no encontrado: " + id));
+                .orElseThrow(() -> new GastoEventoNotFoundException(id));
     }
 
     private GastoEventoResponseDTO toDTO(GastoEvento g) {

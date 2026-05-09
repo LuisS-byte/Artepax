@@ -2,12 +2,12 @@ package com.catolica.Artepax.pago.controller;
 
 import com.catolica.Artepax.pago.dto.*;
 import com.catolica.Artepax.pago.service.CatalogosPagoService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/catalogos")
@@ -39,10 +39,10 @@ public class CatalogosPagoController {
     }
 
     @PostMapping("/metodos-pago")
-    public ResponseEntity<MetodoPagoResponseDTO> crearMetodo(@RequestBody Map<String, String> body) {
+    public ResponseEntity<MetodoPagoResponseDTO> crearMetodo(@Valid @RequestBody MetodoPagoCreateDTO body) {
         return ResponseEntity.ok(service.crearMetodo(
-                body.get("nombre"),
-                body.get("descripcion")));
+                body.getNombre(),
+                body.getDescripcion()));
     }
 
     @PatchMapping("/metodos-pago/{id}/toggle")

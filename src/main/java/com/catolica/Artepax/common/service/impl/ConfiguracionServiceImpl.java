@@ -26,8 +26,7 @@ public class ConfiguracionServiceImpl implements ConfiguracionService {
     private String getRaw(String clave) {
         return cache.computeIfAbsent(clave, k ->          // P11: hit = retorna del cache, miss = query a BD
                 repo.findById(k)
-                        .orElseThrow(() -> new IllegalStateException(
-                                "Configuración no encontrada: " + k))
+                        .orElseThrow(() -> new ConfiguracionNotFoundException(k))
                         .getConfigValor()
         );
     }

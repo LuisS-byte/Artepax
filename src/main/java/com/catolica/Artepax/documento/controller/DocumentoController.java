@@ -4,6 +4,7 @@ package com.catolica.Artepax.documento.controller;
 import com.catolica.Artepax.documento.dto.DocumentoResponseDTO;
 import com.catolica.Artepax.documento.dto.PlantillaResponseDTO;
 import com.catolica.Artepax.documento.dto.PlantillaUpdateDTO;
+import com.catolica.Artepax.documento.entity.DocumentoTipo;
 import com.catolica.Artepax.documento.service.DocumentoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -34,7 +35,7 @@ public class DocumentoController {
     @PostMapping("/evento/{idEvento}/generar")
     public ResponseEntity<DocumentoResponseDTO> generarDocumento(
             @PathVariable Long idEvento,
-            @RequestParam String tipo) {
+            @RequestParam DocumentoTipo tipo) {
         return ResponseEntity.ok(documentoService.generarDocumento(idEvento, tipo));
     }
 

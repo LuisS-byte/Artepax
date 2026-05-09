@@ -1,5 +1,6 @@
 package com.catolica.Artepax.documento.service;
 
+import com.catolica.Artepax.documento.exception.PdfGenerationException;
 import lombok.extern.slf4j.Slf4j;
 import org.openpdf.pdf.ITextRenderer;
 import org.springframework.stereotype.Service;
@@ -23,7 +24,7 @@ public class PdfGeneratorService {
             return outputStream.toByteArray();
         } catch (Exception e) {
             log.error("Error generando PDF: {}", e.getMessage(), e);
-            throw new RuntimeException("Error al generar el PDF: " + e.getMessage(), e);
+            throw new PdfGenerationException("Error al generar el PDF: " + e.getMessage(), e);
         }
     }
 

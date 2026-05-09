@@ -2,6 +2,7 @@ package com.catolica.Artepax.evento.service.impl;
 
 import com.catolica.Artepax.evento.dto.TipoEventoResponseDTO;
 import com.catolica.Artepax.evento.exception.TipoEventoException;
+import com.catolica.Artepax.evento.exception.TipoEventoNotFoundException;
 import com.catolica.Artepax.evento.model.TipoEvento;
 import com.catolica.Artepax.evento.repository.TipoEventoRepository;
 import com.catolica.Artepax.evento.service.TipoEventoService;
@@ -40,7 +41,7 @@ public class TipoEventoServiceImpl implements TipoEventoService {
     @Override
     public TipoEventoResponseDTO toggle(Long id) {
         TipoEvento t = repo.findById(id)
-                .orElseThrow(() -> new TipoEventoException("Tipo de evento no encontrado: " + id));
+                .orElseThrow(() -> new TipoEventoNotFoundException(id));
         t.setTipoActivo(!t.getTipoActivo());
         TipoEvento saved = repo.save(t);
         log.info("Tipo de evento toggleado: id={}, activo={}", id, saved.getTipoActivo());

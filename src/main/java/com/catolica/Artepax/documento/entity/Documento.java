@@ -28,8 +28,9 @@ public class Documento {
     @JoinColumn(name = "id_plantilla")
     private PlantillaDocumento plantilla;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "docu_tipo", nullable = false, length = 50)
-    private String docuTipo;
+    private DocumentoTipo docuTipo;
 
     @CreationTimestamp
     @Column(name = "docu_fechageneracion", nullable = false, updatable = false)
@@ -38,9 +39,9 @@ public class Documento {
     @Column(name = "archivo_url", length = 500)
     private String archivoUrl;
 
-    // CHECK en BD: PENDIENTE / ENVIADO / FALLIDO / REENVIADO
+    @Enumerated(EnumType.STRING)
     @Column(name = "docu_estado_envio", nullable = false, length = 15)
-    private String docuEstadoEnvio = "PENDIENTE";
+    private DocumentoEstadoEnvio docuEstadoEnvio = DocumentoEstadoEnvio.PENDIENTE;
 
     @Column(name = "docu_fecha_envio")
     private LocalDateTime docuFechaEnvio;

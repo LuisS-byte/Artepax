@@ -2,6 +2,8 @@ package com.catolica.Artepax.pago.service.impl;
 
 import com.catolica.Artepax.pago.dto.*;
 import com.catolica.Artepax.pago.entity.*;
+import com.catolica.Artepax.pago.exception.MetodoPagoDuplicadoException;
+import com.catolica.Artepax.pago.exception.MetodoPagoNotFoundException;
 import com.catolica.Artepax.pago.repository.*;
 import com.catolica.Artepax.pago.service.CatalogosPagoService;
 import org.springframework.stereotype.Service;
@@ -52,6 +54,11 @@ public class CatalogosPagoServiceImpl implements CatalogosPagoService {
 
     @Override
     public MetodoPagoResponseDTO crearMetodo(String nombre, String descripcion) {
+        metodoRepo.findByMetodoNombre(nombre)
+                .ifPresent(existing -> {
+                    throw new MetodoPagoDuplicadoException(nombre);
+                });
+
         MetodoPago m = new MetodoPago();
         m.setMetodoNombre(nombre);
         m.setMetodoDescripcion(descripcion);
@@ -62,7 +69,7 @@ public class CatalogosPagoServiceImpl implements CatalogosPagoService {
     @Override
     public MetodoPagoResponseDTO toggleMetodo(Long id) {
         MetodoPago m = metodoRepo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Método de pago no encontrado: " + id));
+                .orElseThrow(() -> new MetodoPagoNotFoundException(id));
         m.setMetodoActivo(!m.getMetodoActivo());
         return toMetodoDTO(metodoRepo.save(m));
     }

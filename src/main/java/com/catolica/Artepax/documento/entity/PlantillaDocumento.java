@@ -19,8 +19,9 @@ public class PlantillaDocumento {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idPlantilla;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "tipo_documento", nullable = false, unique = true, length = 50)
-    private String tipoDocumento;
+    private DocumentoTipo tipoDocumento;
 
     @Column(name = "contenido_base", nullable = false, columnDefinition = "TEXT")
     private String contenidoBase;

@@ -3,15 +3,25 @@ import com.catolica.Artepax.documento.dto.DocumentoResponseDTO;
 import com.catolica.Artepax.documento.dto.PlantillaResponseDTO;
 import com.catolica.Artepax.documento.dto.PlantillaUpdateDTO;
 import com.catolica.Artepax.documento.entity.Documento;
+import com.catolica.Artepax.documento.entity.DocumentoEstadoEnvio;
+import com.catolica.Artepax.documento.entity.DocumentoTipo;
 import com.catolica.Artepax.documento.entity.PlantillaDocumento;
+import com.catolica.Artepax.common.service.ConfiguracionService;
+import com.catolica.Artepax.documento.exception.DocumentoNotFoundException;
+import com.catolica.Artepax.documento.exception.DocumentoOperacionNoPermitidaException;
+import com.catolica.Artepax.documento.exception.PlantillaDocumentoNotFoundException;
 import com.catolica.Artepax.documento.mapper.DocumentoMapper;
 import com.catolica.Artepax.documento.repository.DocumentoRepository;
 import com.catolica.Artepax.documento.repository.PlantillaDocumentoRepository;
 import com.catolica.Artepax.documento.service.DocumentoService;
-import com.catolica.Artepax.documento.service.EmailService;
+import com.catolica.Artepax.comunicacion.service.EmailService;
 import com.catolica.Artepax.documento.service.PdfGeneratorService;
 import com.catolica.Artepax.evento.model.Evento;
+import com.catolica.Artepax.evento.exception.EventoNotFoundException;
 import com.catolica.Artepax.evento.repository.EventoRepository;
+import com.catolica.Artepax.pago.entity.VistaPagosEvento;
+import com.catolica.Artepax.pago.repository.PagoRepository;
+import com.catolica.Artepax.pago.repository.VistaPagosEventoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,10 +29,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -35,139 +46,122 @@ public class DocumentoServiceImpl implements DocumentoService {
     private final DocumentoMapper mapper;
     private final PdfGeneratorService pdfGeneratorService;
     private final EmailService emailService;
+    private final ConfiguracionService configuracionService;
+    private final PagoRepository pagoRepository;
+    private final VistaPagosEventoRepository vistaPagosEventoRepository;
     private static final int MAX_INTENTOS_ENVIO = 3;
+    private static final String CONCEPTO_ANTICIPO = "ANTICIPO";
+    private static final String CONFIG_NEGOCIO_NOMBRE = "NEGOCIO_NOMBRE";
+    private static final String CONFIG_POLITICA_CANCELACION = "POLITICA_CANCELACION_MONTAJE";
 
     // -------------------------------------------------------------------------
     // DOCUMENTOS
     // -------------------------------------------------------------------------
 
     @Override
-    @Transactional(noRollbackFor = RuntimeException.class) // P12: si el email falla el documento queda guardado
-    public DocumentoResponseDTO generarDocumento(Long idEvento, String tipoDocumento) {
-        Evento evento = eventoRepository.findById(idEvento)
-                .orElseThrow(() -> new IllegalArgumentException("Evento no encontrado: " + idEvento));
+    public DocumentoResponseDTO generarDocumento(Long idEvento, DocumentoTipo tipoDocumento) {
+        Evento evento = eventoRepository.findDocumentoContextById(idEvento)
+                .orElseThrow(() -> new EventoNotFoundException(idEvento));
 
         PlantillaDocumento plantilla = plantillaRepository
                 .findByTipoDocumentoAndActivoTrue(tipoDocumento)
-                .orElseThrow(() -> new IllegalStateException(
+                .orElseThrow(() -> new DocumentoOperacionNoPermitidaException(
                         "No existe plantilla activa para el tipo: " + tipoDocumento));
 
-        // Verificar que el cliente tiene correo antes de intentar envío futuro
-        if (evento.getCliente().getCorreo() == null || evento.getCliente().getCorreo().isBlank()) {
-            log.warn("Evento {}: cliente sin correo registrado. El documento se generará pero no podrá enviarse.", idEvento);
-        }
+        Documento documento = crearDocumentoPendiente(evento, plantilla, tipoDocumento);
+        log.info("Documento generado: id={}, tipo={}, evento={}", documento.getIdDocumento(), tipoDocumento, idEvento);
 
-        // Rellenar placeholders de la plantilla
-        String contenidoGenerado = rellenarPlaceholders(plantilla.getContenidoBase(), evento);
-
-        // Guardar el documento en PENDIENTE primero — así siempre queda persistido
-        Documento documento = new Documento();
-        documento.setEvento(evento);
-        documento.setPlantilla(plantilla);
-        documento.setDocuTipo(tipoDocumento);
-        documento.setDocuEstadoEnvio("PENDIENTE");
-        documento.setDocuIntentosEnvio(0);
-
-        Documento guardado = documentoRepository.save(documento); // P12: commit garantizado por noRollbackFor
-        log.info("Documento generado: id={}, tipo={}, evento={}", guardado.getIdDocumento(), tipoDocumento, idEvento);
-
-        // Generar PDF desde el HTML con placeholders reemplazados
-        byte[] pdfBytes = pdfGeneratorService.generarDesdHtml(contenidoGenerado);
-
-        // Enviar por email si el cliente tiene correo
         String correo = evento.getCliente().getCorreo();
-        if (correo != null && !correo.isBlank()) {
-            String asunto = "Confirmación de reserva - Artepax";
-            String cuerpoEmail = "<p>Estimado/a <b>" + evento.getCliente().getNombre()
-                    + "</b>,</p><p>Adjuntamos el documento de confirmación de su evento. "
-                    + "Gracias por confiar en Artepax.</p>";
-            String nombreArchivo = "confirmacion_evento_" + evento.getId() + ".pdf";
-
-            try {
-                emailService.enviarConAdjunto(correo, asunto, cuerpoEmail, pdfBytes, nombreArchivo);
-                guardado.setDocuEstadoEnvio("ENVIADO");
-                guardado.setDocuFechaEnvio(LocalDateTime.now());
-                guardado.setDocuIntentosEnvio(1);
-                log.info("Email enviado para documento id={}", guardado.getIdDocumento());
-            } catch (RuntimeException e) {
-                guardado.setDocuEstadoEnvio("FALLIDO");
-                guardado.setDocuIntentosEnvio(1);
-                log.error("Error enviando email para documento id={}: {}", guardado.getIdDocumento(), e.getMessage());
-                // No relanzamos — el documento queda en FALLIDO y puede reintentarse con /reenviar
-            }
-
-            documentoRepository.save(guardado); // P12: persiste ENVIADO o FALLIDO
-        } else {
-            log.warn("Evento {}: cliente sin correo, PDF generado pero no enviado.", idEvento);
+        if (correo == null || correo.isBlank()) {
+            log.warn("Evento {}: cliente sin correo registrado. El documento queda pendiente hasta contar con destinatario.", idEvento);
+            return mapper.toDTO(documento);
         }
 
-        return mapper.toDTO(guardado);
+        try {
+            String contenidoGenerado = rellenarPlaceholders(plantilla.getContenidoBase(), evento);
+            byte[] pdfBytes = pdfGeneratorService.generarDesdHtml(contenidoGenerado);
+            emailService.enviarConAdjunto(
+                    correo,
+                    "Confirmación de reserva - Artepax",
+                    construirCuerpoConfirmacion(evento),
+                    pdfBytes,
+                    construirNombreArchivo(evento));
+
+            documento = actualizarEstadoEnvio(documento, DocumentoEstadoEnvio.ENVIADO, 1, LocalDateTime.now());
+            log.info("Email enviado para documento id={}", documento.getIdDocumento());
+        } catch (RuntimeException e) {
+            documento = actualizarEstadoEnvio(documento, DocumentoEstadoEnvio.FALLIDO, 1, null);
+            log.error("Error procesando documento id={}: {}", documento.getIdDocumento(), e.getMessage(), e);
+        }
+
+        return mapper.toDTO(documento);
     }
 
     @Override
-    @Transactional(noRollbackFor = RuntimeException.class)
     public DocumentoResponseDTO reenviarDocumento(Long idDocumento) {
-        Documento documento = documentoRepository.findById(idDocumento)
-                .orElseThrow(() -> new IllegalArgumentException("Documento no encontrado: " + idDocumento));
+        Documento documento = documentoRepository.findByIdWithRelations(idDocumento)
+                .orElseThrow(() -> new DocumentoNotFoundException(idDocumento));
 
         String correo = documento.getEvento().getCliente().getCorreo();
         if (correo == null || correo.isBlank()) {
-            throw new IllegalStateException(
+            throw new DocumentoOperacionNoPermitidaException(
                     "No se puede reenviar: el cliente no tiene correo registrado.");
         }
 
         if (documento.getDocuIntentosEnvio() >= MAX_INTENTOS_ENVIO) {
-            throw new IllegalStateException(
+            throw new DocumentoOperacionNoPermitidaException(
                     "Se alcanzó el límite de " + MAX_INTENTOS_ENVIO + " intentos de envío.");
         }
 
         // Regenerar el PDF desde la plantilla y el evento — así evitamos depender de Cloudinary
         PlantillaDocumento plantilla = documento.getPlantilla();
         if (plantilla == null) {
-            throw new IllegalStateException("El documento no tiene plantilla asociada.");
+            throw new DocumentoOperacionNoPermitidaException("El documento no tiene plantilla asociada.");
         }
 
         Evento evento = documento.getEvento();
-        String contenidoGenerado = rellenarPlaceholders(plantilla.getContenidoBase(), evento);
-        byte[] pdfBytes = pdfGeneratorService.generarDesdHtml(contenidoGenerado);
 
         try {
-            String asunto = "Reenvío de documento - Artepax";
-            String cuerpoEmail = "<p>Estimado/a <b>" + evento.getCliente().getNombre()
-                    + "</b>,</p><p>Le reenviamos el documento adjunto. "
-                    + "Gracias por confiar en Artepax.</p>";
-            String nombreArchivo = "confirmacion_evento_" + evento.getId() + ".pdf";
+            String contenidoGenerado = rellenarPlaceholders(plantilla.getContenidoBase(), evento);
+            byte[] pdfBytes = pdfGeneratorService.generarDesdHtml(contenidoGenerado);
+            emailService.enviarConAdjunto(
+                    correo,
+                    "Reenvío de documento - Artepax",
+                    construirCuerpoReenvio(evento),
+                    pdfBytes,
+                    construirNombreArchivo(evento));
 
-            emailService.enviarConAdjunto(correo, asunto, cuerpoEmail, pdfBytes, nombreArchivo);
-
-            documento.setDocuEstadoEnvio("REENVIADO");
-            documento.setDocuFechaEnvio(LocalDateTime.now());
-            documento.setDocuIntentosEnvio(documento.getDocuIntentosEnvio() + 1);
-
+            documento = actualizarEstadoEnvio(
+                    documento,
+                    DocumentoEstadoEnvio.REENVIADO,
+                    documento.getDocuIntentosEnvio() + 1,
+                    LocalDateTime.now());
             log.info("Reenvío exitoso documento id={} intento={}", idDocumento, documento.getDocuIntentosEnvio());
 
         } catch (RuntimeException e) {
-            documento.setDocuEstadoEnvio("FALLIDO");
-            documento.setDocuIntentosEnvio(documento.getDocuIntentosEnvio() + 1);
-            documentoRepository.save(documento);
-            log.error("Error en reenvío documento id={}: {}", idDocumento, e.getMessage());
-            throw e;
+            documento = actualizarEstadoEnvio(
+                    documento,
+                    DocumentoEstadoEnvio.FALLIDO,
+                    documento.getDocuIntentosEnvio() + 1,
+                    null);
+            log.error("Error en reenvío documento id={}: {}", idDocumento, e.getMessage(), e);
+            return mapper.toDTO(documento);
         }
 
-        return mapper.toDTO(documentoRepository.save(documento));
+        return mapper.toDTO(documento);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<DocumentoResponseDTO> listarPorEvento(Long idEvento) {
         if (!eventoRepository.existsById(idEvento)) {
-            throw new IllegalArgumentException("Evento no encontrado: " + idEvento);
+            throw new EventoNotFoundException(idEvento);
         }
         return documentoRepository
-                .findByEvento_IdOrderByDocuFechaGeneracionDesc(idEvento)
+                .findByEventoIdWithRelations(idEvento)
                 .stream()
                 .map(mapper::toDTO)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
@@ -180,8 +174,8 @@ public class DocumentoServiceImpl implements DocumentoService {
     @Override
     @Transactional(readOnly = true)
     public DocumentoResponseDTO obtenerDocumento(Long idDocumento) {
-        Documento documento = documentoRepository.findById(idDocumento)
-                .orElseThrow(() -> new IllegalArgumentException("Documento no encontrado: " + idDocumento));
+        Documento documento = documentoRepository.findByIdWithRelations(idDocumento)
+                .orElseThrow(() -> new DocumentoNotFoundException(idDocumento));
         return mapper.toDTO(documento);
     }
 
@@ -195,14 +189,14 @@ public class DocumentoServiceImpl implements DocumentoService {
         return plantillaRepository.findAll()
                 .stream()
                 .map(mapper::toDTO)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public PlantillaResponseDTO obtenerPlantilla(Long idPlantilla) {
         PlantillaDocumento plantilla = plantillaRepository.findById(idPlantilla)
-                .orElseThrow(() -> new IllegalArgumentException("Plantilla no encontrada: " + idPlantilla));
+                .orElseThrow(() -> new PlantillaDocumentoNotFoundException(idPlantilla));
         return mapper.toDTO(plantilla);
     }
 
@@ -210,7 +204,7 @@ public class DocumentoServiceImpl implements DocumentoService {
     @Transactional
     public PlantillaResponseDTO actualizarPlantilla(Long idPlantilla, PlantillaUpdateDTO dto) {
         PlantillaDocumento plantilla = plantillaRepository.findById(idPlantilla)
-                .orElseThrow(() -> new IllegalArgumentException("Plantilla no encontrada: " + idPlantilla));
+                .orElseThrow(() -> new PlantillaDocumentoNotFoundException(idPlantilla));
 
         plantilla.setContenidoBase(dto.getContenidoBase());
         if (dto.getCamposEditables() != null) {
@@ -235,10 +229,11 @@ public class DocumentoServiceImpl implements DocumentoService {
     private String rellenarPlaceholders(String template, Evento evento) {
         DateTimeFormatter fechaFmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
         DateTimeFormatter horaFmt = DateTimeFormatter.ofPattern("HH:mm");
+        ResumenFinancieroDocumento resumenFinanciero = obtenerResumenFinanciero(evento);
 
         String resultado = template;
 
-        resultado = resultado.replace("{{negocio_nombre}}", "Artepax");
+        resultado = resultado.replace("{{negocio_nombre}}", configuracionService.getString(CONFIG_NEGOCIO_NOMBRE));
 
         resultado = resultado.replace("{{cliente_nombre}}",
                 evento.getCliente() != null ? evento.getCliente().getNombre() : "");
@@ -262,18 +257,79 @@ public class DocumentoServiceImpl implements DocumentoService {
                 evento.getDecoracion() != null ? evento.getDecoracion().getNombre() : "");
 
         resultado = resultado.replace("{{precio_total}}",
-                evento.getPrecioTotal() != null ? "$" + evento.getPrecioTotal().toString() : "$0.00");
+                formatearMoneda(evento.getPrecioTotal()));
 
         resultado = resultado.replace("{{fecha_generacion}}",
                 LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
 
-        resultado = resultado.replace("{{anticipo_pagado}}", "");
-        resultado = resultado.replace("{{saldo_pendiente}}", "");
+        resultado = resultado.replace("{{anticipo_pagado}}", formatearMoneda(resumenFinanciero.anticipoPagado()));
+        resultado = resultado.replace("{{saldo_pendiente}}", formatearMoneda(resumenFinanciero.saldoPendiente()));
         resultado = resultado.replace("{{condiciones_cancelacion}}",
-                "En caso de cancelación con menos de 48 horas de anticipación, " +
-                        "se aplicará una penalización del 20% sobre el precio total.");
+                configuracionService.getString(CONFIG_POLITICA_CANCELACION));
 
         resultado = resultado.replace("{{texto_adicional}}", "");
         return resultado;
+    }
+
+    private Documento crearDocumentoPendiente(Evento evento, PlantillaDocumento plantilla, DocumentoTipo tipoDocumento) {
+        Documento documento = new Documento();
+        documento.setEvento(evento);
+        documento.setPlantilla(plantilla);
+        documento.setDocuTipo(tipoDocumento);
+        documento.setDocuEstadoEnvio(DocumentoEstadoEnvio.PENDIENTE);
+        documento.setDocuIntentosEnvio(0);
+        return documentoRepository.save(documento);
+    }
+
+    private Documento actualizarEstadoEnvio(
+            Documento documento,
+            DocumentoEstadoEnvio estado,
+            int intentosEnvio,
+            LocalDateTime fechaEnvio) {
+        documento.setDocuEstadoEnvio(estado);
+        documento.setDocuIntentosEnvio(intentosEnvio);
+        documento.setDocuFechaEnvio(fechaEnvio);
+        return documentoRepository.save(documento);
+    }
+
+    private String construirNombreArchivo(Evento evento) {
+        return "confirmacion_evento_" + evento.getId() + ".pdf";
+    }
+
+    private String construirCuerpoConfirmacion(Evento evento) {
+        String negocioNombre = configuracionService.getString(CONFIG_NEGOCIO_NOMBRE);
+        return "<p>Estimado/a <b>" + evento.getCliente().getNombre()
+                + "</b>,</p><p>Adjuntamos el documento de confirmación de su evento. "
+                + "Gracias por confiar en " + negocioNombre + ".</p>";
+    }
+
+    private String construirCuerpoReenvio(Evento evento) {
+        String negocioNombre = configuracionService.getString(CONFIG_NEGOCIO_NOMBRE);
+        return "<p>Estimado/a <b>" + evento.getCliente().getNombre()
+                + "</b>,</p><p>Le reenviamos el documento adjunto. "
+                + "Gracias por confiar en " + negocioNombre + ".</p>";
+    }
+
+    private ResumenFinancieroDocumento obtenerResumenFinanciero(Evento evento) {
+        BigDecimal anticipoPagado = pagoRepository
+                .sumMontoConfirmadoByEventoIdAndConceptoNombre(evento.getId(), CONCEPTO_ANTICIPO);
+
+        BigDecimal saldoPendiente = vistaPagosEventoRepository.findByIdEvento(evento.getId())
+                .map(VistaPagosEvento::getSaldoPendiente)
+                .orElseGet(() -> {
+                    BigDecimal totalPagado = pagoRepository.sumMontoConfirmadoByEventoId(evento.getId());
+                    BigDecimal precioTotal = evento.getPrecioTotal() != null ? evento.getPrecioTotal() : BigDecimal.ZERO;
+                    return precioTotal.subtract(totalPagado).max(BigDecimal.ZERO);
+                });
+
+        return new ResumenFinancieroDocumento(anticipoPagado, saldoPendiente);
+    }
+
+    private String formatearMoneda(BigDecimal monto) {
+        BigDecimal valor = monto != null ? monto : BigDecimal.ZERO;
+        return "$" + valor.setScale(2, RoundingMode.HALF_UP).toPlainString();
+    }
+
+    private record ResumenFinancieroDocumento(BigDecimal anticipoPagado, BigDecimal saldoPendiente) {
     }
 }

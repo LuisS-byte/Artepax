@@ -8,6 +8,7 @@ import com.catolica.Artepax.evento.dto.EventoResponseDTO;
 import com.catolica.Artepax.evento.dto.EventoUpdateDTO;
 import com.catolica.Artepax.evento.dto.RentabilidadEventoDTO;
 import com.catolica.Artepax.evento.exception.EventoException;
+import com.catolica.Artepax.evento.exception.EventoNotFoundException;
 import com.catolica.Artepax.evento.mapper.EventoMapper;
 import com.catolica.Artepax.evento.model.Evento;
 import com.catolica.Artepax.evento.model.EstadoEvento;
@@ -98,30 +99,23 @@ public class EventoServiceImpl implements EventoService {
     @Override
     @Transactional
     public EventoResponseDTO crearEvento(EventoRequestDTO dto) {
+        validarNotaPrecioAdicional(dto.getPrecioAdicional(), dto.getNotaPrecio());
 
         Cliente cliente = clienteRepository.findById(dto.getClienteId())
-                .filter(Cliente::getActivo)
                 .orElseThrow(() -> new EventoException("Cliente no encontrado o inactivo"));
+        validarClienteActivo(cliente);
 
         Decoracion decoracion = decoracionRepository.findById(dto.getDecoracionId())
                 .orElseThrow(() -> new EventoException("Decoración no encontrada"));
-
-        if (!"ACTIVO".equals(decoracion.getEstado())) {
-            throw new EventoException("La decoración seleccionada no está activa");
-        }
+        validarDecoracionActiva(decoracion);
 
         TipoEvento tipoEvento = tipoEventoRepository.findById(dto.getTipoEventoId())
-                .filter(TipoEvento::getTipoActivo)
                 .orElseThrow(() -> new EventoException("Tipo de evento no encontrado o inactivo"));
+        validarTipoEventoActivo(tipoEvento);
 
-        if (dto.getFecha().isBefore(LocalDate.now())) {
-            throw new EventoException("No se puede crear un evento en el pasado");
-        }
-
-        if (eventoRepository.existsByFechaAndHoraInicioAndUbicacion(
-                dto.getFecha(), dto.getHoraInicio(), dto.getUbicacion())) {
-            throw new EventoException("Ya existe un evento en esa fecha, hora y ubicación");
-        }
+        validarFechaNoPasada(dto.getFecha());
+        validarHorario(dto.getHoraInicio(), dto.getHoraFin());
+        validarDisponibilidad(dto.getFecha(), dto.getHoraInicio(), dto.getHoraFin(), dto.getUbicacion(), null);
 
         EstadoEvento estadoCotizacion = estadoEventoRepository.findByNombre(COTIZACION)
                 .orElseThrow(() -> new EventoException("Estado COTIZACION no encontrado en BD"));
@@ -242,6 +236,10 @@ public class EventoServiceImpl implements EventoService {
     @Override
     @Transactional
     public EventoResponseDTO iniciarCancelacion(Long id, String motivo) {
+        if (motivo == null || motivo.isBlank()) {
+            throw new EventoException("El motivo de cancelación es obligatorio");
+        }
+
         Evento evento = obtenerOFallar(id);
 
         String estadoActual = evento.getEstadoEvento().getNombre();
@@ -250,6 +248,7 @@ public class EventoServiceImpl implements EventoService {
                     .orElseThrow(() -> new EventoException("Estado CANCELADO no encontrado en BD"));
             evento.setEstadoEvento(estadoCancelado);
             evento.setMotivoCancelacion(motivo);
+            evento.setFechaCancelacion(LocalDateTime.now());
             Evento guardado = eventoRepository.save(evento);
             log.info("evento_cancelado_directo id={} estado_previo={}", id, COTIZACION);
             return eventoMapper.toResponseDTO(guardado);
@@ -318,8 +317,9 @@ public class EventoServiceImpl implements EventoService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<EventoResponseDTO> obtenerEventos() {
-        return eventoRepository.findAll().stream()
+        return eventoRepository.findAllWithRelations().stream()
                 .map(eventoMapper::toResponseDTO).toList();
     }
 
@@ -364,10 +364,15 @@ public class EventoServiceImpl implements EventoService {
     }
 
     @Override
-    public boolean verificarDisponibilidad(LocalDate fecha, LocalTime horaInicio,
-                                           String ubicacion) {
-        return !eventoRepository.existsByFechaAndHoraInicioAndUbicacion(
-                fecha, horaInicio, ubicacion);
+    public boolean verificarDisponibilidad(LocalDate fecha,
+                                           LocalTime horaInicio,
+                                           LocalTime horaFin,
+                                           String ubicacion,
+                                           Long eventoIdExcluir) {
+        validarHorario(horaInicio, horaFin);
+        validarParametrosDisponibilidad(horaInicio, horaFin, ubicacion);
+
+        return !existeSolapamiento(fecha, horaInicio, horaFin, ubicacion, eventoIdExcluir);
     }
 
     @Override
@@ -394,25 +399,37 @@ public class EventoServiceImpl implements EventoService {
     public EventoResponseDTO actualizarEvento(Long id, EventoUpdateDTO dto) {
         Evento evento = obtenerOFallar(id);
 
-        if (!evento.getEstadoEvento().getNombre().equals(COTIZACION)) {
-            throw new EventoException("Solo se pueden editar eventos en estado COTIZACION");
-        }
+        validarEventoEditable(evento);
+        validarHorarioParcial(dto.getHoraInicio(), dto.getHoraFin());
 
         Cliente cliente = dto.getClienteId() != null
                 ? clienteRepository.findById(dto.getClienteId())
-                .orElseThrow(() -> new EventoException("Cliente no encontrado"))
-                : null;
+                .orElseThrow(() -> new EventoException("Cliente no encontrado o inactivo"))
+                : evento.getCliente();
+        validarClienteActivo(cliente);
 
-        Decoracion decoracion = null;
-        if (dto.getDecoracionId() != null) {
-            decoracion = decoracionRepository.findById(dto.getDecoracionId())
-                    .orElseThrow(() -> new EventoException("Decoración no encontrada"));
-            if (!"ACTIVO".equals(decoracion.getEstado())) {
-                throw new EventoException("La decoración seleccionada no está activa");
-            }
-        }
+        Decoracion decoracion = dto.getDecoracionId() != null
+                ? decoracionRepository.findById(dto.getDecoracionId())
+                .orElseThrow(() -> new EventoException("Decoración no encontrada"))
+                : evento.getDecoracion();
+        validarDecoracionActiva(decoracion);
+        validarTipoEventoActivo(evento.getTipoEvento());
+
+        LocalDate fechaFinal = dto.getFecha() != null ? dto.getFecha() : evento.getFecha();
+        LocalTime horaInicioFinal = dto.getHoraInicio() != null ? dto.getHoraInicio() : evento.getHoraInicio();
+        LocalTime horaFinFinal = dto.getHoraFin() != null ? dto.getHoraFin() : evento.getHoraFin();
+        String ubicacionFinal = dto.getUbicacion() != null ? dto.getUbicacion() : evento.getUbicacion();
+        String notaPrecioFinal = dto.getNotaPrecio() != null ? dto.getNotaPrecio() : evento.getNotaPrecio();
+
+        validarFechaNoPasada(fechaFinal);
+        validarHorario(horaInicioFinal, horaFinFinal);
+        validarDisponibilidad(fechaFinal, horaInicioFinal, horaFinFinal, ubicacionFinal, evento.getId());
+        validarNotaPrecioAdicional(evento.getPrecioAdicional(), notaPrecioFinal);
 
         eventoMapper.updateEntityFromDTO(evento, dto, cliente, decoracion);
+        evento.setCliente(cliente);
+        evento.setDecoracion(decoracion);
+        evento.setPrecioBase(decoracion.getPrecio());
         Evento guardado = eventoRepository.save(evento);
         log.info("evento_actualizado id={}", id);
 
@@ -421,8 +438,7 @@ public class EventoServiceImpl implements EventoService {
 
     private Evento obtenerOFallar(Long id) {
         return eventoRepository.findById(id)
-                .orElseThrow(() -> new EventoException(
-                        "Evento no encontrado con ID: " + id));
+                .orElseThrow(() -> new EventoNotFoundException("Evento no encontrado con ID: " + id));
     }
 
     private void validarTransicion(Evento evento, String estadoRequerido, String destino) {
@@ -432,5 +448,104 @@ public class EventoServiceImpl implements EventoService {
                     "Transición inválida: el evento está en " + actual +
                             ", se requiere " + estadoRequerido + " para pasar a " + destino);
         }
+    }
+
+    private void validarNotaPrecioAdicional(BigDecimal precioAdicional, String notaPrecio) {
+        if (precioAdicional != null
+                && precioAdicional.compareTo(BigDecimal.ZERO) > 0
+                && (notaPrecio == null || notaPrecio.isBlank())) {
+            throw new EventoException("La nota de precio es obligatoria cuando hay precio adicional");
+        }
+    }
+
+    private void validarClienteActivo(Cliente cliente) {
+        if (!Boolean.TRUE.equals(cliente.getActivo())) {
+            throw new EventoException("Cliente no encontrado o inactivo");
+        }
+    }
+
+    private void validarDecoracionActiva(Decoracion decoracion) {
+        if (!"ACTIVO".equals(decoracion.getEstado())) {
+            throw new EventoException("La decoración seleccionada no está activa");
+        }
+    }
+
+    private void validarTipoEventoActivo(TipoEvento tipoEvento) {
+        if (!Boolean.TRUE.equals(tipoEvento.getTipoActivo())) {
+            throw new EventoException("Tipo de evento no encontrado o inactivo");
+        }
+    }
+
+    private void validarFechaNoPasada(LocalDate fecha) {
+        if (fecha.isBefore(LocalDate.now())) {
+            throw new EventoException("No se puede crear o editar un evento en el pasado");
+        }
+    }
+
+    private void validarHorario(LocalTime horaInicio, LocalTime horaFin) {
+        if (horaInicio == null && horaFin == null) {
+            return;
+        }
+
+        if (horaInicio == null || horaFin == null) {
+            throw new EventoException("Hora inicio y hora fin son obligatorias juntas");
+        }
+
+        if (!horaFin.isAfter(horaInicio)) {
+            throw new EventoException("La hora fin debe ser posterior a la hora inicio");
+        }
+    }
+
+    private void validarDisponibilidad(LocalDate fecha,
+                                       LocalTime horaInicio,
+                                       LocalTime horaFin,
+                                       String ubicacion,
+                                       Long eventoIdExcluir) {
+        if (horaInicio == null && horaFin == null && (ubicacion == null || ubicacion.isBlank())) {
+            return;
+        }
+
+        validarParametrosDisponibilidad(horaInicio, horaFin, ubicacion);
+
+        boolean existeSolapamiento = existeSolapamiento(
+                fecha, horaInicio, horaFin, ubicacion, eventoIdExcluir);
+
+        if (existeSolapamiento) {
+            throw new EventoException("Ya existe un evento solapado en esa fecha, horario y ubicación");
+        }
+    }
+
+    private boolean existeSolapamiento(LocalDate fecha,
+                                       LocalTime horaInicio,
+                                       LocalTime horaFin,
+                                       String ubicacion,
+                                       Long eventoIdExcluir) {
+        return eventoIdExcluir == null
+                ? eventoRepository.existeSolapamiento(fecha, horaInicio, horaFin, ubicacion)
+                : eventoRepository.existeSolapamientoExcluyendoEvento(
+                        eventoIdExcluir, fecha, horaInicio, horaFin, ubicacion);
+    }
+
+    private void validarEventoEditable(Evento evento) {
+        if (!COTIZACION.equals(evento.getEstadoEvento().getNombre())) {
+            throw new EventoException("Solo se pueden editar eventos en estado COTIZACION");
+        }
+    }
+
+    private void validarParametrosDisponibilidad(LocalTime horaInicio,
+                                                 LocalTime horaFin,
+                                                 String ubicacion) {
+        if (horaInicio == null || horaFin == null || ubicacion == null || ubicacion.isBlank()) {
+            throw new EventoException(
+                    "Para validar disponibilidad debe indicar horaInicio, horaFin y ubicación");
+        }
+    }
+
+    private void validarHorarioParcial(LocalTime horaInicio, LocalTime horaFin) {
+        if ((horaInicio == null) == (horaFin == null)) {
+            return;
+        }
+
+        throw new EventoException("No se permite actualizar solo una parte del horario");
     }
 }

@@ -1,6 +1,7 @@
 package com.catolica.Artepax.evento.controller;
 
 import com.catolica.Artepax.evento.dto.CalendarioEventoDTO;
+import com.catolica.Artepax.evento.dto.CancelacionEventoRequestDTO;
 import com.catolica.Artepax.evento.dto.EventoRequestDTO;
 import com.catolica.Artepax.evento.dto.EventoResponseDTO;
 import com.catolica.Artepax.evento.dto.EventoUpdateDTO;
@@ -22,7 +23,6 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
-import java.util.Map;
 
 /**
  * REST controller para gestión de eventos y su ciclo de vida.
@@ -92,10 +92,9 @@ public class EventoController {
     @PatchMapping("/{id}/cancelar")
     public ResponseEntity<EventoResponseDTO> iniciarCancelacion(
             @PathVariable Long id,
-            @RequestBody Map<String, String> body) {
-        String motivo = body.getOrDefault("motivo", "Sin motivo especificado");
-        log.info("PATCH /api/eventos/{}/cancelar motivo={}", id, motivo);
-        return ResponseEntity.ok(eventoService.iniciarCancelacion(id, motivo));
+            @Valid @RequestBody CancelacionEventoRequestDTO body) {
+        log.info("PATCH /api/eventos/{}/cancelar motivo={}", id, body.getMotivo());
+        return ResponseEntity.ok(eventoService.iniciarCancelacion(id, body.getMotivo()));
     }
 
     @PatchMapping("/{id}/revertir-cancelacion")
@@ -115,9 +114,12 @@ public class EventoController {
     public ResponseEntity<Boolean> verificarDisponibilidad(
             @RequestParam LocalDate fecha,
             @RequestParam LocalTime horaInicio,
-            @RequestParam String ubicacion) {
+            @RequestParam LocalTime horaFin,
+            @RequestParam String ubicacion,
+            @RequestParam(required = false) Long eventoIdExcluir) {
         return ResponseEntity.ok(
-                eventoService.verificarDisponibilidad(fecha, horaInicio, ubicacion));
+                eventoService.verificarDisponibilidad(
+                        fecha, horaInicio, horaFin, ubicacion, eventoIdExcluir));
     }
 
     @GetMapping("/calendario")
