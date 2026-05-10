@@ -1,18 +1,30 @@
 package com.catolica.Artepax.notificacion.service.impl;
+
 import com.catolica.Artepax.authentication.user.entity.Usuario;
 import com.catolica.Artepax.authentication.user.repository.UsuarioRepository;
 import com.catolica.Artepax.evento.model.Evento;
 import com.catolica.Artepax.notificacion.dto.NotificacionResponseDTO;
-import com.catolica.Artepax.notificacion.entity.*;
-import com.catolica.Artepax.notificacion.repository.*;
+import com.catolica.Artepax.notificacion.entity.EstadoNotificacion;
+import com.catolica.Artepax.notificacion.entity.Notificacion;
+import com.catolica.Artepax.notificacion.entity.TipoNotificacion;
+import com.catolica.Artepax.notificacion.exception.NotificacionNotFoundException;
+import com.catolica.Artepax.notificacion.repository.EstadoNotificacionRepository;
+import com.catolica.Artepax.notificacion.repository.NotificacionRepository;
+import com.catolica.Artepax.notificacion.repository.TipoNotificacionRepository;
 import com.catolica.Artepax.notificacion.service.NotificacionService;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
-public class NotificacionServiceImpl implements NotificacionService { private final NotificacionRepository notificacionRepository;
+public class NotificacionServiceImpl implements NotificacionService {
+
+    private static final String ESTADO_PENDIENTE = "PENDIENTE";
+    private static final String ESTADO_LEIDA = "LEIDA";
+
+    private final NotificacionRepository notificacionRepository;
     private final TipoNotificacionRepository tipoRepository;
     private final EstadoNotificacionRepository estadoRepository;
     private final UsuarioRepository usuarioRepository;
@@ -34,9 +46,9 @@ public class NotificacionServiceImpl implements NotificacionService { private fi
                 .orElseThrow(() -> new IllegalStateException(
                         "Tipo de notificación no encontrado: " + tipoNombre));
 
-        EstadoNotificacion estadoPendiente = estadoRepository.findByNombreEstado("PENDIENTE")
+        EstadoNotificacion estadoPendiente = estadoRepository.findByNombreEstado(ESTADO_PENDIENTE)
                 .orElseThrow(() -> new IllegalStateException(
-                        "Estado PENDIENTE no encontrado en BD"));
+                        "Estado " + ESTADO_PENDIENTE + " no encontrado en BD"));
 
         List<Usuario> admins = usuarioRepository.findAdminsActivos();
 
@@ -53,14 +65,22 @@ public class NotificacionServiceImpl implements NotificacionService { private fi
 
     @Override
     @Transactional
-    public void marcarLeida(Long notificacionId) {
+    public void marcarLeida(Long notificacionId, Long idUsuarioAutenticado) {
         Notificacion n = notificacionRepository.findById(notificacionId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Notificación no encontrada: " + notificacionId));
+                .orElseThrow(() -> new NotificacionNotFoundException(notificacionId));
 
-        EstadoNotificacion estadoLeida = estadoRepository.findByNombreEstado("LEIDA")
+        Long ownerId = n.getUsuario().getIdUsuario();
+        if (!ownerId.equals(idUsuarioAutenticado)) {
+            throw new AccessDeniedException("No puede modificar esta notificación");
+        }
+
+        if (ESTADO_LEIDA.equals(n.getEstadoNotificacion().getNombreEstado())) {
+            return;
+        }
+
+        EstadoNotificacion estadoLeida = estadoRepository.findByNombreEstado(ESTADO_LEIDA)
                 .orElseThrow(() -> new IllegalStateException(
-                        "Estado LEIDA no encontrado en BD"));
+                        "Estado " + ESTADO_LEIDA + " no encontrado en BD"));
 
         n.setEstadoNotificacion(estadoLeida);
         notificacionRepository.save(n);

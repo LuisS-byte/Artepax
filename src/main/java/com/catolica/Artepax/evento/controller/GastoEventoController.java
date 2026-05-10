@@ -2,6 +2,7 @@ package com.catolica.Artepax.evento.controller;
 
 import com.catolica.Artepax.evento.dto.GastoEventoRequestDTO;
 import com.catolica.Artepax.evento.dto.GastoEventoResponseDTO;
+import com.catolica.Artepax.evento.dto.ResumenGastoEventoDTO;
 import com.catolica.Artepax.evento.service.GastoEventoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +41,12 @@ public class GastoEventoController {
     public ResponseEntity<List<GastoEventoResponseDTO>> obtenerPorEvento(
             @PathVariable Long eventoId) {
         return ResponseEntity.ok(gastoService.obtenerPorEvento(eventoId));
+    }
+
+    @GetMapping("/evento/{eventoId}/resumen")
+    public ResponseEntity<ResumenGastoEventoDTO> obtenerResumen(
+            @PathVariable Long eventoId) {
+        return ResponseEntity.ok(gastoService.getResumen(eventoId));
     }
 
     @GetMapping("/{id}")

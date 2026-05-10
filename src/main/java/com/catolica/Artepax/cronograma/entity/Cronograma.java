@@ -31,7 +31,7 @@ public class Cronograma {
     private LocalDateTime fechaFin;
 
     @Column(name = "crono_estado", nullable = false, length = 15)
-    private String cronoEstado = CronogramaEstado.PENDIENTE.getValor();
+    private String cronoEstado = CronogramaEstados.PENDIENTE;
 
     @Column(name = "crono_observacion", length = 255)
     private String cronoObservacion;

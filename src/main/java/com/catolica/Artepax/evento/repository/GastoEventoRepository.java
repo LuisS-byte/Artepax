@@ -5,8 +5,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Repository
@@ -16,4 +18,14 @@ public interface GastoEventoRepository extends JpaRepository<GastoEvento, Long> 
     @Query(value = "SELECT g FROM GastoEvento g JOIN FETCH g.evento e JOIN FETCH e.cliente JOIN FETCH e.estadoEvento",
            countQuery = "SELECT COUNT(g) FROM GastoEvento g")
     Page<GastoEvento> findAllWithEvento(Pageable pageable);
+
+    @Query("""
+            SELECT COALESCE(SUM(g.gastoMonto), 0)
+            FROM GastoEvento g
+            WHERE g.evento.id = :eventoId
+              AND g.gastoEstado = :estado
+            """)
+    BigDecimal sumMontoByEventoIdAndEstado(
+            @Param("eventoId") Long eventoId,
+            @Param("estado") String estado);
 }

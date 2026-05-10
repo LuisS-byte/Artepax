@@ -40,6 +40,19 @@ public class EventoNotificacionHandler {
     }
 
     /**
+     * Notifica que un evento fue confirmado manualmente por un administrador.
+     * Tipo: {@code CONFIRMACION_RESERVA}
+     */
+    public void notificarConfirmacionManual(Long eventoId, Evento evento) {
+        notificacionService.notificarAdmins(
+                "CONFIRMACION_RESERVA",
+                "El evento #" + eventoId + " - " + evento.getCliente().getNombre() +
+                        " fue confirmado manualmente. Fecha: " + evento.getFecha(),
+                evento);
+        log.info("notificacion_confirmacion_manual eventoId={}", eventoId);
+    }
+
+    /**
      * Notifica que un evento inició la fase de montaje.
      * Tipo: {@code INICIO_MONTAJE}
      */

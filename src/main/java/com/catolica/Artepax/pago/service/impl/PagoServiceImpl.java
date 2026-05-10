@@ -82,12 +82,13 @@ public class PagoServiceImpl implements PagoService {
         String estadoActual = evento.getEstadoEvento().getNombre();
         if (estadoActual.equals("CANCELADO")
                 || estadoActual.equals("CANCELACION_PENDIENTE")
-                || estadoActual.equals("FINALIZADO")) {
+                || estadoActual.equals("FINALIZADO")
+                || estadoActual.equals("COTIZACION")) {
             throw new PagoException(
                     "No se pueden registrar pagos en eventos con estado: " + estadoActual);
         }
 
-        BigDecimal totalPagado = pagoRepository.sumMontoConfirmadoByEventoId(dto.getEventoId());
+        BigDecimal totalPagado = pagoRepository.sumMontoActivoByEventoId(dto.getEventoId());
         BigDecimal precioTotal = evento.getPrecioTotal();
         if (totalPagado.add(dto.getMonto()).compareTo(precioTotal) > 0) {
             throw new PagoException(

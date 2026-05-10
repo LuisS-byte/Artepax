@@ -25,4 +25,6 @@ public interface DocumentoService {
     PlantillaResponseDTO obtenerPlantilla(Long idPlantilla);
 
     PlantillaResponseDTO actualizarPlantilla(Long idPlantilla, PlantillaUpdateDTO dto);
+
+    DocumentoResponseDTO generarAvisoSaldoPendiente(Long eventoId);
 }

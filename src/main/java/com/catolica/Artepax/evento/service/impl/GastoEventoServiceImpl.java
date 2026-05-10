@@ -2,6 +2,7 @@ package com.catolica.Artepax.evento.service.impl;
 
 import com.catolica.Artepax.evento.dto.GastoEventoRequestDTO;
 import com.catolica.Artepax.evento.dto.GastoEventoResponseDTO;
+import com.catolica.Artepax.evento.dto.ResumenGastoEventoDTO;
 import com.catolica.Artepax.evento.exception.EventoException;
 import com.catolica.Artepax.evento.exception.EventoNotFoundException;
 import com.catolica.Artepax.evento.exception.GastoEventoException;
@@ -18,6 +19,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import static com.catolica.Artepax.evento.model.EstadoEventoNames.ESTADOS_PERMITIDOS_GASTOS;
@@ -138,5 +140,19 @@ public class GastoEventoServiceImpl implements GastoEventoService {
         }
 
         return dto;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ResumenGastoEventoDTO getResumen(Long eventoId) {
+        if (!eventoRepository.existsById(eventoId)) {
+            throw new EventoNotFoundException(eventoId);
+        }
+
+        BigDecimal totalProyectado = gastoRepository.sumMontoByEventoIdAndEstado(eventoId, PROYECTADO);
+        BigDecimal totalDesembolsado = gastoRepository.sumMontoByEventoIdAndEstado(eventoId, DESEMBOLSADO);
+        BigDecimal totalPendiente = totalProyectado;
+
+        return new ResumenGastoEventoDTO(totalProyectado, totalDesembolsado, totalPendiente);
     }
 }

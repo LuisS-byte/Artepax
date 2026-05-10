@@ -26,10 +26,18 @@ public class VistaPagosEvento {
     @Column(name = "cobro_completo")
     private Boolean cobroCompleto;
 
+    @Column(name = "total_devolucion_pendiente")
+    private BigDecimal totalDevolucionPendiente;
+
+    @Column(name = "tiene_devolucion_pendiente")
+    private Boolean tieneDevolucionPendiente;
+
     // Getters
     public Long getIdEvento() { return idEvento; }
     public BigDecimal getPrecioTotal() { return precioTotal; }
     public BigDecimal getTotalCobrado() { return totalCobrado; }
     public BigDecimal getSaldoPendiente() { return saldoPendiente; }
     public Boolean getCobroCompleto() { return cobroCompleto; }
+    public BigDecimal getTotalDevolucionPendiente() { return totalDevolucionPendiente; }
+    public Boolean getTieneDevolucionPendiente() { return tieneDevolucionPendiente; }
 }

@@ -40,6 +40,16 @@ public class DocumentoController {
     }
 
     /**
+     * POST /api/documentos/evento/{idEvento}/aviso-saldo-pendiente
+     * Genera y envía un aviso formal de saldo pendiente al cliente.
+     */
+    @PostMapping("/evento/{idEvento}/aviso-saldo-pendiente")
+    public ResponseEntity<DocumentoResponseDTO> generarAvisoSaldoPendiente(
+            @PathVariable Long idEvento) {
+        return ResponseEntity.ok(documentoService.generarAvisoSaldoPendiente(idEvento));
+    }
+
+    /**
      * GET /api/documentos/evento/{idEvento}
      * Lista todos los documentos generados para un evento.
      */

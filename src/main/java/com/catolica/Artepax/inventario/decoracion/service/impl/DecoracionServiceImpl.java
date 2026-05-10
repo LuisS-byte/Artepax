@@ -14,8 +14,10 @@ import com.catolica.Artepax.inventario.decoracion.repository.DecoracionProductoR
 import com.catolica.Artepax.inventario.decoracion.repository.DecoracionRepository;
 import com.catolica.Artepax.inventario.decoracion.service.DecoracionService;
 import com.catolica.Artepax.inventario.producto.entity.Producto;
+import com.catolica.Artepax.inventario.producto.entity.StockProducto;
 import com.catolica.Artepax.inventario.producto.exception.ProductoNotFoundException;
 import com.catolica.Artepax.inventario.producto.repository.ProductoRepository;
+import com.catolica.Artepax.inventario.producto.repository.StockProductoRepository;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -32,11 +34,13 @@ public class DecoracionServiceImpl implements DecoracionService {
     private final DecoracionRepository decoracionRepository;
     private final DecoracionProductoRepository decoracionProductoRepository;
     private final ProductoRepository productoRepository;
+    private final StockProductoRepository stockProductoRepository;
     private final DecoracionMapper decoracionMapper;
 
     @Override
     @Transactional
     public DecoracionResponseDTO crearDecoracion(DecoracionRequestDTO dto) {
+        validarStockProductos(dto.getProductos());
 
         // guardar decoracion
         Decoracion decoracion = decoracionMapper.toEntity(dto);
@@ -105,6 +109,7 @@ public class DecoracionServiceImpl implements DecoracionService {
 
         // si vienen productos nuevos, reemplazar los existentes
         if (dto.getProductos() != null && !dto.getProductos().isEmpty()) {
+            validarStockProductos(dto.getProductos());
 
             // borrar asociaciones anteriores
             List<DecoracionProducto> anteriores =
@@ -145,5 +150,34 @@ public class DecoracionServiceImpl implements DecoracionService {
 
         decoracion.setEstado("INACTIVO");
         decoracionRepository.save(decoracion);
+    }
+
+    private void validarStockProductos(List<com.catolica.Artepax.inventario.decoracion.dto.DecoracionProductoRequestDTO> productos) {
+        Map<Long, Integer> cantidadesRequeridas = productos.stream()
+                .collect(Collectors.toMap(
+                        com.catolica.Artepax.inventario.decoracion.dto.DecoracionProductoRequestDTO::getProductoId,
+                        com.catolica.Artepax.inventario.decoracion.dto.DecoracionProductoRequestDTO::getCantidadRequerida,
+                        Integer::sum));
+
+        List<Long> productoIds = cantidadesRequeridas.keySet().stream().toList();
+        Map<Long, StockProducto> stockPorProductoId = stockProductoRepository.findAllByIdProductoIn(productoIds)
+                .stream()
+                .collect(Collectors.toMap(StockProducto::getIdProducto, stock -> stock));
+
+        for (Map.Entry<Long, Integer> entry : cantidadesRequeridas.entrySet()) {
+            StockProducto stock = stockPorProductoId.get(entry.getKey());
+            if (stock == null) {
+                throw new IllegalArgumentException("No se encontró stock para el producto con ID: " + entry.getKey());
+            }
+            if (Boolean.TRUE.equals(stock.getStockBajoAlerta())) {
+                throw new IllegalArgumentException(
+                        "No se puede usar el producto '" + stock.getNombre() + "' porque está en stock crítico");
+            }
+            if (stock.getCantidadDisponible() == null || stock.getCantidadDisponible() < entry.getValue()) {
+                throw new IllegalArgumentException(
+                        "Stock insuficiente para el producto '" + stock.getNombre() + "'. Disponible: "
+                                + stock.getCantidadDisponible() + ", requerido: " + entry.getValue());
+            }
+        }
     }
 }

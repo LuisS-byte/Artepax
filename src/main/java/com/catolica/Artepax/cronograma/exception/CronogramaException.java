@@ -13,12 +13,20 @@ public class CronogramaException extends ArtepaxException {
         this(HttpStatus.BAD_REQUEST, message);
     }
 
+    public CronogramaException(String errorCode, String message) {
+        this(HttpStatus.BAD_REQUEST, errorCode, message);
+    }
+
     public CronogramaException(String message, Throwable cause) {
         this(HttpStatus.BAD_REQUEST, message, cause);
     }
 
     protected CronogramaException(HttpStatus status, String message) {
         super(status, message);
+    }
+
+    protected CronogramaException(HttpStatus status, String errorCode, String message) {
+        super(status, message, errorCode);
     }
 
     protected CronogramaException(HttpStatus status, String message, Throwable cause) {

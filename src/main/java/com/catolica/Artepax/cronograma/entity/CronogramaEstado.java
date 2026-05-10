@@ -8,10 +8,10 @@ import java.util.Set;
  */
 public enum CronogramaEstado {
 
-    PENDIENTE("PENDIENTE"),
-    EN_PROGRESO("EN_PROGRESO"),
-    COMPLETADO("COMPLETADO"),
-    CANCELADO("CANCELADO");
+    PENDIENTE(CronogramaEstados.PENDIENTE),
+    EN_PROGRESO(CronogramaEstados.EN_PROGRESO),
+    COMPLETADO(CronogramaEstados.COMPLETADO),
+    CANCELADO(CronogramaEstados.CANCELADO);
 
     private final String valor;
 

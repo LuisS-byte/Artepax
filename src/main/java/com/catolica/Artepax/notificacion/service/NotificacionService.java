@@ -8,6 +8,6 @@ import java.util.List;
 public interface NotificacionService {
 
     void notificarAdmins(String tipoNombre, String mensaje, Evento evento);
-    void marcarLeida(Long notificacionId);
+    void marcarLeida(Long notificacionId, Long idUsuarioAutenticado);
     List<NotificacionResponseDTO> obtenerMias(Long usuarioId);
 }

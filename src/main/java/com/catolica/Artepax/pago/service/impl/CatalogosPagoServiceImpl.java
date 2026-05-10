@@ -13,6 +13,8 @@ import java.util.List;
 @Service
 public class CatalogosPagoServiceImpl implements CatalogosPagoService {
 
+    private static final String PATRON_CONTIENE_LETRA = ".*[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ].*";
+
     private final EstadoPagoRepository estadoRepo;
     private final ConceptoPagoRepository conceptoRepo;
     private final MetodoPagoRepository metodoRepo;
@@ -54,6 +56,9 @@ public class CatalogosPagoServiceImpl implements CatalogosPagoService {
 
     @Override
     public MetodoPagoResponseDTO crearMetodo(String nombre, String descripcion) {
+        validarTexto(nombre, "nombre");
+        validarDescripcion(descripcion);
+
         metodoRepo.findByMetodoNombre(nombre)
                 .ifPresent(existing -> {
                     throw new MetodoPagoDuplicadoException(nombre);
@@ -81,5 +86,17 @@ public class CatalogosPagoServiceImpl implements CatalogosPagoService {
         dto.setMetodoDescripcion(m.getMetodoDescripcion());
         dto.setMetodoActivo(m.getMetodoActivo());
         return dto;
+    }
+
+    private void validarTexto(String valor, String campo) {
+        if (valor == null || valor.isBlank() || !valor.matches(PATRON_CONTIENE_LETRA)) {
+            throw new IllegalArgumentException("El " + campo + " debe contener texto válido");
+        }
+    }
+
+    private void validarDescripcion(String descripcion) {
+        if (descripcion != null && !descripcion.isBlank() && !descripcion.matches(PATRON_CONTIENE_LETRA)) {
+            throw new IllegalArgumentException("La descripción debe contener texto válido");
+        }
     }
 }

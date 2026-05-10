@@ -1,8 +1,13 @@
 package com.catolica.Artepax.evento.service.impl;
 
+import com.catolica.Artepax.common.audit.EventoAuditSnapshot;
+import com.catolica.Artepax.common.audit.ReservaAuditSnapshot;
+import com.catolica.Artepax.common.service.AuditoriaService;
 import com.catolica.Artepax.common.service.ConfiguracionService;
 import com.catolica.Artepax.cronograma.service.CronogramaService;
 import com.catolica.Artepax.evento.dto.CalendarioEventoDTO;
+import com.catolica.Artepax.evento.dto.EventoExtraItemRequestDTO;
+import com.catolica.Artepax.evento.dto.EventoExtraRequestDTO;
 import com.catolica.Artepax.evento.dto.EventoRequestDTO;
 import com.catolica.Artepax.evento.dto.EventoResponseDTO;
 import com.catolica.Artepax.evento.dto.EventoUpdateDTO;
@@ -24,10 +29,13 @@ import com.catolica.Artepax.evento.service.EventoService;
 import com.catolica.Artepax.evento.service.handler.EventoNotificacionHandler;
 import com.catolica.Artepax.evento.service.handler.EventoPagoValidator;
 import com.catolica.Artepax.evento.service.handler.EventoStockHandler;
+import com.catolica.Artepax.pago.service.handler.PagoCancelacionHandler;
 import com.catolica.Artepax.clientes.entity.Cliente;
 import com.catolica.Artepax.clientes.repository.ClienteRepository;
 import com.catolica.Artepax.inventario.decoracion.entity.Decoracion;
 import com.catolica.Artepax.inventario.decoracion.repository.DecoracionRepository;
+import com.catolica.Artepax.inventario.producto.entity.Producto;
+import com.catolica.Artepax.inventario.producto.repository.ProductoRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
@@ -38,9 +46,14 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import static com.catolica.Artepax.evento.model.EstadoEventoNames.*;
+import static com.catolica.Artepax.common.constant.AuditoriaAcciones.*;
+import static com.catolica.Artepax.common.constant.AuditoriaTablas.EVENTO;
+import static com.catolica.Artepax.common.constant.AuditoriaTablas.EVENTO_PRODUCTO;
 
 /**
  * Orquestador del ciclo de vida de eventos.
@@ -53,12 +66,14 @@ import static com.catolica.Artepax.evento.model.EstadoEventoNames.*;
 public class EventoServiceImpl implements EventoService {
 
     private static final Logger log = LoggerFactory.getLogger(EventoServiceImpl.class);
+    private static final int MINIMO_GAP_ENTRE_EVENTOS_MINUTOS = 120;
 
     private final EventoRepository eventoRepository;
     private final ClienteRepository clienteRepository;
     private final DecoracionRepository decoracionRepository;
     private final EstadoEventoRepository estadoEventoRepository;
     private final TipoEventoRepository tipoEventoRepository;
+    private final ProductoRepository productoRepository;
     private final EventoMapper eventoMapper;
     private final ConfiguracionService configuracionService;
     private final CronogramaService cronogramaService;
@@ -67,25 +82,31 @@ public class EventoServiceImpl implements EventoService {
     private final EventoStockHandler stockHandler;
     private final EventoNotificacionHandler notificacionHandler;
     private final EventoPagoValidator pagoValidator;
+    private final AuditoriaService auditoriaService;
+    private final PagoCancelacionHandler pagoCancelacionHandler;
 
     public EventoServiceImpl(EventoRepository eventoRepository,
                              ClienteRepository clienteRepository,
                              DecoracionRepository decoracionRepository,
                              EstadoEventoRepository estadoEventoRepository,
                              TipoEventoRepository tipoEventoRepository,
+                             ProductoRepository productoRepository,
                              EventoMapper eventoMapper,
                              ConfiguracionService configuracionService,
                              @Lazy CronogramaService cronogramaService,
                              VistaRentabilidadEventoRepository vistaRentabilidadEventoRepository,
                              VistaEventosPeriodoRepository vistaEventosPeriodoRepository,
                              EventoStockHandler stockHandler,
-                             EventoNotificacionHandler notificacionHandler,
-                             EventoPagoValidator pagoValidator) {
+                              EventoNotificacionHandler notificacionHandler,
+                              EventoPagoValidator pagoValidator,
+                              AuditoriaService auditoriaService,
+                              PagoCancelacionHandler pagoCancelacionHandler) {
         this.eventoRepository = eventoRepository;
         this.clienteRepository = clienteRepository;
         this.decoracionRepository = decoracionRepository;
         this.estadoEventoRepository = estadoEventoRepository;
         this.tipoEventoRepository = tipoEventoRepository;
+        this.productoRepository = productoRepository;
         this.eventoMapper = eventoMapper;
         this.configuracionService = configuracionService;
         this.cronogramaService = cronogramaService;
@@ -94,6 +115,8 @@ public class EventoServiceImpl implements EventoService {
         this.stockHandler = stockHandler;
         this.notificacionHandler = notificacionHandler;
         this.pagoValidator = pagoValidator;
+        this.auditoriaService = auditoriaService;
+        this.pagoCancelacionHandler = pagoCancelacionHandler;
     }
 
     @Override
@@ -143,6 +166,8 @@ public class EventoServiceImpl implements EventoService {
         Evento evento = obtenerOFallar(id);
         validarTransicion(evento, COTIZACION, PROGRAMADO);
 
+        EventoAuditSnapshot antes = toAuditSnapshot(evento);
+
         stockHandler.validarYReservarStock(evento);
 
         EstadoEvento estadoProgramado = estadoEventoRepository.findByNombre(PROGRAMADO)
@@ -151,6 +176,10 @@ public class EventoServiceImpl implements EventoService {
         evento.setEstadoEvento(estadoProgramado);
         Evento guardado = eventoRepository.save(evento);
         log.info("evento_programado id={}", id);
+
+        EventoAuditSnapshot despues = toAuditSnapshot(guardado);
+        auditoriaService.registrar(PROGRAMAR, EVENTO, id, antes, despues,
+                "Evento programado — reservas de stock creadas");
 
         return eventoMapper.toResponseDTO(guardado);
     }
@@ -162,6 +191,8 @@ public class EventoServiceImpl implements EventoService {
         validarTransicion(evento, PROGRAMADO, CONFIRMADO);
         pagoValidator.validarAnticipoMinimo(evento);
 
+        EventoAuditSnapshot antes = toAuditSnapshot(evento);
+
         EstadoEvento estadoConfirmado = estadoEventoRepository.findByNombre(CONFIRMADO)
                 .orElseThrow(() -> new EventoException("Estado CONFIRMADO no encontrado en BD"));
 
@@ -169,6 +200,12 @@ public class EventoServiceImpl implements EventoService {
         evento.setFechaConfirmacion(LocalDateTime.now());
         Evento guardado = eventoRepository.save(evento);
         log.info("evento_confirmado id={}", id);
+
+        EventoAuditSnapshot despues = toAuditSnapshot(guardado);
+        auditoriaService.registrar(CONFIRMAR, EVENTO, id, antes, despues,
+                "Evento confirmado manualmente — anticipo mínimo validado");
+
+        notificacionHandler.notificarConfirmacionManual(id, guardado);
 
         return eventoMapper.toResponseDTO(guardado);
     }
@@ -183,12 +220,18 @@ public class EventoServiceImpl implements EventoService {
 
         pagoValidator.validarAnticipoMinimo(evento);
 
+        EventoAuditSnapshot antes = toAuditSnapshot(evento);
+
         EstadoEvento estadoConfirmado = estadoEventoRepository.findByNombre(CONFIRMADO)
                 .orElseThrow(() -> new EventoException("Estado CONFIRMADO no encontrado en BD"));
 
         evento.setEstadoEvento(estadoConfirmado);
         evento.setFechaConfirmacion(LocalDateTime.now());
         eventoRepository.save(evento);
+
+        EventoAuditSnapshot despues = toAuditSnapshot(evento);
+        auditoriaService.registrar(CONFIRMAR, EVENTO, id, antes, despues,
+                "Confirmación automática por anticipo mínimo alcanzado");
 
         notificacionHandler.notificarConfirmacionAutomatica(id, evento);
     }
@@ -305,10 +348,13 @@ public class EventoServiceImpl implements EventoService {
         Evento evento = obtenerOFallar(id);
         validarTransicion(evento, CANCELACION_PENDIENTE, CANCELADO);
 
+        pagoCancelacionHandler.procesarPagosPorCancelacion(evento, evento.getMotivoCancelacion());
+
         EstadoEvento estadoCancelado = estadoEventoRepository.findByNombre(CANCELADO)
                 .orElseThrow(() -> new EventoException(
                         "Estado CANCELADO no encontrado en BD"));
 
+        stockHandler.liberarReservas(evento, evento.getMotivoCancelacion());
         evento.setEstadoEvento(estadoCancelado);
         evento.setEstadoAnterior(null);
         cronogramaService.cancelarPorEvento(id);
@@ -333,7 +379,7 @@ public class EventoServiceImpl implements EventoService {
         if (inicio.isAfter(fin)) {
             throw new EventoException("La fecha inicio no puede ser mayor a la fecha fin");
         }
-        return vistaEventosPeriodoRepository.findByFechaEventoBetween(inicio, fin)
+        return vistaEventosPeriodoRepository.findByFechaEventoBetweenOrderByFechaEventoAscHoraInicioAsc(inicio, fin)
                 .stream()
                 .map(v -> {
                     CalendarioEventoDTO dto = new CalendarioEventoDTO();
@@ -398,9 +444,11 @@ public class EventoServiceImpl implements EventoService {
     @Transactional
     public EventoResponseDTO actualizarEvento(Long id, EventoUpdateDTO dto) {
         Evento evento = obtenerOFallar(id);
+        ModoEdicion modo = validarEventoEditable(evento);
 
-        validarEventoEditable(evento);
-        validarHorarioParcial(dto.getHoraInicio(), dto.getHoraFin());
+        if (modo == ModoEdicion.PARCIAL) {
+            validarCamposNoEditablesEnParcial(dto);
+        }
 
         Cliente cliente = dto.getClienteId() != null
                 ? clienteRepository.findById(dto.getClienteId())
@@ -421,9 +469,13 @@ public class EventoServiceImpl implements EventoService {
         String ubicacionFinal = dto.getUbicacion() != null ? dto.getUbicacion() : evento.getUbicacion();
         String notaPrecioFinal = dto.getNotaPrecio() != null ? dto.getNotaPrecio() : evento.getNotaPrecio();
 
-        validarFechaNoPasada(fechaFinal);
-        validarHorario(horaInicioFinal, horaFinFinal);
-        validarDisponibilidad(fechaFinal, horaInicioFinal, horaFinFinal, ubicacionFinal, evento.getId());
+        if (modo == ModoEdicion.COMPLETA) {
+            validarFechaNoPasada(fechaFinal);
+            validarHorario(horaInicioFinal, horaFinFinal);
+            validarDisponibilidad(fechaFinal, horaInicioFinal, horaFinFinal, ubicacionFinal, evento.getId());
+        } else {
+            validarHorarioParcial(dto.getHoraInicio(), dto.getHoraFin());
+        }
         validarNotaPrecioAdicional(evento.getPrecioAdicional(), notaPrecioFinal);
 
         eventoMapper.updateEntityFromDTO(evento, dto, cliente, decoracion);
@@ -431,7 +483,40 @@ public class EventoServiceImpl implements EventoService {
         evento.setDecoracion(decoracion);
         evento.setPrecioBase(decoracion.getPrecio());
         Evento guardado = eventoRepository.save(evento);
-        log.info("evento_actualizado id={}", id);
+        log.info("evento_actualizado id={} modo={}", id, modo);
+
+        return eventoMapper.toResponseDTO(guardado);
+    }
+
+    @Override
+    @Transactional
+    public EventoResponseDTO agregarExtras(Long id, EventoExtraRequestDTO dto) {
+        Evento evento = obtenerOFallar(id);
+        validarEventoPermiteExtras(evento);
+        validarNotaPrecioExtra(dto.getNotaPrecio());
+        validarMontoAdicionalExtra(dto.getMontoAdicional());
+
+        EventoAuditSnapshot antes = toAuditSnapshot(evento);
+
+        Map<Long, Integer> cantidadesPorProductoId = consolidarCantidadesExtra(dto);
+        Map<Producto, Integer> productosExtra = obtenerProductosExtra(cantidadesPorProductoId);
+
+        stockHandler.validarYReservarExtras(evento, productosExtra);
+
+        BigDecimal precioAdicionalActual = evento.getPrecioAdicional() != null
+                ? evento.getPrecioAdicional()
+                : BigDecimal.ZERO;
+
+        evento.setPrecioAdicional(precioAdicionalActual.add(dto.getMontoAdicional()));
+        evento.setNotaPrecio(combinarNotaPrecio(evento.getNotaPrecio(), dto.getNotaPrecio()));
+
+        Evento guardado = eventoRepository.save(evento);
+        log.info("evento_extras_agregados id={} productos={} incremento={}",
+                id, productosExtra.size(), dto.getMontoAdicional());
+
+        EventoAuditSnapshot despues = toAuditSnapshot(guardado);
+        auditoriaService.registrar(AGREGAR_EXTRAS, EVENTO, id, antes, despues,
+                "Extras agregados: " + productosExtra.size() + " productos, incremento $" + dto.getMontoAdicional());
 
         return eventoMapper.toResponseDTO(guardado);
     }
@@ -511,7 +596,7 @@ public class EventoServiceImpl implements EventoService {
                 fecha, horaInicio, horaFin, ubicacion, eventoIdExcluir);
 
         if (existeSolapamiento) {
-            throw new EventoException("Ya existe un evento solapado en esa fecha, horario y ubicación");
+            throw new EventoException("Ya existe un evento solapado en esa fecha y horario");
         }
     }
 
@@ -520,16 +605,102 @@ public class EventoServiceImpl implements EventoService {
                                        LocalTime horaFin,
                                        String ubicacion,
                                        Long eventoIdExcluir) {
+        int gapMinutos;
+        try {
+            gapMinutos = configuracionService.getInt("MINUTOS_GAP_ENTRE_EVENTOS");
+        } catch (Exception e) {
+            gapMinutos = 0;
+        }
+        gapMinutos = Math.max(gapMinutos, MINIMO_GAP_ENTRE_EVENTOS_MINUTOS);
+        LocalTime horaInicioConGap = horaInicio.minusMinutes(gapMinutos);
+        LocalTime horaFinConGap = horaFin.plusMinutes(gapMinutos);
+
         return eventoIdExcluir == null
-                ? eventoRepository.existeSolapamiento(fecha, horaInicio, horaFin, ubicacion)
+                ? eventoRepository.existeSolapamiento(fecha, horaInicioConGap, horaFinConGap, ubicacion)
                 : eventoRepository.existeSolapamientoExcluyendoEvento(
-                        eventoIdExcluir, fecha, horaInicio, horaFin, ubicacion);
+                        eventoIdExcluir, fecha, horaInicioConGap, horaFinConGap, ubicacion);
     }
 
-    private void validarEventoEditable(Evento evento) {
-        if (!COTIZACION.equals(evento.getEstadoEvento().getNombre())) {
-            throw new EventoException("Solo se pueden editar eventos en estado COTIZACION");
+    private enum ModoEdicion { COMPLETA, PARCIAL }
+
+    private ModoEdicion validarEventoEditable(Evento evento) {
+        String estado = evento.getEstadoEvento().getNombre();
+        if (COTIZACION.equals(estado)) {
+            return ModoEdicion.COMPLETA;
         }
+        if (PROGRAMADO.equals(estado)) {
+            return ModoEdicion.PARCIAL;
+        }
+        throw new EventoException(
+                "Solo se pueden editar eventos en estado COTIZACION o PROGRAMADO");
+    }
+
+    private void validarCamposNoEditablesEnParcial(EventoUpdateDTO dto) {
+        if (dto.getClienteId() != null || dto.getDecoracionId() != null
+                || dto.getFecha() != null || dto.getHoraInicio() != null
+                || dto.getHoraFin() != null) {
+            throw new EventoException(
+                    "En estado PROGRAMADO solo se pueden editar ubicación, nota y motivo del precio adicional");
+        }
+    }
+
+    private void validarEventoPermiteExtras(Evento evento) {
+        String estado = evento.getEstadoEvento().getNombre();
+        if (!PROGRAMADO.equals(estado) && !CONFIRMADO.equals(estado)) {
+            throw new EventoException(
+                    "Solo se pueden agregar extras a eventos en estado PROGRAMADO o CONFIRMADO");
+        }
+    }
+
+    private void validarNotaPrecioExtra(String notaPrecio) {
+        if (notaPrecio == null || notaPrecio.isBlank()) {
+            throw new EventoException("La nota de precio es obligatoria");
+        }
+    }
+
+    private void validarMontoAdicionalExtra(BigDecimal montoAdicional) {
+        if (montoAdicional == null) {
+            throw new EventoException("El monto adicional es obligatorio");
+        }
+
+        if (montoAdicional.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new EventoException("El monto adicional debe ser mayor a 0");
+        }
+    }
+
+    private Map<Long, Integer> consolidarCantidadesExtra(EventoExtraRequestDTO dto) {
+        Map<Long, Integer> cantidades = new LinkedHashMap<>();
+
+        for (EventoExtraItemRequestDTO item : dto.getItems()) {
+            cantidades.merge(item.getProductoId(), item.getCantidad(), Integer::sum);
+        }
+
+        return cantidades;
+    }
+
+    private Map<Producto, Integer> obtenerProductosExtra(Map<Long, Integer> cantidadesPorProductoId) {
+        Map<Producto, Integer> productosExtra = new LinkedHashMap<>();
+
+        for (Map.Entry<Long, Integer> entry : cantidadesPorProductoId.entrySet()) {
+            Producto producto = productoRepository.findById(entry.getKey())
+                    .orElseThrow(() -> new EventoException("Producto no encontrado o inactivo"));
+
+            if (!"ACTIVO".equals(producto.getEstado())) {
+                throw new EventoException("Producto no encontrado o inactivo");
+            }
+
+            productosExtra.put(producto, entry.getValue());
+        }
+
+        return productosExtra;
+    }
+
+    private String combinarNotaPrecio(String notaActual, String notaExtra) {
+        if (notaActual == null || notaActual.isBlank()) {
+            return notaExtra.trim();
+        }
+
+        return notaActual + " | " + notaExtra.trim();
     }
 
     private void validarParametrosDisponibilidad(LocalTime horaInicio,
@@ -547,5 +718,19 @@ public class EventoServiceImpl implements EventoService {
         }
 
         throw new EventoException("No se permite actualizar solo una parte del horario");
+    }
+
+    private EventoAuditSnapshot toAuditSnapshot(Evento e) {
+        return new EventoAuditSnapshot(
+                e.getId(),
+                e.getEstadoEvento() != null ? e.getEstadoEvento().getNombre() : null,
+                e.getPrecioBase(),
+                e.getPrecioAdicional(),
+                e.getPrecioTotal(),
+                e.getFecha(),
+                e.getHoraInicio(),
+                e.getHoraFin(),
+                e.getUbicacion(),
+                e.getMotivoCancelacion());
     }
 }

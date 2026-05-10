@@ -7,4 +7,6 @@ import java.time.LocalDate;
 import java.util.List;
 public interface VistaEventosPeriodoRepository extends JpaRepository<VistaEventosPeriodo, Long> {
     List<VistaEventosPeriodo> findByFechaEventoBetween(LocalDate inicio, LocalDate fin);
+
+    List<VistaEventosPeriodo> findByFechaEventoBetweenOrderByFechaEventoAscHoraInicioAsc(LocalDate inicio, LocalDate fin);
 }

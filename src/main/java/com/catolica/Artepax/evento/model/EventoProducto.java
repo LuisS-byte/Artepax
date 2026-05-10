@@ -3,6 +3,8 @@ package com.catolica.Artepax.evento.model;
 import com.catolica.Artepax.inventario.producto.entity.Producto;
 import jakarta.persistence.*;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "evento_producto")
 public class EventoProducto {
@@ -22,6 +24,19 @@ public class EventoProducto {
     @Column(name = "cantidad_reservada", nullable = false)
     private Integer cantidadReservada;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_estado_reserva", nullable = false)
+    private EstadoReserva estadoReserva;
+
+    @Column(name = "fecha_reserva", nullable = false)
+    private LocalDateTime fechaReserva;
+
+    @Column(name = "fecha_liberacion")
+    private LocalDateTime fechaLiberacion;
+
+    @Column(name = "motivo_liberacion")
+    private String motivoLiberacion;
+
     public EventoProducto() {}
 
     public EventoProductoId getId() { return id; }
@@ -35,5 +50,17 @@ public class EventoProducto {
 
     public Integer getCantidadReservada() { return cantidadReservada; }
     public void setCantidadReservada(Integer cantidadReservada) { this.cantidadReservada = cantidadReservada; }
+
+    public EstadoReserva getEstadoReserva() { return estadoReserva; }
+    public void setEstadoReserva(EstadoReserva estadoReserva) { this.estadoReserva = estadoReserva; }
+
+    public LocalDateTime getFechaReserva() { return fechaReserva; }
+    public void setFechaReserva(LocalDateTime fechaReserva) { this.fechaReserva = fechaReserva; }
+
+    public LocalDateTime getFechaLiberacion() { return fechaLiberacion; }
+    public void setFechaLiberacion(LocalDateTime fechaLiberacion) { this.fechaLiberacion = fechaLiberacion; }
+
+    public String getMotivoLiberacion() { return motivoLiberacion; }
+    public void setMotivoLiberacion(String motivoLiberacion) { this.motivoLiberacion = motivoLiberacion; }
 
 }

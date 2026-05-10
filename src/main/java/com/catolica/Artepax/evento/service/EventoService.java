@@ -46,6 +46,11 @@ public interface EventoService {
     EventoResponseDTO actualizarEvento(Long id, EventoUpdateDTO updateDTO);
 
     /**
+     * Agrega productos extra a un evento operativo sin reabrir la edición general.
+     */
+    EventoResponseDTO agregarExtras(Long id, EventoExtraRequestDTO requestDTO);
+
+    /**
      * Verifica si existe disponibilidad en una fecha, hora y ubicación.
      */
     boolean verificarDisponibilidad(LocalDate fecha,

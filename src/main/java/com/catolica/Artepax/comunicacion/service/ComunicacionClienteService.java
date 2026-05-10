@@ -59,6 +59,24 @@ public class ComunicacionClienteService {
     }
 
     /**
+     * Envía aviso de saldo pendiente al cliente con documento PDF adjunto.
+     */
+    public void enviarAvisoSaldoPendienteConDocumento(Evento evento, byte[] pdfBytes) {
+        String correo = evento.getCliente().getCorreo();
+        if (correo == null || correo.isBlank()) {
+            throw new IllegalArgumentException("El cliente no tiene correo registrado.");
+        }
+
+        String negocioNombre = configuracionService.getString(CONFIG_NEGOCIO_NOMBRE);
+        String asunto = "Aviso de saldo pendiente - " + negocioNombre;
+        String cuerpo = construirCuerpoAvisoSaldoPendiente(evento, negocioNombre);
+        String nombreArchivo = "aviso_saldo_pendiente_" + evento.getId() + ".pdf";
+
+        emailService.enviarConAdjunto(correo, asunto, cuerpo, pdfBytes, nombreArchivo);
+        log.info("Aviso de saldo pendiente con documento enviado a cliente del evento {}", evento.getId());
+    }
+
+    /**
      * Envía aviso de saldo pendiente al cliente (sin adjunto).
      */
     public void enviarAvisoSaldoPendiente(Evento evento, BigDecimal saldoPendiente) {
@@ -127,6 +145,22 @@ public class ComunicacionClienteService {
                 + "<li><b>Ubicación:</b> " + safe(evento.getUbicacion()) + "</li>"
                 + "</ul>"
                 + "<p>Si tenés alguna consulta, no dudes en contactarnos al " + configuracionService.getString(CONFIG_NEGOCIO_TELEFONO) + ".</p>"
+                + "<p><b>" + negocioNombre + "</b></p>";
+    }
+
+    private String construirCuerpoAvisoSaldoPendiente(Evento evento, String negocioNombre) {
+        DateTimeFormatter fechaFmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+        return "<p>Estimado/a <b>" + evento.getCliente().getNombre() + "</b>,</p>"
+                + "<p>Le informamos que su evento aún registra un saldo pendiente. "
+                + "Adjuntamos el documento formal con los detalles.</p>"
+                + "<ul>"
+                + "<li><b>Tipo de evento:</b> " + safe(evento.getTipoEvento() != null ? evento.getTipoEvento().getTipoNombre() : "") + "</li>"
+                + "<li><b>Fecha:</b> " + safe(evento.getFecha() != null ? evento.getFecha().format(fechaFmt) : "") + "</li>"
+                + "<li><b>Ubicación:</b> " + safe(evento.getUbicacion()) + "</li>"
+                + "</ul>"
+                + "<p>Si ya realizó el pago, puede ignorar este aviso o comunicarse con nosotros al "
+                + configuracionService.getString(CONFIG_NEGOCIO_TELEFONO) + " para confirmar la actualización.</p>"
                 + "<p><b>" + negocioNombre + "</b></p>";
     }
 

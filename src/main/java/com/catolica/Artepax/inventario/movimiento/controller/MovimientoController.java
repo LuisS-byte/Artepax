@@ -1,5 +1,6 @@
 package com.catolica.Artepax.inventario.movimiento.controller;
 
+import com.catolica.Artepax.inventario.movimiento.dto.AjusteInventarioRequestDTO;
 import com.catolica.Artepax.inventario.movimiento.dto.MovimientoRequestDTO;
 import com.catolica.Artepax.inventario.movimiento.dto.MovimientoResponseDTO;
 import com.catolica.Artepax.inventario.movimiento.service.MovimientoService;
@@ -13,7 +14,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/inventario")
@@ -42,12 +42,10 @@ public class MovimientoController {
 
     // Ajuste por conteo físico — calcula diferencia automáticamente
     @PostMapping("/ajuste/{productoId}")
-    public ResponseEntity<Void> ajuste(
+    public ResponseEntity<Void> ajustarStock(
             @PathVariable Long productoId,
-            @RequestBody Map<String, Object> body) {
-        Integer cantidadFisica = ((Number) body.get("cantidadFisica")).intValue(); // P15: cast seguro
-        String motivo = (String) body.getOrDefault("motivo", "Ajuste manual");
-        movimientoService.registrarAjuste(productoId, cantidadFisica, motivo);
+            @Valid @RequestBody AjusteInventarioRequestDTO request) {
+        movimientoService.registrarAjuste(productoId, request);
         return ResponseEntity.noContent().build();
     }
 

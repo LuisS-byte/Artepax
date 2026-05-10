@@ -116,7 +116,7 @@ class PagoServiceImplTest {
         ConceptoPago concepto = new ConceptoPago();
 
         when(eventoRepository.findById(10L)).thenReturn(Optional.of(evento));
-        when(pagoRepository.sumMontoConfirmadoByEventoId(10L)).thenReturn(BigDecimal.ZERO);
+        when(pagoRepository.sumMontoActivoByEventoId(10L)).thenReturn(BigDecimal.ZERO);
         when(estadoPagoRepository.findByEstadoNombre("PENDIENTE")).thenReturn(Optional.of(estadoPendiente));
         when(metodoPagoRepository.findById(3L)).thenReturn(Optional.of(metodoInactivo));
 

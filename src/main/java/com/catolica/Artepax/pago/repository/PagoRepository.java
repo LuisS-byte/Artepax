@@ -47,6 +47,10 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
             "AND p.conceptoPago.conceptoNombre = :conceptoNombre")
     BigDecimal sumMontoConfirmadoByEventoIdAndConceptoNombre(Long eventoId, String conceptoNombre);
 
+    BigDecimal sumMontoActivoByEventoId(Long eventoId);
+
+    List<Pago> findByEventoIdAndEstadoPago_EstadoNombreIn(Long eventoId, List<String> estados);
+
     // Listado global paginado con JOIN para evitar N+1
     @Query(value = """
             SELECT p

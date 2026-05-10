@@ -2,6 +2,7 @@ package com.catolica.Artepax.evento.controller;
 
 import com.catolica.Artepax.evento.dto.CalendarioEventoDTO;
 import com.catolica.Artepax.evento.dto.CancelacionEventoRequestDTO;
+import com.catolica.Artepax.evento.dto.EventoExtraRequestDTO;
 import com.catolica.Artepax.evento.dto.EventoRequestDTO;
 import com.catolica.Artepax.evento.dto.EventoResponseDTO;
 import com.catolica.Artepax.evento.dto.EventoUpdateDTO;
@@ -63,6 +64,14 @@ public class EventoController {
             @Valid @RequestBody EventoUpdateDTO updateDTO) {
         log.info("PUT /api/eventos/{}", id);
         return ResponseEntity.ok(eventoService.actualizarEvento(id, updateDTO));
+    }
+
+    @PatchMapping("/{id}/extras")
+    public ResponseEntity<EventoResponseDTO> agregarExtras(
+            @PathVariable Long id,
+            @Valid @RequestBody EventoExtraRequestDTO requestDTO) {
+        log.info("PATCH /api/eventos/{}/extras items={}", id, requestDTO.getItems().size());
+        return ResponseEntity.ok(eventoService.agregarExtras(id, requestDTO));
     }
 
     @PatchMapping("/{id}/programar")

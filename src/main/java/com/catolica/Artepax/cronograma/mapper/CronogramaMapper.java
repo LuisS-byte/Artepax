@@ -3,6 +3,7 @@ package com.catolica.Artepax.cronograma.mapper;
 import com.catolica.Artepax.cronograma.dto.CronogramaRequestDTO;
 import com.catolica.Artepax.cronograma.dto.CronogramaResponseDTO;
 import com.catolica.Artepax.cronograma.entity.Cronograma;
+import com.catolica.Artepax.cronograma.service.policy.CronogramaPolicy;
 import com.catolica.Artepax.evento.model.Evento;
 import org.springframework.stereotype.Component;
 
@@ -11,6 +12,12 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class CronogramaMapper {
+
+    private final CronogramaPolicy cronogramaPolicy;
+
+    public CronogramaMapper(CronogramaPolicy cronogramaPolicy) {
+        this.cronogramaPolicy = cronogramaPolicy;
+    }
 
     /**
      * Convierte un request DTO a entidad Cronograma.
@@ -37,6 +44,11 @@ public class CronogramaMapper {
         dto.setFechaFin(cronograma.getFechaFin());
         dto.setCronoEstado(cronograma.getCronoEstado());
         dto.setCronoObservacion(cronograma.getCronoObservacion());
+        dto.setEditable(cronogramaPolicy.isEditable(cronograma.getCronoEstado()));
+        dto.setCancelable(cronogramaPolicy.isCancelable(cronograma.getCronoEstado()));
+        dto.setAccionesPermitidas(cronogramaPolicy.getAccionesPermitidas(cronograma.getCronoEstado()));
+        dto.setEstadosSiguientesPermitidos(
+                cronogramaPolicy.getEstadosSiguientesPermitidos(cronograma.getCronoEstado()));
 
         Evento evento = cronograma.getEvento();
         if (evento != null) {

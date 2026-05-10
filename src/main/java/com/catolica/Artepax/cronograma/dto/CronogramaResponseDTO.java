@@ -1,6 +1,7 @@
 package com.catolica.Artepax.cronograma.dto;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * DTO de respuesta para una actividad del cronograma.
@@ -17,6 +18,10 @@ public class CronogramaResponseDTO {
     private String cronoObservacion;
     private String clienteNombre;
     private String estadoEventoNombre;
+    private Boolean editable;
+    private Boolean cancelable;
+    private List<String> accionesPermitidas;
+    private List<String> estadosSiguientesPermitidos;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -44,4 +49,16 @@ public class CronogramaResponseDTO {
 
     public String getEstadoEventoNombre() { return estadoEventoNombre; }
     public void setEstadoEventoNombre(String estadoEventoNombre) { this.estadoEventoNombre = estadoEventoNombre; }
+
+    public Boolean getEditable() { return editable; }
+    public void setEditable(Boolean editable) { this.editable = editable; }
+
+    public Boolean getCancelable() { return cancelable; }
+    public void setCancelable(Boolean cancelable) { this.cancelable = cancelable; }
+
+    public List<String> getAccionesPermitidas() { return accionesPermitidas; }
+    public void setAccionesPermitidas(List<String> accionesPermitidas) { this.accionesPermitidas = accionesPermitidas; }
+
+    public List<String> getEstadosSiguientesPermitidos() { return estadosSiguientesPermitidos; }
+    public void setEstadosSiguientesPermitidos(List<String> estadosSiguientesPermitidos) { this.estadosSiguientesPermitidos = estadosSiguientesPermitidos; }
 }

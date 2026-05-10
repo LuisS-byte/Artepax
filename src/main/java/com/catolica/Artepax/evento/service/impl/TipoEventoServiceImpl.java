@@ -20,6 +20,8 @@ import java.util.List;
 @Slf4j
 public class TipoEventoServiceImpl implements TipoEventoService {
 
+    private static final String PATRON_CONTIENE_LETRA = ".*[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ].*";
+
     private final TipoEventoRepository repo;
 
     @Override
@@ -29,6 +31,9 @@ public class TipoEventoServiceImpl implements TipoEventoService {
 
     @Override
     public TipoEventoResponseDTO crear(String nombre, String descripcion) {
+        validarTexto(nombre, "nombre");
+        validarDescripcion(descripcion);
+
         TipoEvento t = new TipoEvento();
         t.setTipoNombre(nombre);
         t.setTipoDescripcion(descripcion);
@@ -55,5 +60,17 @@ public class TipoEventoServiceImpl implements TipoEventoService {
         dto.setTipoDescripcion(t.getTipoDescripcion());
         dto.setTipoActivo(t.getTipoActivo());
         return dto;
+    }
+
+    private void validarTexto(String valor, String campo) {
+        if (valor == null || valor.isBlank() || !valor.matches(PATRON_CONTIENE_LETRA)) {
+            throw new TipoEventoException("El " + campo + " debe contener texto válido");
+        }
+    }
+
+    private void validarDescripcion(String descripcion) {
+        if (descripcion != null && !descripcion.isBlank() && !descripcion.matches(PATRON_CONTIENE_LETRA)) {
+            throw new TipoEventoException("La descripción debe contener texto válido");
+        }
     }
 }

@@ -1,5 +1,7 @@
 package com.catolica.Artepax.common.exception;
 
+import com.catolica.Artepax.cronograma.exception.CronogramaErrorCode;
+import com.catolica.Artepax.cronograma.exception.CronogramaException;
 import com.catolica.Artepax.documento.exception.DocumentoOperacionNoPermitidaException;
 import com.catolica.Artepax.evento.exception.EventoNotFoundException;
 import com.catolica.Artepax.pago.exception.EstadoPagoNoConfiguradoException;
@@ -8,6 +10,7 @@ import com.catolica.Artepax.pago.exception.PagoException;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -35,6 +38,17 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void handleArtepaxExceptionIncluyeErrorCodeCuandoExiste() {
+        ResponseEntity<ErrorResponse> response = handler.handleArtepaxException(
+                new CronogramaException(
+                        CronogramaErrorCode.TRANSICION_INVALIDA,
+                        "Transición de cronograma inválida: PENDIENTE -> COMPLETADO"));
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(CronogramaErrorCode.TRANSICION_INVALIDA, response.getBody().errorCode());
+    }
+
+    @Test
     void handleArtepaxExceptionRetornaUnprocessableEntityParaOperacionDocumento() {
         ResponseEntity<ErrorResponse> response = handler.handleArtepaxException(
                 new DocumentoOperacionNoPermitidaException("No se puede reenviar: el cliente no tiene correo registrado."));
@@ -59,5 +73,14 @@ class GlobalExceptionHandlerTest {
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
         assertEquals(500, response.getBody().codigo());
+    }
+
+    @Test
+    void handleAccessDeniedRetornaForbidden() {
+        ErrorResponse response = handler.handleAccessDenied(
+                new AccessDeniedException("No puede modificar esta notificación"));
+
+        assertEquals(403, response.codigo());
+        assertEquals("No puede modificar esta notificación", response.mensaje());
     }
 }

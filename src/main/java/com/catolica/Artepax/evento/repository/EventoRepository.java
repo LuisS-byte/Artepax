@@ -1,6 +1,8 @@
 package com.catolica.Artepax.evento.repository;
 
 import com.catolica.Artepax.evento.model.Evento;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -23,7 +25,6 @@ public interface EventoRepository extends JpaRepository<Evento, Long> {
             FROM Evento e
             JOIN e.estadoEvento ee
             WHERE e.fecha = :fecha
-              AND LOWER(TRIM(e.ubicacion)) = LOWER(TRIM(:ubicacion))
               AND ee.nombre IN ('PROGRAMADO', 'CONFIRMADO', 'EN_MONTAJE', 'CANCELACION_PENDIENTE')
               AND :horaInicio < e.horaFin
               AND :horaFin > e.horaInicio
@@ -39,7 +40,6 @@ public interface EventoRepository extends JpaRepository<Evento, Long> {
             JOIN e.estadoEvento ee
             WHERE e.id <> :eventoIdExcluir
               AND e.fecha = :fecha
-              AND LOWER(TRIM(e.ubicacion)) = LOWER(TRIM(:ubicacion))
               AND ee.nombre IN ('PROGRAMADO', 'CONFIRMADO', 'EN_MONTAJE', 'CANCELACION_PENDIENTE')
               AND :horaInicio < e.horaFin
               AND :horaFin > e.horaInicio
@@ -65,12 +65,15 @@ public interface EventoRepository extends JpaRepository<Evento, Long> {
             JOIN FETCH e.decoracion
             JOIN FETCH e.tipoEvento
             JOIN FETCH e.estadoEvento
+            ORDER BY e.fecha DESC, e.horaInicio DESC
             """)
     List<Evento> findAllWithRelations();
 
     @Query("SELECT e FROM Evento e JOIN e.estadoEvento ee " +
             "WHERE ee.nombre = 'CANCELACION_PENDIENTE'")
     List<Evento> findEnCancelacionPendiente();
+
+    long countByEstadoEventoNombre(String nombre);
 
     // Para job de cotizaciones vencidas
     @Query("SELECT e FROM Evento e JOIN e.estadoEvento ee " +
@@ -89,4 +92,8 @@ public interface EventoRepository extends JpaRepository<Evento, Long> {
             WHERE e.id = :idEvento
             """)
     Optional<Evento> findDocumentoContextById(@Param("idEvento") Long idEvento);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT e FROM Evento e WHERE e.id = :id")
+    Optional<Evento> findByIdForUpdate(@Param("id") Long id);
 }

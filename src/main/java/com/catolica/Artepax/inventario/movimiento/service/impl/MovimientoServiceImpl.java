@@ -1,5 +1,10 @@
 package com.catolica.Artepax.inventario.movimiento.service.impl;
 
+import com.catolica.Artepax.common.audit.ProductoAuditSnapshot;
+import com.catolica.Artepax.common.service.AuditoriaService;
+import com.catolica.Artepax.evento.model.ReservaEstados;
+import com.catolica.Artepax.evento.repository.EventoProductoRepository;
+import com.catolica.Artepax.inventario.movimiento.dto.AjusteInventarioRequestDTO;
 import com.catolica.Artepax.inventario.movimiento.dto.MovimientoRequestDTO;
 import com.catolica.Artepax.inventario.movimiento.dto.MovimientoResponseDTO;
 import com.catolica.Artepax.inventario.movimiento.entity.MovimientoInventario;
@@ -10,6 +15,7 @@ import com.catolica.Artepax.inventario.producto.dto.StockProductoResponseDTO;
 import com.catolica.Artepax.inventario.producto.entity.Producto;
 import com.catolica.Artepax.inventario.producto.entity.StockProducto;
 import com.catolica.Artepax.inventario.producto.exception.ProductoNotFoundException;
+import com.catolica.Artepax.inventario.producto.exception.ReservaActivaInsuficienteException;
 import com.catolica.Artepax.inventario.producto.exception.StockInsuficienteException;
 import com.catolica.Artepax.inventario.producto.repository.ProductoRepository;
 import com.catolica.Artepax.inventario.producto.repository.StockProductoRepository;
@@ -26,6 +32,10 @@ import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
+import static com.catolica.Artepax.common.constant.AuditoriaAcciones.AJUSTAR_STOCK;
+import static com.catolica.Artepax.common.constant.AuditoriaTablas.MOVIMIENTO_INVENTARIO;
+import static com.catolica.Artepax.common.constant.AuditoriaTablas.PRODUCTO;
+
 @Slf4j
 @Service
 public class MovimientoServiceImpl implements MovimientoService {
@@ -34,6 +44,8 @@ public class MovimientoServiceImpl implements MovimientoService {
     private final StockProductoRepository stockProductoRepository;
     private final MovimientoMapper movimientoMapper;
     private final UsuarioRepository usuarioRepository;
+    private final EventoProductoRepository eventoProductoRepository;
+    private final AuditoriaService auditoriaService;
 
     private final NotificacionService notificacionService;
 
@@ -45,13 +57,17 @@ public class MovimientoServiceImpl implements MovimientoService {
                                  StockProductoRepository stockProductoRepository,
                                  MovimientoMapper movimientoMapper,
                                  NotificacionService notificacionService,
-                                 UsuarioRepository usuarioRepository) {
+                                 UsuarioRepository usuarioRepository,
+                                 EventoProductoRepository eventoProductoRepository,
+                                 AuditoriaService auditoriaService) {
         this.movimientoRepository = movimientoRepository;
         this.productoRepository = productoRepository;
         this.stockProductoRepository = stockProductoRepository;
         this.movimientoMapper = movimientoMapper;
         this.notificacionService = notificacionService;
         this.usuarioRepository = usuarioRepository;
+        this.eventoProductoRepository = eventoProductoRepository;
+        this.auditoriaService = auditoriaService;
     }
 
     @Override
@@ -70,6 +86,8 @@ public class MovimientoServiceImpl implements MovimientoService {
         productoRepository.save(producto);
 
         registrarMovimiento(producto, "ENTRADA", origen, dto.getCantidad(), dto.getMotivo());
+
+        verificarYNotificarStockBajo(producto);
     }
 
     @Override
@@ -100,41 +118,68 @@ public class MovimientoServiceImpl implements MovimientoService {
 
         registrarMovimiento(producto, "SALIDA", origen, dto.getCantidad(), dto.getMotivo());
 
-        // Verificar alerta de stock después de la salida
-        StockProducto stockActualizado = stockProductoRepository.findById(dto.getProductoId())
-                .orElse(null);
-        if (stockActualizado != null && Boolean.TRUE.equals(stockActualizado.getStockBajoAlerta())) {
-            notificacionService.notificarAdmins(
-                    "ALERTA_STOCK",
-                    "Stock bajo alerta para el producto: " + producto.getNombre() +
-                            ". Disponible: " + stockActualizado.getCantidadDisponible() +
-                            " (mínimo: " + stockActualizado.getStockMinimo() + ")",
-                    null
-            );
-        }
+        verificarYNotificarStockBajo(producto);
     }
 
     @Override
     @Transactional
-    public void registrarAjuste(Long productoId, Integer cantidadFisica, String motivo) {
+    public void registrarAjuste(Long productoId, AjusteInventarioRequestDTO request) {
         Producto producto = obtenerProductoOFallar(productoId);
-        int diferencia = cantidadFisica - producto.getCantidadTotal();
 
-        if (diferencia == 0) return; // Sin cambios
+        if (!"ACTIVO".equalsIgnoreCase(producto.getEstado())) {
+            throw new IllegalArgumentException("No se puede ajustar stock de un producto inactivo: " + producto.getNombre());
+        }
+
+        Integer cantidadReservadaActiva = eventoProductoRepository.sumCantidadReservadaActivaByProductoId(productoId);
+        if (cantidadReservadaActiva == null) {
+            cantidadReservadaActiva = 0;
+        }
+
+        if (request.cantidadFisica() < cantidadReservadaActiva) {
+            throw new ReservaActivaInsuficienteException(
+                    producto.getNombre(), request.cantidadFisica(), cantidadReservadaActiva);
+        }
+
+        int cantidadActual = producto.getCantidadTotal();
+        int diferencia = request.cantidadFisica() - cantidadActual;
+
+        if (diferencia == 0) {
+            log.info("Ajuste manual para producto {}: sin cambios (físico = sistema = {})", productoId, cantidadActual);
+            return;
+        }
+
+        ProductoAuditSnapshot antes = new ProductoAuditSnapshot(
+                producto.getId(), producto.getNombre(), cantidadActual, producto.getEstado());
+
+        String motivo = request.motivo() != null ? request.motivo() : "Ajuste manual — conteo físico";
 
         if (diferencia > 0) {
-            // Hay más de lo que dice el sistema → ENTRADA
-            producto.setCantidadTotal(cantidadFisica);
+            producto.setCantidadTotal(request.cantidadFisica());
             productoRepository.save(producto);
-            registrarMovimiento(producto, "ENTRADA", "AJUSTE_MANUAL",
-                    diferencia, motivo != null ? motivo : "Ajuste manual — conteo físico");
+            MovimientoInventario movimiento = registrarMovimiento(producto, "ENTRADA", "AJUSTE_MANUAL", diferencia, motivo);
+            log.info("Ajuste ENTRADA producto {}: +{} (sistema {} -> físico {})", productoId, diferencia, cantidadActual, request.cantidadFisica());
+
+            ProductoAuditSnapshot despues = new ProductoAuditSnapshot(
+                    producto.getId(), producto.getNombre(), producto.getCantidadTotal(), producto.getEstado());
+            auditoriaService.registrar(AJUSTAR_STOCK, PRODUCTO, producto.getId(), antes, despues,
+                    motivo + " | " + diferencia + " unidades ENTRADA");
+            auditoriaService.registrar(AJUSTAR_STOCK, MOVIMIENTO_INVENTARIO, movimiento.getId(),
+                    null, movimiento, "Movimiento creado: ENTRADA AJUSTE_MANUAL");
         } else {
-            // Hay menos de lo que dice el sistema → SALIDA
-            producto.setCantidadTotal(cantidadFisica);
+            producto.setCantidadTotal(request.cantidadFisica());
             productoRepository.save(producto);
-            registrarMovimiento(producto, "SALIDA", "AJUSTE_MANUAL",
-                    Math.abs(diferencia), motivo != null ? motivo : "Ajuste manual — conteo físico");
+            MovimientoInventario movimiento = registrarMovimiento(producto, "SALIDA", "AJUSTE_MANUAL", Math.abs(diferencia), motivo);
+            log.info("Ajuste SALIDA producto {}: -{} (sistema {} -> físico {})", productoId, Math.abs(diferencia), cantidadActual, request.cantidadFisica());
+
+            ProductoAuditSnapshot despues = new ProductoAuditSnapshot(
+                    producto.getId(), producto.getNombre(), producto.getCantidadTotal(), producto.getEstado());
+            auditoriaService.registrar(AJUSTAR_STOCK, PRODUCTO, producto.getId(), antes, despues,
+                    motivo + " | " + Math.abs(diferencia) + " unidades SALIDA");
+            auditoriaService.registrar(AJUSTAR_STOCK, MOVIMIENTO_INVENTARIO, movimiento.getId(),
+                    null, movimiento, "Movimiento creado: SALIDA AJUSTE_MANUAL");
         }
+
+        verificarYNotificarStockBajo(producto);
     }
 
     @Override
@@ -165,9 +210,23 @@ public class MovimientoServiceImpl implements MovimientoService {
                 .orElseThrow(() -> new ProductoNotFoundException(id));
     }
 
+    private void verificarYNotificarStockBajo(Producto producto) {
+        StockProducto stock = stockProductoRepository.findById(producto.getId())
+                .orElse(null);
+        if (stock != null && Boolean.TRUE.equals(stock.getStockBajoAlerta())) {
+            notificacionService.notificarAdmins(
+                    "ALERTA_STOCK",
+                    "Stock bajo alerta para el producto: " + producto.getNombre() +
+                            ". Disponible: " + stock.getCantidadDisponible() +
+                            " (mínimo: " + stock.getStockMinimo() + ")",
+                    null
+            );
+        }
+    }
+
     // Reemplazar el método registrarMovimiento() existente
-    private void registrarMovimiento(Producto producto, String tipo,
-                                     String origen, int cantidad, String motivo) {
+    private MovimientoInventario registrarMovimiento(Producto producto, String tipo,
+                                      String origen, int cantidad, String motivo) {
         MovimientoInventario m = new MovimientoInventario();
         m.setProducto(producto);
         m.setTipoMovimiento(tipo);
@@ -175,7 +234,7 @@ public class MovimientoServiceImpl implements MovimientoService {
         m.setCantidad(cantidad);
         m.setMotivo(motivo);
         m.setRegistradoPor(obtenerUsuarioAutenticado());
-        movimientoRepository.save(m);
+        return movimientoRepository.save(m);
     }
 
 
