@@ -95,4 +95,13 @@ public class EventoNotificacionHandler {
                 evento);
         log.info("notificacion_cancelacion_iniciada eventoId={}", eventoId);
     }
+
+    public void notificarCancelacionConfirmada(Long eventoId, Evento evento, String motivo) {
+        notificacionService.notificarAdmins(
+                "CANCELACION_EVENTO",
+                "El evento #" + eventoId + " - " + evento.getCliente().getNombre() +
+                        " fue cancelado definitivamente. Motivo: " + motivo,
+                evento);
+        log.info("notificacion_cancelacion_confirmada eventoId={}", eventoId);
+    }
 }

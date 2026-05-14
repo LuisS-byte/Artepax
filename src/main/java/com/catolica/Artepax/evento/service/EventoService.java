@@ -10,8 +10,8 @@ import java.util.List;
  * Servicio principal para la gestión del ciclo de vida de eventos.
  * <p>
  * Orquesta las transiciones de estado (COTIZACION → PROGRAMADO → CONFIRMADO →
- * EN_MONTAJE → FINALIZADO), la reserva de stock, validación de anticipos,
- * cancelaciones con tiempo de gracia y consultas de rentabilidad.
+ * EN_MONTAJE → FINALIZADO / PENDIENTE_COBRO → FINALIZADO), la reserva de stock,
+ * validación de anticipos, cancelaciones con tiempo de gracia y consultas de rentabilidad.
  */
 public interface EventoService {
 
@@ -81,12 +81,27 @@ public interface EventoService {
     EventoResponseDTO iniciarMontaje(Long id);
 
     /**
-     * Transición: EN_MONTAJE → FINALIZADO. Genera movimientos de salida de inventario.
+     * Transición: EN_MONTAJE → FINALIZADO o PENDIENTE_COBRO.
+     * <p>
+     * Consume el stock de inventario. Si el evento está completamente pago,
+     * transiciona a FINALIZADO. Si tiene saldo pendiente, transiciona a
+     * PENDIENTE_COBRO para permitir pagos posteriores.
      *
      * @param id identificador del evento
      * @return DTO del evento actualizado
      */
     EventoResponseDTO finalizarEvento(Long id);
+
+    /**
+     * Transición automática: PENDIENTE_COBRO → FINALIZADO.
+     * <p>
+     * Disparada desde el módulo de pagos cuando se completa el cobro total
+     * de un evento en PENDIENTE_COBRO. No tiene efecto si el evento no está
+     * en PENDIENTE_COBRO o si el cobro aún no está completo.
+     *
+     * @param id identificador del evento
+     */
+    void finalizarDesdeCobroCompleto(Long id);
 
     /**
      * Inicia proceso de cancelación. Si el evento está en COTIZACION, cancela directamente.
@@ -136,4 +151,21 @@ public interface EventoService {
      * @return DTO con datos de rentabilidad
      */
     RentabilidadEventoDTO getRentabilidad(Long id);
+
+    /**
+     * Retorna un resumen interno del evento para uso administrativo.
+     */
+    EventoResumenInternoDTO getResumenInterno(Long id);
+
+    /**
+     * Retorna los productos asociados a un evento.
+     * <p>
+     * En estado COTIZACION devuelve la composicion de la decoracion
+     * (proyeccion sin reserva real). En estados PROGRAMADO en adelante
+     * devuelve las reservas efectivas de evento_producto.
+     *
+     * @param id identificador del evento
+     * @return lista de productos con cantidad, costo y origen
+     */
+    List<EventoProductoDTO> obtenerProductosPorEvento(Long id);
 }

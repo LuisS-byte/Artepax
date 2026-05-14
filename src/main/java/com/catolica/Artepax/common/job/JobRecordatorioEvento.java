@@ -40,7 +40,7 @@ public class JobRecordatorioEvento {
 
         for (VistaEventosPeriodo vista : eventos) {
             try {
-                boolean estadoActivo = !List.of("CANCELADO", "FINALIZADO", "CANCELACION_PENDIENTE")
+                boolean estadoActivo = !List.of("CANCELADO", "FINALIZADO", "CANCELACION_PENDIENTE", "PENDIENTE_COBRO")
                         .contains(vista.getEstado());
 
                 if (estadoActivo) {

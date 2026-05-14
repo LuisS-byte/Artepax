@@ -50,5 +50,5 @@ public interface DocumentoRepository extends JpaRepository<Documento, Long> {
            countQuery = "SELECT COUNT(d) FROM Documento d")
     Page<Documento> findAllWithEvento(Pageable pageable);
 
-    boolean existsByEventoIdAndTipoDocumento(Long eventoId, com.catolica.Artepax.documento.entity.DocumentoTipo tipoDocumento);
+    boolean existsByEventoIdAndDocuTipo(Long eventoId, com.catolica.Artepax.documento.entity.DocumentoTipo docuTipo);
 }

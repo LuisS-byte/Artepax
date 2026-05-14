@@ -9,7 +9,9 @@ import com.catolica.Artepax.evento.dto.EventoRequestDTO;
 import com.catolica.Artepax.evento.dto.EventoResponseDTO;
 import com.catolica.Artepax.evento.dto.EventoExtraItemRequestDTO;
 import com.catolica.Artepax.evento.dto.EventoExtraRequestDTO;
+import com.catolica.Artepax.evento.dto.EventoResumenInternoDTO;
 import com.catolica.Artepax.evento.dto.EventoUpdateDTO;
+import com.catolica.Artepax.evento.model.VistaRentabilidadEvento;
 import com.catolica.Artepax.evento.exception.EventoException;
 import com.catolica.Artepax.evento.mapper.EventoMapper;
 import com.catolica.Artepax.evento.model.EstadoEvento;
@@ -17,14 +19,19 @@ import com.catolica.Artepax.evento.model.Evento;
 import com.catolica.Artepax.evento.model.TipoEvento;
 import com.catolica.Artepax.evento.repository.EstadoEventoRepository;
 import com.catolica.Artepax.evento.repository.EventoRepository;
+import com.catolica.Artepax.evento.repository.GastoEventoRepository;
 import com.catolica.Artepax.evento.repository.TipoEventoRepository;
 import com.catolica.Artepax.evento.repository.VistaEventosPeriodoRepository;
 import com.catolica.Artepax.evento.repository.VistaRentabilidadEventoRepository;
+import com.catolica.Artepax.evento.repository.EventoProductoRepository;
 import com.catolica.Artepax.evento.service.handler.EventoNotificacionHandler;
 import com.catolica.Artepax.evento.service.handler.EventoPagoValidator;
 import com.catolica.Artepax.evento.service.handler.EventoStockHandler;
 import com.catolica.Artepax.pago.service.handler.PagoCancelacionHandler;
+import com.catolica.Artepax.pago.entity.VistaPagosEvento;
+import com.catolica.Artepax.pago.repository.VistaPagosEventoRepository;
 import com.catolica.Artepax.inventario.decoracion.entity.Decoracion;
+import com.catolica.Artepax.inventario.decoracion.repository.DecoracionProductoRepository;
 import com.catolica.Artepax.inventario.decoracion.repository.DecoracionRepository;
 import com.catolica.Artepax.inventario.producto.entity.Producto;
 import com.catolica.Artepax.inventario.producto.repository.ProductoRepository;
@@ -71,6 +78,8 @@ class EventoServiceImplTest {
     @Mock
     private ProductoRepository productoRepository;
     @Mock
+    private GastoEventoRepository gastoEventoRepository;
+    @Mock
     private ConfiguracionService configuracionService;
     @Mock
     private CronogramaService cronogramaService;
@@ -78,6 +87,12 @@ class EventoServiceImplTest {
     private VistaRentabilidadEventoRepository vistaRentabilidadEventoRepository;
     @Mock
     private VistaEventosPeriodoRepository vistaEventosPeriodoRepository;
+    @Mock
+    private VistaPagosEventoRepository vistaPagosEventoRepository;
+    @Mock
+    private EventoProductoRepository eventoProductoRepository;
+    @Mock
+    private DecoracionProductoRepository decoracionProductoRepository;
     @Mock
     private EventoStockHandler stockHandler;
     @Mock
@@ -100,16 +115,20 @@ class EventoServiceImplTest {
                 estadoEventoRepository,
                 tipoEventoRepository,
                 productoRepository,
+                gastoEventoRepository,
                 new EventoMapper(),
                 configuracionService,
                 cronogramaService,
                 vistaRentabilidadEventoRepository,
                 vistaEventosPeriodoRepository,
+                vistaPagosEventoRepository,
+                eventoProductoRepository,
                 stockHandler,
                 notificacionHandler,
                 pagoValidator,
                 auditoriaService,
-                pagoCancelacionHandler);
+                pagoCancelacionHandler,
+                decoracionProductoRepository);
 
         lenient().when(configuracionService.getInt("MINUTOS_GAP_ENTRE_EVENTOS")).thenReturn(0);
     }
@@ -324,12 +343,32 @@ class EventoServiceImplTest {
 
         when(eventoRepository.findById(10L)).thenReturn(Optional.of(evento));
         when(estadoEventoRepository.findByNombre(CANCELADO)).thenReturn(Optional.of(estadoCancelado));
+        when(pagoCancelacionHandler.procesarPagosPorCancelacion(evento, "Cliente canceló"))
+                .thenReturn(BigDecimal.ZERO);
 
         service.confirmarCancelacion(10L);
 
         verify(stockHandler).liberarReservas(evento, "Cliente canceló");
         verify(cronogramaService).cancelarPorEvento(10L);
         verify(eventoRepository).save(evento);
+        verify(notificacionHandler).notificarCancelacionConfirmada(10L, evento, "Cliente canceló");
+    }
+
+    @Test
+    void confirmarCancelacionConDevolucionPendienteNoDuplicaNotificacionFinal() {
+        Evento evento = crearEventoBase(CANCELACION_PENDIENTE);
+        evento.setMotivoCancelacion("Cliente canceló");
+        evento.setEstadoAnterior(crearEstadoEvento("CONFIRMADO"));
+        EstadoEvento estadoCancelado = crearEstadoEvento(CANCELADO);
+
+        when(eventoRepository.findById(10L)).thenReturn(Optional.of(evento));
+        when(estadoEventoRepository.findByNombre(CANCELADO)).thenReturn(Optional.of(estadoCancelado));
+        when(pagoCancelacionHandler.procesarPagosPorCancelacion(evento, "Cliente canceló"))
+                .thenReturn(new BigDecimal("500.00"));
+
+        service.confirmarCancelacion(10L);
+
+        verify(notificacionHandler, never()).notificarCancelacionConfirmada(any(Long.class), any(Evento.class), any(String.class));
     }
 
     @Test
@@ -359,6 +398,34 @@ class EventoServiceImplTest {
         service.obtenerEventos();
 
         verify(eventoRepository).findAllWithRelations();
+    }
+
+    @Test
+    void getResumenInternoAgrupaEventoPagosGastosYRentabilidad() {
+        Evento evento = crearEventoBase("PROGRAMADO");
+        evento.setPrecioAdicional(new BigDecimal("200.00"));
+        evento.setNotaPrecio("Luces extra");
+
+        when(eventoRepository.findById(10L)).thenReturn(Optional.of(evento));
+        when(vistaPagosEventoRepository.findByIdEvento(10L)).thenReturn(Optional.of(crearVistaPagosEvento()));
+        when(gastoEventoRepository.sumMontoByEventoIdAndEstado(10L, "PROYECTADO"))
+                .thenReturn(new BigDecimal("80.00"));
+        when(gastoEventoRepository.sumMontoByEventoIdAndEstado(10L, "DESEMBOLSADO"))
+                .thenReturn(new BigDecimal("20.00"));
+        when(vistaRentabilidadEventoRepository.findByIdEvento(10L)).thenReturn(Optional.of(crearVistaRentabilidadEvento()));
+
+        EventoResumenInternoDTO response = service.getResumenInterno(10L);
+
+        assertEquals(10L, response.getIdEvento());
+        assertEquals("PROGRAMADO", response.getEstadoEvento());
+        assertEquals("Cliente Demo", response.getClienteNombre());
+        assertEquals(new BigDecimal("200.00"), response.getPrecioAdicional());
+        assertEquals("Luces extra", response.getNotaPrecio());
+        assertEquals(new BigDecimal("500.00"), response.getResumenPagos().getTotalCobrado());
+        assertEquals(new BigDecimal("80.00"), response.getResumenGastos().totalProyectado());
+        assertEquals(new BigDecimal("20.00"), response.getResumenGastos().totalDesembolsado());
+        assertNotNull(response.getRentabilidad());
+        assertEquals(new BigDecimal("300.00"), response.getRentabilidad().getGananciaNeta());
     }
 
     @Test
@@ -649,5 +716,40 @@ class EventoServiceImplTest {
         }
 
         return producto;
+    }
+
+    private VistaPagosEvento crearVistaPagosEvento() {
+        VistaPagosEvento vista = new VistaPagosEvento();
+        setField(vista, "idEvento", 10L);
+        setField(vista, "precioTotal", new BigDecimal("2700.00"));
+        setField(vista, "totalCobrado", new BigDecimal("500.00"));
+        setField(vista, "saldoPendiente", new BigDecimal("2200.00"));
+        setField(vista, "cobroCompleto", false);
+        return vista;
+    }
+
+    private VistaRentabilidadEvento crearVistaRentabilidadEvento() {
+        VistaRentabilidadEvento vista = new VistaRentabilidadEvento();
+        setField(vista, "idEvento", 10L);
+        setField(vista, "fechaEvento", LocalDate.now().plusDays(7));
+        setField(vista, "estado", "PROGRAMADO");
+        setField(vista, "precioAcordado", new BigDecimal("2700.00"));
+        setField(vista, "ingresoCobrado", new BigDecimal("500.00"));
+        setField(vista, "costoMateriales", new BigDecimal("1200.00"));
+        setField(vista, "costoManoObra", new BigDecimal("900.00"));
+        setField(vista, "gastosDesembolsados", new BigDecimal("20.00"));
+        setField(vista, "gastosProyectados", new BigDecimal("80.00"));
+        setField(vista, "gananciaNeta", new BigDecimal("300.00"));
+        return vista;
+    }
+
+    private void setField(Object target, String fieldName, Object value) {
+        try {
+            var field = target.getClass().getDeclaredField(fieldName);
+            field.setAccessible(true);
+            field.set(target, value);
+        } catch (ReflectiveOperationException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 }

@@ -1,10 +1,12 @@
 package com.catolica.Artepax.evento.controller;
 
+import com.catolica.Artepax.evento.dto.EventoProductoDTO;
 import com.catolica.Artepax.evento.dto.CalendarioEventoDTO;
 import com.catolica.Artepax.evento.dto.CancelacionEventoRequestDTO;
 import com.catolica.Artepax.evento.dto.EventoExtraRequestDTO;
 import com.catolica.Artepax.evento.dto.EventoRequestDTO;
 import com.catolica.Artepax.evento.dto.EventoResponseDTO;
+import com.catolica.Artepax.evento.dto.EventoResumenInternoDTO;
 import com.catolica.Artepax.evento.dto.EventoUpdateDTO;
 import com.catolica.Artepax.evento.dto.RentabilidadEventoDTO;
 import com.catolica.Artepax.evento.model.VistaRentabilidadEvento;
@@ -141,5 +143,15 @@ public class EventoController {
     @GetMapping("/{id}/rentabilidad")
     public ResponseEntity<RentabilidadEventoDTO> getRentabilidad(@PathVariable Long id) {
         return ResponseEntity.ok(eventoService.getRentabilidad(id));
+    }
+
+    @GetMapping("/{id}/detalle")
+    public ResponseEntity<EventoResumenInternoDTO> getDetalle(@PathVariable Long id) {
+        return ResponseEntity.ok(eventoService.getResumenInterno(id));
+    }
+
+    @GetMapping("/{id}/productos")
+    public ResponseEntity<List<EventoProductoDTO>> obtenerProductos(@PathVariable Long id) {
+        return ResponseEntity.ok(eventoService.obtenerProductosPorEvento(id));
     }
 }

@@ -3,6 +3,7 @@ package com.catolica.Artepax.cronograma.service.impl;
 import com.catolica.Artepax.authentication.user.repository.UsuarioRepository;
 import com.catolica.Artepax.clientes.entity.Cliente;
 import com.catolica.Artepax.cronograma.dto.CronogramaResponseDTO;
+import com.catolica.Artepax.cronograma.dto.CronogramaRequestDTO;
 import com.catolica.Artepax.cronograma.dto.CronogramaUpdateDTO;
 import com.catolica.Artepax.cronograma.entity.CronogramaAcciones;
 import com.catolica.Artepax.cronograma.entity.Cronograma;
@@ -211,6 +212,25 @@ class CronogramaServiceImplTest {
     }
 
     @Test
+    void crearActividadEnEventoProgramado_permitido() {
+        Evento evento = crearEvento(EstadoEventoNames.PROGRAMADO);
+        CronogramaRequestDTO dto = crearRequestValido();
+
+        when(eventoRepository.findById(10L)).thenReturn(Optional.of(evento));
+        when(cronogramaRepository.save(any(Cronograma.class))).thenAnswer(invocation -> {
+            Cronograma cronograma = invocation.getArgument(0);
+            setCronogramaId(cronograma, 99L);
+            return cronograma;
+        });
+
+        CronogramaResponseDTO response = service.crear(dto);
+
+        assertEquals("Montaje inicial", response.getActividad());
+        assertEquals(EstadoEventoNames.PROGRAMADO, response.getEstadoEventoNombre());
+        verify(cronogramaRepository).save(any(Cronograma.class));
+    }
+
+    @Test
     void actualizarActividadFueraDelHorarioDelEvento_lanzaError() {
         Cronograma cronograma = crearCronograma(1L, CronogramaEstado.PENDIENTE.getValor(), EstadoEventoNames.CONFIRMADO);
         CronogramaUpdateDTO dto = new CronogramaUpdateDTO();
@@ -224,8 +244,8 @@ class CronogramaServiceImplTest {
     }
 
     @Test
-    void actualizarActividadEnEventoNoPermitido_lanzaError() {
-        Cronograma cronograma = crearCronograma(1L, CronogramaEstado.PENDIENTE.getValor(), EstadoEventoNames.PROGRAMADO);
+    void actualizarActividadEnEventoCancelado_lanzaError() {
+        Cronograma cronograma = crearCronograma(1L, CronogramaEstado.PENDIENTE.getValor(), EstadoEventoNames.CANCELADO);
         when(cronogramaRepository.findById(1L)).thenReturn(Optional.of(cronograma));
 
         assertThrows(CronogramaException.class, () -> service.actualizar(1L, crearUpdateValido()));
@@ -242,7 +262,29 @@ class CronogramaServiceImplTest {
         return dto;
     }
 
+    private CronogramaRequestDTO crearRequestValido() {
+        CronogramaRequestDTO dto = new CronogramaRequestDTO();
+        dto.setIdEvento(10L);
+        dto.setActividad("Montaje inicial");
+        dto.setFechaInicio(LocalDateTime.of(2026, 5, 10, 10, 30));
+        dto.setFechaFin(LocalDateTime.of(2026, 5, 10, 11, 30));
+        return dto;
+    }
+
     private Cronograma crearCronograma(Long id, String estadoCronograma, String estadoEventoNombre) {
+        Evento evento = crearEvento(estadoEventoNombre);
+
+        Cronograma cronograma = new Cronograma();
+        setCronogramaId(cronograma, id);
+        cronograma.setEvento(evento);
+        cronograma.setActividad("Actividad base");
+        cronograma.setFechaInicio(LocalDateTime.of(2026, 5, 10, 10, 30));
+        cronograma.setFechaFin(LocalDateTime.of(2026, 5, 10, 11, 30));
+        cronograma.setCronoEstado(estadoCronograma);
+        return cronograma;
+    }
+
+    private Evento crearEvento(String estadoEventoNombre) {
         Evento evento = new Evento();
         setEventoId(evento, 10L);
         evento.setCliente(new Cliente());
@@ -255,15 +297,7 @@ class CronogramaServiceImplTest {
         evento.setPrecioBase(new BigDecimal("100.00"));
         evento.setPrecioAdicional(BigDecimal.ZERO);
         evento.setClienteNotificado(false);
-
-        Cronograma cronograma = new Cronograma();
-        setCronogramaId(cronograma, id);
-        cronograma.setEvento(evento);
-        cronograma.setActividad("Actividad base");
-        cronograma.setFechaInicio(LocalDateTime.of(2026, 5, 10, 10, 30));
-        cronograma.setFechaFin(LocalDateTime.of(2026, 5, 10, 11, 30));
-        cronograma.setCronoEstado(estadoCronograma);
-        return cronograma;
+        return evento;
     }
 
     private EstadoEvento crearEstadoEvento(String nombre) {

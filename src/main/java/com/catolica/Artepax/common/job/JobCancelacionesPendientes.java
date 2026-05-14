@@ -4,7 +4,6 @@ import com.catolica.Artepax.common.service.ConfiguracionService;
 import com.catolica.Artepax.evento.model.Evento;
 import com.catolica.Artepax.evento.repository.EventoRepository;
 import com.catolica.Artepax.evento.service.EventoService;
-import com.catolica.Artepax.notificacion.service.NotificacionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -25,7 +24,6 @@ public class JobCancelacionesPendientes {
     private final EventoRepository eventoRepository;
     private final EventoService eventoService;
     private final ConfiguracionService configuracionService;
-    private final NotificacionService notificacionService;
 
     @Scheduled(fixedDelayString = "${artepax.job.cancelacion.intervalo-ms:60000}")
     public void procesarCancelacionesPendientes() {
@@ -41,12 +39,6 @@ public class JobCancelacionesPendientes {
                     eventoService.confirmarCancelacion(evento.getId());
                     log.info("Evento {} cancelado automáticamente por tiempo de gracia expirado",
                             evento.getId());
-
-                    notificacionService.notificarAdmins(
-                            "CANCELACION_EVENTO",
-                            "El evento #" + evento.getId() + " fue cancelado automáticamente " +
-                                    "por tiempo de gracia expirado. Motivo: " + evento.getMotivoCancelacion(),
-                            evento);
 
                 } catch (Exception e) {
                     log.error("Error al cancelar evento {}: {}", evento.getId(), e.getMessage());

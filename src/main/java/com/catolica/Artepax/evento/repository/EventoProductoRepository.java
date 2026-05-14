@@ -59,6 +59,24 @@ public interface EventoProductoRepository extends JpaRepository<EventoProducto, 
             @Param("productoIds") Collection<Long> productoIds,
             @Param("estadoNombre") String estadoNombre);
 
+    @Query(value = """
+            SELECT ep.id_producto,
+                   p.produ_nombre,
+                   ep.cantidad_reservada,
+                   p.produ_precio_unitario,
+                   er.estado_nombre,
+                   CASE WHEN dxp.id_producto IS NOT NULL THEN 'DECORACION' ELSE 'EXTRA' END AS origen
+            FROM evento_producto ep
+            JOIN producto p ON p.id_producto = ep.id_producto
+            JOIN estado_reserva er ON er.id_estado_reserva = ep.id_estado_reserva
+            LEFT JOIN decoracionxproducto dxp
+                ON dxp.id_producto = ep.id_producto
+                AND dxp.id_decoracion = (SELECT id_decoracion FROM evento WHERE id_evento = :eventoId)
+            WHERE ep.id_evento = :eventoId
+            ORDER BY origen, p.produ_nombre
+            """, nativeQuery = true)
+    List<Object[]> findProductosByEventoId(@Param("eventoId") Long eventoId);
+
     long countByProductoIdAndEstadoReservaEstadoNombre(Long productoId, String estadoNombre);
 
     @Query("""

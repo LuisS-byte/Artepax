@@ -30,6 +30,7 @@ public class DocumentoPolicy {
             EstadoEventoNames.PROGRAMADO,
             EstadoEventoNames.CONFIRMADO,
             EstadoEventoNames.EN_MONTAJE,
+            EstadoEventoNames.PENDIENTE_COBRO,
             EstadoEventoNames.FINALIZADO
     );
 

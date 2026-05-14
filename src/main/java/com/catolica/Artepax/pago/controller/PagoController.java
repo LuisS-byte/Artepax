@@ -1,5 +1,6 @@
 package com.catolica.Artepax.pago.controller;
 
+import com.catolica.Artepax.pago.dto.EventoCobranzaDTO;
 import com.catolica.Artepax.pago.dto.PagoRequestDTO;
 import com.catolica.Artepax.pago.dto.PagoResponseDTO;
 import com.catolica.Artepax.pago.dto.ResumenPagoEventoDTO;
@@ -16,7 +17,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/pagos")
@@ -58,5 +61,23 @@ public class PagoController {
     public ResponseEntity<Page<PagoResponseDTO>> obtenerTodos(
             @PageableDefault(size = 50, sort = "id") Pageable pageable) {
         return ResponseEntity.ok(pagoService.obtenerTodos(pageable));
+    }
+
+    @GetMapping("/eventos-cobranza")
+    public ResponseEntity<List<EventoCobranzaDTO>> getCobranza(
+            @RequestParam(required = false) List<String> estado,
+            @RequestParam(required = false) Boolean soloConSaldo,
+            @RequestParam(required = false) Boolean soloConDevolucion,
+            @RequestParam(required = false) Boolean soloConPagosPendientes,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Integer limit) {
+        Map<String, Object> filtros = new HashMap<>();
+        if (estado != null) filtros.put("estado", estado);
+        if (soloConSaldo != null) filtros.put("soloConSaldo", soloConSaldo);
+        if (soloConDevolucion != null) filtros.put("soloConDevolucion", soloConDevolucion);
+        if (soloConPagosPendientes != null) filtros.put("soloConPagosPendientes", soloConPagosPendientes);
+        if (q != null) filtros.put("q", q);
+        if (limit != null) filtros.put("limit", limit);
+        return ResponseEntity.ok(pagoService.getEventosCobranza(filtros));
     }
 }

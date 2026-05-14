@@ -45,7 +45,7 @@ public class PagoCancelacionHandler {
      * @param motivo motivo de cancelación para el log
      */
     @Transactional
-    public void procesarPagosPorCancelacion(Evento evento, String motivo) {
+    public BigDecimal procesarPagosPorCancelacion(Evento evento, String motivo) {
         Long eventoId = evento.getId();
         List<String> estadosActivos = List.of("PENDIENTE", "PAGADO");
 
@@ -53,7 +53,7 @@ public class PagoCancelacionHandler {
 
         if (pagos.isEmpty()) {
             log.info("cancelacion_pago_sin_pagos eventoId={}", eventoId);
-            return;
+            return BigDecimal.ZERO;
         }
 
         EstadoPago estadoCancelado = estadoPagoRepository.findByEstadoNombre("CANCELADO")
@@ -94,5 +94,7 @@ public class PagoCancelacionHandler {
             notificacionService.notificarAdmins("CANCELACION_EVENTO", mensaje, evento);
             log.warn("cancelacion_notificacion_devolucion eventoId={} total={}", eventoId, totalDevolucion);
         }
+
+        return totalDevolucion;
     }
 }

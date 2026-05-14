@@ -25,8 +25,11 @@ public final class EstadoEventoNames {
     /** Fase activa de preparación del evento. */
     public static final String EN_MONTAJE = "EN_MONTAJE";
 
-    /** Evento completado, stock consumido. */
+    /** Evento completado, stock consumido y pago completo. */
     public static final String FINALIZADO = "FINALIZADO";
+
+    /** Evento completado operativamente pero con pagos pendientes de cobro. */
+    public static final String PENDIENTE_COBRO = "PENDIENTE_COBRO";
 
     /** Evento cancelado definitivamente. */
     public static final String CANCELADO = "CANCELADO";

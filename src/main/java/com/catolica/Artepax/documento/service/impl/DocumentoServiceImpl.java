@@ -81,7 +81,7 @@ public class DocumentoServiceImpl implements DocumentoService {
 
         documentoPolicy.validarGeneracionPermitida(evento, tipoDocumento);
 
-        if (documentoRepository.existsByEventoIdAndTipoDocumento(idEvento, tipoDocumento)) {
+        if (documentoRepository.existsByEventoIdAndDocuTipo(idEvento, tipoDocumento)) {
             documentoPolicy.validarSinDocumentoDuplicado(idEvento, tipoDocumento, true);
         }
 
@@ -135,6 +135,10 @@ public class DocumentoServiceImpl implements DocumentoService {
                 .orElseThrow(() -> new EventoNotFoundException(eventoId));
 
         documentoPolicy.validarGeneracionPermitida(evento, DocumentoTipo.AVISO_SALDO_PENDIENTE);
+
+        if (documentoRepository.existsByEventoIdAndDocuTipo(eventoId, DocumentoTipo.AVISO_SALDO_PENDIENTE)) {
+            documentoPolicy.validarSinDocumentoDuplicado(eventoId, DocumentoTipo.AVISO_SALDO_PENDIENTE, true);
+        }
 
         ResumenFinancieroDocumento resumen = obtenerResumenFinanciero(evento);
         documentoPolicy.validarSaldoPendiente(resumen.saldoPendiente());

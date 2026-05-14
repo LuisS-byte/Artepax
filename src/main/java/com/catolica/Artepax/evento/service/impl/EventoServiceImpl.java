@@ -6,12 +6,15 @@ import com.catolica.Artepax.common.service.AuditoriaService;
 import com.catolica.Artepax.common.service.ConfiguracionService;
 import com.catolica.Artepax.cronograma.service.CronogramaService;
 import com.catolica.Artepax.evento.dto.CalendarioEventoDTO;
+import com.catolica.Artepax.evento.dto.EventoProductoDTO;
 import com.catolica.Artepax.evento.dto.EventoExtraItemRequestDTO;
 import com.catolica.Artepax.evento.dto.EventoExtraRequestDTO;
 import com.catolica.Artepax.evento.dto.EventoRequestDTO;
 import com.catolica.Artepax.evento.dto.EventoResponseDTO;
+import com.catolica.Artepax.evento.dto.EventoResumenInternoDTO;
 import com.catolica.Artepax.evento.dto.EventoUpdateDTO;
 import com.catolica.Artepax.evento.dto.RentabilidadEventoDTO;
+import com.catolica.Artepax.evento.dto.ResumenGastoEventoDTO;
 import com.catolica.Artepax.evento.exception.EventoException;
 import com.catolica.Artepax.evento.exception.EventoNotFoundException;
 import com.catolica.Artepax.evento.mapper.EventoMapper;
@@ -20,8 +23,10 @@ import com.catolica.Artepax.evento.model.EstadoEvento;
 import com.catolica.Artepax.evento.model.TipoEvento;
 import com.catolica.Artepax.evento.model.VistaEventosPeriodo;
 import com.catolica.Artepax.evento.model.VistaRentabilidadEvento;
+import com.catolica.Artepax.evento.repository.EventoProductoRepository;
 import com.catolica.Artepax.evento.repository.EventoRepository;
 import com.catolica.Artepax.evento.repository.EstadoEventoRepository;
+import com.catolica.Artepax.evento.repository.GastoEventoRepository;
 import com.catolica.Artepax.evento.repository.TipoEventoRepository;
 import com.catolica.Artepax.evento.repository.VistaEventosPeriodoRepository;
 import com.catolica.Artepax.evento.repository.VistaRentabilidadEventoRepository;
@@ -30,9 +35,14 @@ import com.catolica.Artepax.evento.service.handler.EventoNotificacionHandler;
 import com.catolica.Artepax.evento.service.handler.EventoPagoValidator;
 import com.catolica.Artepax.evento.service.handler.EventoStockHandler;
 import com.catolica.Artepax.pago.service.handler.PagoCancelacionHandler;
+import com.catolica.Artepax.pago.dto.ResumenPagoEventoDTO;
+import com.catolica.Artepax.pago.entity.VistaPagosEvento;
+import com.catolica.Artepax.pago.repository.VistaPagosEventoRepository;
 import com.catolica.Artepax.clientes.entity.Cliente;
 import com.catolica.Artepax.clientes.repository.ClienteRepository;
 import com.catolica.Artepax.inventario.decoracion.entity.Decoracion;
+import com.catolica.Artepax.inventario.decoracion.entity.DecoracionProducto;
+import com.catolica.Artepax.inventario.decoracion.repository.DecoracionProductoRepository;
 import com.catolica.Artepax.inventario.decoracion.repository.DecoracionRepository;
 import com.catolica.Artepax.inventario.producto.entity.Producto;
 import com.catolica.Artepax.inventario.producto.repository.ProductoRepository;
@@ -54,6 +64,8 @@ import static com.catolica.Artepax.evento.model.EstadoEventoNames.*;
 import static com.catolica.Artepax.common.constant.AuditoriaAcciones.*;
 import static com.catolica.Artepax.common.constant.AuditoriaTablas.EVENTO;
 import static com.catolica.Artepax.common.constant.AuditoriaTablas.EVENTO_PRODUCTO;
+import static com.catolica.Artepax.evento.model.GastoEstadoNames.DESEMBOLSADO;
+import static com.catolica.Artepax.evento.model.GastoEstadoNames.PROYECTADO;
 
 /**
  * Orquestador del ciclo de vida de eventos.
@@ -74,16 +86,20 @@ public class EventoServiceImpl implements EventoService {
     private final EstadoEventoRepository estadoEventoRepository;
     private final TipoEventoRepository tipoEventoRepository;
     private final ProductoRepository productoRepository;
+    private final GastoEventoRepository gastoEventoRepository;
     private final EventoMapper eventoMapper;
     private final ConfiguracionService configuracionService;
     private final CronogramaService cronogramaService;
     private final VistaRentabilidadEventoRepository vistaRentabilidadEventoRepository;
     private final VistaEventosPeriodoRepository vistaEventosPeriodoRepository;
+    private final VistaPagosEventoRepository vistaPagosEventoRepository;
+    private final EventoProductoRepository eventoProductoRepository;
     private final EventoStockHandler stockHandler;
     private final EventoNotificacionHandler notificacionHandler;
     private final EventoPagoValidator pagoValidator;
     private final AuditoriaService auditoriaService;
     private final PagoCancelacionHandler pagoCancelacionHandler;
+    private final DecoracionProductoRepository decoracionProductoRepository;
 
     public EventoServiceImpl(EventoRepository eventoRepository,
                              ClienteRepository clienteRepository,
@@ -91,32 +107,40 @@ public class EventoServiceImpl implements EventoService {
                              EstadoEventoRepository estadoEventoRepository,
                              TipoEventoRepository tipoEventoRepository,
                              ProductoRepository productoRepository,
+                             GastoEventoRepository gastoEventoRepository,
                              EventoMapper eventoMapper,
                              ConfiguracionService configuracionService,
                              @Lazy CronogramaService cronogramaService,
                              VistaRentabilidadEventoRepository vistaRentabilidadEventoRepository,
                              VistaEventosPeriodoRepository vistaEventosPeriodoRepository,
+                             VistaPagosEventoRepository vistaPagosEventoRepository,
+                             EventoProductoRepository eventoProductoRepository,
                              EventoStockHandler stockHandler,
                               EventoNotificacionHandler notificacionHandler,
                               EventoPagoValidator pagoValidator,
                               AuditoriaService auditoriaService,
-                              PagoCancelacionHandler pagoCancelacionHandler) {
+                              PagoCancelacionHandler pagoCancelacionHandler,
+                              DecoracionProductoRepository decoracionProductoRepository) {
         this.eventoRepository = eventoRepository;
         this.clienteRepository = clienteRepository;
         this.decoracionRepository = decoracionRepository;
         this.estadoEventoRepository = estadoEventoRepository;
         this.tipoEventoRepository = tipoEventoRepository;
         this.productoRepository = productoRepository;
+        this.gastoEventoRepository = gastoEventoRepository;
         this.eventoMapper = eventoMapper;
         this.configuracionService = configuracionService;
         this.cronogramaService = cronogramaService;
         this.vistaRentabilidadEventoRepository = vistaRentabilidadEventoRepository;
         this.vistaEventosPeriodoRepository = vistaEventosPeriodoRepository;
+        this.vistaPagosEventoRepository = vistaPagosEventoRepository;
+        this.eventoProductoRepository = eventoProductoRepository;
         this.stockHandler = stockHandler;
         this.notificacionHandler = notificacionHandler;
         this.pagoValidator = pagoValidator;
         this.auditoriaService = auditoriaService;
         this.pagoCancelacionHandler = pagoCancelacionHandler;
+        this.decoracionProductoRepository = decoracionProductoRepository;
     }
 
     @Override
@@ -257,23 +281,60 @@ public class EventoServiceImpl implements EventoService {
     @Transactional
     public EventoResponseDTO finalizarEvento(Long id) {
         Evento evento = obtenerOFallar(id);
-        validarTransicion(evento, EN_MONTAJE, FINALIZADO);
 
-        BigDecimal totalPagado = pagoValidator.getTotalPagado(id);
-        if (totalPagado.compareTo(evento.getPrecioTotal()) < 0) {
+        boolean cobroCompleto = vistaPagosEventoRepository.findByIdEvento(id)
+                .map(VistaPagosEvento::getCobroCompleto)
+                .orElse(false);
+
+        String estadoDestino = cobroCompleto ? FINALIZADO : PENDIENTE_COBRO;
+        validarTransicion(evento, EN_MONTAJE, estadoDestino);
+
+        stockHandler.consumirStock(evento);
+
+        if (!cobroCompleto) {
+            BigDecimal totalPagado = pagoValidator.getTotalPagado(id);
             notificacionHandler.notificarSaldoPendiente(id, evento, totalPagado);
         }
 
-        stockHandler.consumirStock(evento);
+        EstadoEvento estado = estadoEventoRepository.findByNombre(estadoDestino)
+                .orElseThrow(() -> new EventoException("Estado " + estadoDestino + " no encontrado en BD"));
+
+        evento.setEstadoEvento(estado);
+        Evento guardado = eventoRepository.save(evento);
+        log.info("evento_finalizado id={} destino={}", id, estadoDestino);
+
+        return eventoMapper.toResponseDTO(guardado);
+    }
+
+    /**
+     * Transición PENDIENTE_COBRO → FINALIZADO cuando se completa el cobro.
+     * <p>
+     * Es seguro llamarlo aunque el evento no esté en PENDIENTE_COBRO o
+     * el cobro no esté completo: simplemente no hace nada.
+     */
+    @Override
+    @Transactional
+    public void finalizarDesdeCobroCompleto(Long id) {
+        Evento evento = obtenerOFallar(id);
+
+        if (!evento.getEstadoEvento().getNombre().equals(PENDIENTE_COBRO)) {
+            return;
+        }
+
+        boolean cobroCompleto = vistaPagosEventoRepository.findByIdEvento(id)
+                .map(VistaPagosEvento::getCobroCompleto)
+                .orElse(false);
+
+        if (!cobroCompleto) {
+            return;
+        }
 
         EstadoEvento estadoFinalizado = estadoEventoRepository.findByNombre(FINALIZADO)
                 .orElseThrow(() -> new EventoException("Estado FINALIZADO no encontrado en BD"));
 
         evento.setEstadoEvento(estadoFinalizado);
-        Evento guardado = eventoRepository.save(evento);
-        log.info("evento_finalizado id={}", id);
-
-        return eventoMapper.toResponseDTO(guardado);
+        eventoRepository.save(evento);
+        log.info("evento_finalizado_desde_cobro id={}", id);
     }
 
     @Override
@@ -348,7 +409,7 @@ public class EventoServiceImpl implements EventoService {
         Evento evento = obtenerOFallar(id);
         validarTransicion(evento, CANCELACION_PENDIENTE, CANCELADO);
 
-        pagoCancelacionHandler.procesarPagosPorCancelacion(evento, evento.getMotivoCancelacion());
+        BigDecimal totalDevolucion = pagoCancelacionHandler.procesarPagosPorCancelacion(evento, evento.getMotivoCancelacion());
 
         EstadoEvento estadoCancelado = estadoEventoRepository.findByNombre(CANCELADO)
                 .orElseThrow(() -> new EventoException(
@@ -359,6 +420,11 @@ public class EventoServiceImpl implements EventoService {
         evento.setEstadoAnterior(null);
         cronogramaService.cancelarPorEvento(id);
         eventoRepository.save(evento);
+
+        if (totalDevolucion.compareTo(BigDecimal.ZERO) == 0) {
+            notificacionHandler.notificarCancelacionConfirmada(id, evento, evento.getMotivoCancelacion());
+        }
+
         log.info("evento_cancelacion_confirmada id={}", id);
     }
 
@@ -441,6 +507,34 @@ public class EventoServiceImpl implements EventoService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public EventoResumenInternoDTO getResumenInterno(Long id) {
+        Evento evento = obtenerOFallar(id);
+
+        EventoResumenInternoDTO dto = new EventoResumenInternoDTO();
+        dto.setIdEvento(evento.getId());
+        dto.setEstadoEvento(evento.getEstadoEvento() != null ? evento.getEstadoEvento().getNombre() : null);
+        dto.setFecha(evento.getFecha());
+        dto.setHoraInicio(evento.getHoraInicio());
+        dto.setHoraFin(evento.getHoraFin());
+        dto.setUbicacion(evento.getUbicacion());
+        dto.setClienteNombre(evento.getCliente() != null ? evento.getCliente().getNombre() : null);
+        dto.setDecoracionNombre(evento.getDecoracion() != null ? evento.getDecoracion().getNombre() : null);
+        dto.setTipoEventoNombre(evento.getTipoEvento() != null ? evento.getTipoEvento().getTipoNombre() : null);
+        dto.setNota(evento.getNota());
+        dto.setNotaPrecio(evento.getNotaPrecio());
+        dto.setPrecioBase(evento.getPrecioBase());
+        dto.setPrecioAdicional(evento.getPrecioAdicional());
+        dto.setPrecioTotal(evento.getPrecioTotal());
+        dto.setFechaConfirmacion(evento.getFechaConfirmacion());
+        dto.setResumenPagos(construirResumenPagos(id, evento));
+        dto.setResumenGastos(construirResumenGastos(id));
+        dto.setRentabilidad(construirRentabilidadOpcional(id));
+
+        return dto;
+    }
+
+    @Override
     @Transactional
     public EventoResponseDTO actualizarEvento(Long id, EventoUpdateDTO dto) {
         Evento evento = obtenerOFallar(id);
@@ -519,6 +613,50 @@ public class EventoServiceImpl implements EventoService {
                 "Extras agregados: " + productosExtra.size() + " productos, incremento $" + dto.getMontoAdicional());
 
         return eventoMapper.toResponseDTO(guardado);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<EventoProductoDTO> obtenerProductosPorEvento(Long id) {
+        Evento evento = obtenerOFallar(id);
+        String estado = evento.getEstadoEvento().getNombre();
+
+        if (COTIZACION.equals(estado)) {
+            return obtenerProductosCotizados(evento);
+        }
+
+        return obtenerProductosReservados(evento);
+    }
+
+    private List<EventoProductoDTO> obtenerProductosCotizados(Evento evento) {
+        List<DecoracionProducto> composicion = decoracionProductoRepository
+                .findByDecoracionId(evento.getDecoracion().getId());
+
+        return composicion.stream()
+                .map(dp -> new EventoProductoDTO(
+                        dp.getProducto().getId(),
+                        dp.getProducto().getNombre(),
+                        dp.getCantidadRequerida(),
+                        dp.getProducto().getPrecioUnitario(),
+                        "COTIZADO",
+                        "DECORACION"
+                ))
+                .toList();
+    }
+
+    private List<EventoProductoDTO> obtenerProductosReservados(Evento evento) {
+        List<Object[]> filas = eventoProductoRepository.findProductosByEventoId(evento.getId());
+
+        return filas.stream()
+                .map(fila -> new EventoProductoDTO(
+                        ((Number) fila[0]).longValue(),
+                        (String) fila[1],
+                        (Integer) fila[2],
+                        (BigDecimal) fila[3],
+                        (String) fila[4],
+                        (String) fila[5]
+                ))
+                .toList();
     }
 
     private Evento obtenerOFallar(Long id) {
@@ -732,5 +870,47 @@ public class EventoServiceImpl implements EventoService {
                 e.getHoraFin(),
                 e.getUbicacion(),
                 e.getMotivoCancelacion());
+    }
+
+    private ResumenPagoEventoDTO construirResumenPagos(Long eventoId, Evento evento) {
+        return vistaPagosEventoRepository.findByIdEvento(eventoId)
+                .map(vista -> new ResumenPagoEventoDTO(
+                        vista.getIdEvento(),
+                        vista.getPrecioTotal(),
+                        vista.getTotalCobrado(),
+                        vista.getSaldoPendiente(),
+                        vista.getCobroCompleto(),
+                        vista.getTotalDevolucionPendiente(),
+                        vista.getTieneDevolucionPendiente()))
+                .orElseGet(() -> new ResumenPagoEventoDTO(
+                        eventoId,
+                        evento.getPrecioTotal(),
+                        BigDecimal.ZERO,
+                        evento.getPrecioTotal(),
+                        false,
+                        BigDecimal.ZERO,
+                        false));
+    }
+
+    private ResumenGastoEventoDTO construirResumenGastos(Long eventoId) {
+        BigDecimal totalProyectado = gastoEventoRepository.sumMontoByEventoIdAndEstado(eventoId, PROYECTADO);
+        BigDecimal totalDesembolsado = gastoEventoRepository.sumMontoByEventoIdAndEstado(eventoId, DESEMBOLSADO);
+        return new ResumenGastoEventoDTO(totalProyectado, totalDesembolsado, totalProyectado);
+    }
+
+    private RentabilidadEventoDTO construirRentabilidadOpcional(Long eventoId) {
+        return vistaRentabilidadEventoRepository.findByIdEvento(eventoId)
+                .map(vista -> new RentabilidadEventoDTO(
+                        vista.getIdEvento(),
+                        vista.getFechaEvento(),
+                        vista.getEstado(),
+                        vista.getPrecioAcordado(),
+                        vista.getIngresoCobrado(),
+                        vista.getCostoMateriales(),
+                        vista.getCostoManoObra(),
+                        vista.getGastosDesembolsados(),
+                        vista.getGastosProyectados(),
+                        vista.getGananciaNeta()))
+                .orElse(null);
     }
 }

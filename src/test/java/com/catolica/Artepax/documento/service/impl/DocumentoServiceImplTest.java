@@ -159,7 +159,7 @@ class DocumentoServiceImplTest {
     void generarConfirmacionReserva_duplicado_lanzaError() {
         Evento evento = crearEvento("cliente@test.com", EstadoEventoNames.CONFIRMADO);
         when(eventoRepository.findDocumentoContextById(1L)).thenReturn(Optional.of(evento));
-        when(documentoRepository.existsByEventoIdAndTipoDocumento(1L, DocumentoTipo.CONFIRMACION_RESERVA))
+        when(documentoRepository.existsByEventoIdAndDocuTipo(1L, DocumentoTipo.CONFIRMACION_RESERVA))
                 .thenReturn(true);
 
         assertThrows(DocumentoOperacionNoPermitidaException.class,
@@ -458,6 +458,19 @@ class DocumentoServiceImplTest {
 
         assertThrows(DocumentoOperacionNoPermitidaException.class,
                 () -> documentoService.generarAvisoSaldoPendiente(1L));
+    }
+
+    @Test
+    void generarAvisoSaldoPendiente_duplicado_lanzaError() {
+        Evento evento = crearEvento("cliente@test.com", EstadoEventoNames.CONFIRMADO);
+        when(eventoRepository.findDocumentoContextById(1L)).thenReturn(Optional.of(evento));
+        when(documentoRepository.existsByEventoIdAndDocuTipo(1L, DocumentoTipo.AVISO_SALDO_PENDIENTE))
+                .thenReturn(true);
+
+        assertThrows(DocumentoOperacionNoPermitidaException.class,
+                () -> documentoService.generarAvisoSaldoPendiente(1L));
+
+        verify(plantillaRepository, never()).findByTipoDocumentoAndActivoTrue(any());
     }
 
     // AVISO_SALDO_PENDIENTE - correo y envío

@@ -22,6 +22,7 @@ import java.util.Set;
 public class CronogramaPolicy {
 
     private static final Set<String> ESTADOS_EVENTO_PERMITIDOS = Set.of(
+            EstadoEventoNames.PROGRAMADO,
             EstadoEventoNames.CONFIRMADO,
             EstadoEventoNames.EN_MONTAJE
     );
@@ -61,7 +62,7 @@ public class CronogramaPolicy {
         if (!ESTADOS_EVENTO_PERMITIDOS.contains(estadoEvento)) {
             throw new CronogramaException(
                     CronogramaErrorCode.EVENTO_NO_PERMITE_EDICION,
-                    "Solo se pueden crear o editar actividades en eventos CONFIRMADO o EN_MONTAJE. Estado actual: "
+                    "Solo se pueden crear o editar actividades en eventos PROGRAMADO, CONFIRMADO o EN_MONTAJE. Estado actual: "
                             + estadoEvento);
         }
     }

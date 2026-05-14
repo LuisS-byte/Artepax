@@ -1,6 +1,7 @@
 package com.catolica.Artepax.pago.service.impl;
 
 import com.catolica.Artepax.clientes.entity.Cliente;
+import com.catolica.Artepax.common.service.ConfiguracionService;
 import com.catolica.Artepax.evento.model.EstadoEvento;
 import com.catolica.Artepax.evento.model.Evento;
 import com.catolica.Artepax.evento.repository.EventoRepository;
@@ -68,6 +69,8 @@ class PagoServiceImplTest {
     private VistaPagosEventoRepository vistaPagosEventoRepository;
     @Mock
     private EventoPagoValidator eventoPagoValidator;
+    @Mock
+    private ConfiguracionService configuracionService;
 
     private PagoServiceImpl service;
 
@@ -83,7 +86,8 @@ class PagoServiceImplTest {
                 eventoService,
                 notificacionService,
                 vistaPagosEventoRepository,
-                eventoPagoValidator);
+                eventoPagoValidator,
+                configuracionService);
 
         lenient().when(pagoMapper.toDTO(any(Pago.class))).thenAnswer(invocation -> {
             Pago pago = invocation.getArgument(0);
@@ -115,7 +119,7 @@ class PagoServiceImplTest {
         MetodoPago metodoInactivo = crearMetodoPago(false);
         ConceptoPago concepto = new ConceptoPago();
 
-        when(eventoRepository.findById(10L)).thenReturn(Optional.of(evento));
+        when(eventoRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(evento));
         when(pagoRepository.sumMontoActivoByEventoId(10L)).thenReturn(BigDecimal.ZERO);
         when(estadoPagoRepository.findByEstadoNombre("PENDIENTE")).thenReturn(Optional.of(estadoPendiente));
         when(metodoPagoRepository.findById(3L)).thenReturn(Optional.of(metodoInactivo));
@@ -132,7 +136,7 @@ class PagoServiceImplTest {
         EstadoPago estadoPagado = crearEstadoPago("PAGADO");
 
         when(pagoRepository.findById(1L)).thenReturn(Optional.of(pago));
-        when(eventoRepository.findById(10L)).thenReturn(Optional.of(evento));
+        when(eventoRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(evento));
         when(pagoRepository.sumPagosConfirmadosPorEventoExcluyendoPago(10L, 1L))
                 .thenReturn(new BigDecimal("400.00"));
         when(estadoPagoRepository.findByEstadoNombre("PAGADO")).thenReturn(Optional.of(estadoPagado));
@@ -215,7 +219,7 @@ class PagoServiceImplTest {
         EstadoPago estadoOriginal = pago.getEstadoPago();
 
         when(pagoRepository.findById(1L)).thenReturn(Optional.of(pago));
-        when(eventoRepository.findById(10L)).thenReturn(Optional.of(evento));
+        when(eventoRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(evento));
         when(pagoRepository.sumPagosConfirmadosPorEventoExcluyendoPago(10L, 1L))
                 .thenReturn(new BigDecimal("900.01"));
 
@@ -236,7 +240,7 @@ class PagoServiceImplTest {
         EstadoPago estadoOriginal = segundoPago.getEstadoPago();
 
         when(pagoRepository.findById(2L)).thenReturn(Optional.of(segundoPago));
-        when(eventoRepository.findById(10L)).thenReturn(Optional.of(evento));
+        when(eventoRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(evento));
         when(pagoRepository.sumPagosConfirmadosPorEventoExcluyendoPago(10L, 2L))
                 .thenReturn(new BigDecimal("800.00"));
 
@@ -256,7 +260,7 @@ class PagoServiceImplTest {
         EstadoPago estadoPagado = crearEstadoPago("PAGADO");
 
         when(pagoRepository.findById(3L)).thenReturn(Optional.of(pago));
-        when(eventoRepository.findById(10L)).thenReturn(Optional.of(evento));
+        when(eventoRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(evento));
         when(pagoRepository.sumPagosConfirmadosPorEventoExcluyendoPago(10L, 3L))
                 .thenReturn(new BigDecimal("800.00"));
         when(estadoPagoRepository.findByEstadoNombre("PAGADO")).thenReturn(Optional.of(estadoPagado));
@@ -276,7 +280,7 @@ class PagoServiceImplTest {
         EstadoPago estadoOriginal = pago.getEstadoPago();
 
         when(pagoRepository.findById(pago.getId())).thenReturn(Optional.of(pago));
-        when(eventoRepository.findById(10L)).thenReturn(Optional.of(evento));
+        when(eventoRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(evento));
 
         assertThrows(PagoException.class, () -> service.confirmarPago(pago.getId()));
 
