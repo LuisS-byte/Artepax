@@ -37,4 +37,5 @@ build/
 *.env
 !*.env.example
 .claude/
+.atl/
 src/main/resources/application.properties

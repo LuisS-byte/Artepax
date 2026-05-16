@@ -6,21 +6,31 @@
 
 - Run the app: `./mvnw spring-boot:run`
 - Run all tests: `./mvnw test`
-- Run the only current test class: `./mvnw -Dtest=ArtepaxApplicationTests test`
+- Run a specific test class: `./mvnw -Dtest=ClassName test`
 - There is no repo-local lint, formatter, typecheck, CI workflow, Flyway, or Liquibase config to fall back on; Maven tests are the only checked-in automation.
 
 ## Startup And Test Preconditions
 
 - `src/main/resources/application.properties` points to PostgreSQL at `jdbc:postgresql://localhost:5432/Artepax` and uses env placeholders for `DB_USER`, `DB_PASS`, `GOOGLE_CLIENT_ID`, `JWT_SECRET`, `MAIL_USERNAME`, `MAIL_PASSWORD`, and optional `FRONTEND_URLS`.
-- `src/main/resources/application.properties.example` is the checked-in reference for required config.
-- Spring Boot is not configured here to import a root `.env` file. A verified `./mvnw -Dtest=ArtepaxApplicationTests test` run failed with `${DB_USER}` still unresolved, so export env vars in the shell before running Maven.
-- `spring.jpa.hibernate.ddl-auto=validate` is enabled and there are no migration files in the repo. The schema must already exist and match the entities before the app or tests will start.
+- `src/main/resources/application.properties` is in `.gitignore`. Reference: `src/main/resources/application.properties.example` (checked-in template).
+- A `.env` file exists at the repo root (gitignored) with the values for those placeholders. Spring Boot does NOT auto-import `.env` — export the env vars in the shell before running Maven.
+- `spring.jpa.hibernate.ddl-auto=validate` is enabled and there are no migration files. The schema must already exist and match the entities before the app or tests will start.
+- There is no `.github/` directory in the repo. No CI.
+
+## Test Profiles And Testcontainers
+
+- Unit tests (plain JUnit 5 + Mockito with `@ExtendWith(MockitoExtension.class)`) do not need a database.
+- `ArtepaxApplicationTests` is a plain `@SpringBootTest(contextLoads)` — it WILL fail without a running PostgreSQL and exported env vars.
+- Integration tests follow the `*IT.java` naming convention and use Testcontainers (`@Testcontainers(disabledWithoutDocker = true)` + `@Container PostgreSQLContainer`). They skip gracefully when Docker is unavailable.
+- The `test` profile (`src/test/resources/application-test.properties`) sets `ddl-auto=create-drop`, disables scheduling (`spring.task.scheduling.enabled=false`), and provides dummy credentials for Google, JWT, and email — so integration tests are self-contained.
+- Run integration tests specifically with `./mvnw -Dtest="*IT" test` (Docker required).
 
 ## Code Layout
 
-- Main entrypoint: `src/main/java/com/catolica/Artepax/ArtepaxApplication.java`.
-- The codebase is organized by feature under `src/main/java/com/catolica/Artepax`: `authentication`, `clientes`, `cronograma`, `documento`, `evento`, `inventario`, `notificacion`, `pago`, with shared cross-cutting code in `common`.
+- Main entrypoint: `src/main/java/com/catolica/Artepax/ArtepaxApplication.java`. It enables scheduling and `@ConfigurationPropertiesScan`.
+- The codebase is organized by feature under `src/main/java/com/catolica/Artepax`: `authentication`, `clientes`, `comunicacion`, `cronograma`, `documento`, `evento`, `inventario`, `notificacion`, `pago`, with shared cross-cutting code in `common`.
 - If architecture is unclear, read feature service implementations before leaf entities; most business rules live there.
+- `@ConfigurationProperties(prefix = "app.mail")` is used for type-safe property binding (see `comunicacion/config/MailProperties.java`).
 
 ## Security And API Shape
 
@@ -30,9 +40,22 @@
 
 ## Business Logic Gotchas
 
-- Scheduling is live. `ArtepaxApplication` enables scheduling, and `common/job/*` contains background jobs for reminders, overdue quotes, and automatic cancellation processing. Read those jobs before changing event, notification, or configuration flows.
+- Scheduling is live. `ArtepaxApplication` enables scheduling, and `common/job/*` contains background jobs for reminders, overdue quotes, saldo-pendiente, and automatic cancellation processing. Read those jobs before changing event, notification, or configuration flows.
 - Event state transitions and their side effects are centralized in `evento/service/impl/EventoServiceImpl.java`; changing event status logic without reading that file is risky because it coordinates inventory and payment behavior.
-- `documento/service/impl/DocumentoServiceImpl.java` intentionally persists a generated `Documento` even if email sending fails: `generarDocumento` uses `@Transactional(noRollbackFor = RuntimeException.class)` and records `FALLIDO` for retry instead of rolling back.
+  - State flow: COTIZACION → PROGRAMADO → CONFIRMADO → EN_MONTAJE → (PENDIENTE_COBRO | FINALIZADO). CANCELACION_PENDIENTE is a reversible intermediate state.
+  - PROGRAMADO → CONFIRMADO can be auto-triggered when the anticipo threshold is met after a payment is confirmed (see `PagoServiceImpl.verificarAnticipo`).
+  - PENDIENTE_COBRO → FINALIZADO is auto-triggered after the last payment is confirmed when the event is fully paid (see `finalizarDesdeCobroCompleto`).
+- `documento/service/impl/DocumentoServiceImpl.java` intentionally persists a generated `Documento` even if email sending fails: `generarDocumento` (and the other doc-generation methods) catch `RuntimeException` in a try-catch, set the document's state to `FALLIDO`, and return normally so the transaction commits. This allows retry via `reenviarDocumento` instead of rolling back.
+- Runtime configuration is stored in the `configuracion` database table, not in property files. `ConfiguracionService` exposes typed accessors (`getString`, `getInt`, `getDecimal`, `getBoolean`) backed by an in-memory `ConcurrentHashMap` cache. Jobs read keys like `DIAS_RECORDATORIO_EVENTO`, `TIEMPO_GRACIA_CANCELACION_MINUTOS`, and `DIAS_AVISO_SALDO_PENDIENTE` from it. After updating a config value via the API, call `invalidarCache(clave)` or the cached stale value will persist.
+- AOP-based auditing lives in `common/aspect/AuditoriaAspect.java`. Its pointcuts are tied to specific method signatures in `EventoServiceImpl`, `PagoServiceImpl`, and `ClienteServiceImpl`. Renaming those methods WILL break audit logging silently — the aspect catches and swallows its own errors.
+- All feature exceptions extend `common/exception/ArtepaxException` (abstract, carries `HttpStatus` + `errorCode`). `GlobalExceptionHandler` (`@RestControllerAdvice`) handles them generically. When creating a new exception, extend `ArtepaxException` for consistent error responses.
+- EventoStockHandler (`evento/service/handler/EventoStockHandler.java`) uses a two-phase stock model: reservations are soft (no stock subtracted, only an `ACTIVA` `EventoProducto` record created), consumption is hard (stock subtracted + `MovimientoInventario` recorded on `finalizarEvento`). On cancellation, reservations are freed by marking them `LIBERADA` — no stock math is involved since none was subtracted.
+- Stock validation uses pessimistic locking (`SELECT ... FOR UPDATE`) on productos with IDs sorted to prevent deadlock. Availability formula: `cantidadTotal - sum(active_reservations)`.
+- `pago/service/impl/PagoServiceImpl.java.confirmarPago()` calls `pagoRepository.flush()` before reading the database view `vista_pagos_evento`. Removing that `flush()` will cause stale view data within the same transaction.
+- When an event is cancelled, `PagoCancelacionHandler` converts PAGADO payments to `DEVOLUCION_PENDIENTE` — this requires manual admin processing. PENDIENTE payments become `CANCELADO` with no financial impact.
+- `inventario/producto/entity/StockProducto.java` is a read-only DB view (`vista_stock_producto`, `@Immutable`) that computes `cantidad_disponible = total - reservada` and `stock_bajo_alerta`. `MovimientoServiceImpl` and `DecoracionServiceImpl` validate stock against this view, while `EventoStockHandler` computes availability manually against `Producto` + `EventoProducto` in Java. Keep both in sync.
+- `inventario/movimiento/service/impl/MovimientoServiceImpl.java` and `inventario/producto/service/impl/ProductoServiceImpl.java` use `jakarta.transaction.Transactional` instead of the Spring variant used by every other service. Be aware of this inconsistency when debugging transaction boundaries in those files.
+- `inventario/movimiento/service/impl/MovimientoServiceImpl.registrarAjuste()` validates that the physical count is never lower than the sum of active reservations — this guard prevents inventory shrinkage from breaking event stock promises.
 
 ## Local Guidance
 
