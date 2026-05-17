@@ -464,6 +464,8 @@ public class DocumentoServiceImpl implements DocumentoService {
         resultado = resultado.replace("{{mensaje_adicional}}", "");
         resultado = resultado.replace("{{fecha_limite_pago}}",
                 escapeHtmlDoc(evento.getFecha() != null ? evento.getFecha().minusDays(7).format(fechaFmt) : ""));
+        resultado = resultado.replace("{{condiciones_cancelacion}}",
+                escapeHtmlDoc(configuracionService.getString(CONFIG_POLITICA_CANCELACION)));
 
         return resultado;
     }
