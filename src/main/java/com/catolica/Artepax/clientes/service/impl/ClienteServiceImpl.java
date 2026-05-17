@@ -17,6 +17,16 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+/**
+ * Implementation of {@link ClienteService}.
+ * <p>
+ * Handles all cliente business logic: creation with email uniqueness validation
+ * and text normalisation, full updates with duplicate-email detection when the
+ * email changes, soft-delete (deactivation), reactivation, and event history lookup.
+ * Read operations filter out inactive clientes unless explicitly requested via
+ * {@link #obtenerInactivos()}.
+ * </p>
+ */
 @Service
 public class ClienteServiceImpl implements ClienteService {
 
@@ -135,14 +145,32 @@ public class ClienteServiceImpl implements ClienteService {
     // HELPERS DE NORMALIZACIÓN
     // -------------------------------------------------------------------------
 
+    /**
+     * Trims the given string, returning {@code null} if the input is {@code null}.
+     *
+     * @param value the string to trim, may be null
+     * @return the trimmed string, or {@code null} if input was null
+     */
     private String trimRequired(String value) {
         return value == null ? null : value.trim();
     }
 
+    /**
+     * Trims the given string, returning {@code null} if the input is blank or null.
+     *
+     * @param value the string to trim, may be null or blank
+     * @return the trimmed string, or {@code null} if input was null or blank
+     */
     private String trimToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
     }
 
+    /**
+     * Normalises an email address by trimming whitespace and converting to lowercase.
+     *
+     * @param correo the email to normalise, may be null or blank
+     * @return the normalised email, or {@code null} if input was null or blank
+     */
     private String normalizarCorreo(String correo) {
         return correo == null || correo.isBlank()
                 ? null

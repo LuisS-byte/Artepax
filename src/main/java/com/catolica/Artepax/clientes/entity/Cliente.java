@@ -5,6 +5,15 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
+/**
+ * JPA entity representing a cliente (customer).
+ * <p>
+ * Supports soft-delete via the {@code activo} flag: when set to {@code false} the cliente
+ * is considered inactive but their historical event data is preserved and still accessible.
+ * The {@code correo} field is unique when provided (nullable at the database level).
+ * The {@code telefono} field is intentionally NOT unique — family members may share a phone number.
+ * </p>
+ */
 @Entity
 @Table(name = "cliente")
 public class Cliente {
@@ -14,18 +23,26 @@ public class Cliente {
     @Column(name = "id_cliente")
     private Long id;
 
+    /** the cliente's full name */
     @Column(name = "cli_nombre", nullable = false, length = 100)
     private String nombre;
 
+    /** the cliente's phone number, NOT unique (family members share numbers) */
     @Column(name = "cli_telefono", length = 20)
     private String telefono;
 
+    /** the cliente's email address, unique when provided (nullable) */
     @Column(name = "cli_correo", length = 100)
     private String correo;
 
+    /** the cliente's physical address */
     @Column(name = "cli_direccion", length = 255)
     private String direccion;
 
+    /**
+     * soft-delete flag: {@code false} means inactive but event history is preserved,
+     * {@code true} (default) means active
+     */
     @Column(name = "cli_activo", nullable = false)
     private Boolean activo = true;
 

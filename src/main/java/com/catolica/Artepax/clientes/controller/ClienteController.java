@@ -13,6 +13,13 @@ import com.catolica.Artepax.evento.dto.EventoResponseDTO;
 import jakarta.validation.Valid;
 import java.util.List;
 
+/**
+ * REST controller for managing clientes.
+ * <p>
+ * Exposes CRUD endpoints, soft-delete (deactivation), reactivation, search,
+ * and event history lookup for clientes. All endpoints require the {@code ADMIN} role.
+ * </p>
+ */
 @RestController
 @RequestMapping("/api/clientes")
 @PreAuthorize("hasRole('ADMIN')")
@@ -24,7 +31,12 @@ public class ClienteController {
         this.clienteService = clienteService;
     }
 
-    // ✅ Crear cliente
+    /**
+     * Creates a new cliente.
+     *
+     * @param requestDTO the cliente creation data
+     * @return the created cliente with HTTP 201 status
+     */
     @PostMapping
     public ResponseEntity<ClienteResponseDTO> crearCliente(
             @Valid @RequestBody ClienteRequestDTO requestDTO) {
@@ -33,14 +45,23 @@ public class ClienteController {
         return ResponseEntity.status(201).body(cliente);
     }
 
-    // ✅ Obtener todos los clientes
+    /**
+     * Retrieves all active clientes sorted by name.
+     *
+     * @return list of active clientes
+     */
     @GetMapping
     public ResponseEntity<List<ClienteResponseDTO>> obtenerTodos() {
         List<ClienteResponseDTO> clientes = clienteService.obtenerTodos();
         return ResponseEntity.ok(clientes);
     }
 
-    // ✅ Obtener cliente por ID
+    /**
+     * Retrieves a cliente by its ID.
+     *
+     * @param id the cliente ID
+     * @return the cliente if found
+     */
     @GetMapping("/{id}")
     public ResponseEntity<ClienteResponseDTO> obtenerPorId(
             @PathVariable Long id) {
@@ -49,7 +70,13 @@ public class ClienteController {
         return ResponseEntity.ok(cliente);
     }
 
-    // ✅ Actualizar cliente
+    /**
+     * Updates an existing cliente.
+     *
+     * @param id        the ID of the cliente to update
+     * @param updateDTO the update data
+     * @return the updated cliente
+     */
     @PutMapping("/{id}")
     public ResponseEntity<ClienteResponseDTO> actualizarCliente(
             @PathVariable Long id,
@@ -59,7 +86,12 @@ public class ClienteController {
         return ResponseEntity.ok(actualizado);
     }
 
-    // ✅ Eliminar cliente
+    /**
+     * Soft-deletes a cliente by setting it as inactive.
+     *
+     * @param id the ID of the cliente to deactivate
+     * @return HTTP 204 No Content
+     */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminarCliente(
             @PathVariable Long id) {
@@ -68,7 +100,12 @@ public class ClienteController {
         return ResponseEntity.noContent().build();
     }
 
-    // ✅ Historial de eventos por cliente
+    /**
+     * Retrieves the event history for a specific cliente.
+     *
+     * @param id the cliente ID
+     * @return list of eventos associated with the cliente
+     */
     @GetMapping("/{id}/eventos")
     public ResponseEntity<List<EventoResponseDTO>> obtenerEventosPorCliente(
             @PathVariable Long id) {
@@ -77,7 +114,12 @@ public class ClienteController {
         return ResponseEntity.ok(eventos);
     }
 
-    // GET /api/clientes/buscar?nombre=Juan
+    /**
+     * Searches for active clientes whose name contains the given string (case-insensitive).
+     *
+     * @param nombre the search string
+     * @return list of matching clientes sorted by name
+     */
     @GetMapping("/buscar")
     public ResponseEntity<List<ClienteResponseDTO>> buscarPorNombre(
             @RequestParam String nombre) {
@@ -86,11 +128,22 @@ public class ClienteController {
         return ResponseEntity.ok(clientes);
     }
 
+    /**
+     * Retrieves all inactive (soft-deleted) clientes sorted by name.
+     *
+     * @return list of inactive clientes
+     */
     @GetMapping("/inactivos")
     public ResponseEntity<List<ClienteResponseDTO>> listarInactivos() {
         return ResponseEntity.ok(clienteService.obtenerInactivos());
     }
 
+    /**
+     * Reactivates a previously soft-deleted cliente.
+     *
+     * @param id the ID of the cliente to reactivate
+     * @return the reactivated cliente
+     */
     @PatchMapping("/{id}/reactivar")
     public ResponseEntity<ClienteResponseDTO> reactivar(@PathVariable Long id) {
         return ResponseEntity.ok(clienteService.reactivar(id));

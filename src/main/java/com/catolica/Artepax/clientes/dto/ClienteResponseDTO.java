@@ -1,5 +1,11 @@
 package com.catolica.Artepax.clientes.dto;
 
+/**
+ * Response DTO for cliente data.
+ * <p>
+ * Represents the full cliente state returned by the API, including the soft-delete status.
+ * </p>
+ */
 public class ClienteResponseDTO {
 
     private Long id;
