@@ -2,6 +2,12 @@ package com.catolica.Artepax.notificacion.entity;
 
 import jakarta.persistence.*;
 
+/**
+ * Catálogo de tipos de notificación.
+ * <p>
+ * Clasifica las notificaciones según su propósito o el contexto que las origina
+ * (por ejemplo, recordatorios de eventos, cambios de estado, alertas de pago, etc.)
+ */
 @Entity
 @Table(name = "tipo_notificacion")
 public class TipoNotificacion {

@@ -2,6 +2,17 @@ package com.catolica.Artepax.notificacion.entity;
 
 import jakarta.persistence.*;
 
+/**
+ * Catálogo de estados de notificación.
+ * <p>
+ * Los valores esperados en la base de datos son:
+ * <ul>
+ *   <li>{@code PENDIENTE} — notificación creada y pendiente de envío o lectura</li>
+ *   <li>{@code ENVIADA} — notificación enviada al destino</li>
+ *   <li>{@code FALLIDA} — el envío de la notificación falló</li>
+ *   <li>{@code LEIDA} — el usuario destino ya leyó la notificación</li>
+ * </ul>
+ */
 @Entity
 @Table(name = "estado_notificacion")
 public class EstadoNotificacion {

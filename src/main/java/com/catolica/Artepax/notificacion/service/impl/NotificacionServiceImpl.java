@@ -20,6 +20,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+/**
+ * Implementación del servicio de notificaciones.
+ * <p>
+ * Gestiona la creación masiva de notificaciones a administradores, el marcado
+ * como leídas con verificación de propiedad y la consulta de notificaciones
+ * de un usuario. Incluye normalización de mensajes (truncamiento a 500 caracteres)
+ * y validación de idempotencia contra notificaciones duplicadas.
+ */
 @Service
 public class NotificacionServiceImpl implements NotificacionService {
 
@@ -43,6 +51,14 @@ public class NotificacionServiceImpl implements NotificacionService {
         this.usuarioRepository = usuarioRepository;
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Para cada administrador activo crea una {@link Notificacion} en estado
+     * {@code PENDIENTE}. El mensaje se normaliza antes de persistir.
+     *
+     * @throws IllegalStateException si el tipo o el estado no existen en BD
+     */
     @Override
     @Transactional
     public void notificarAdmins(String tipoNombre, String mensaje, Evento evento) {
@@ -72,6 +88,14 @@ public class NotificacionServiceImpl implements NotificacionService {
         notificacionRepository.saveAll(notificaciones);
     }
 
+    /**
+     * Normaliza el mensaje de una notificación: lo recorta, valida que no esté
+     * vacío y lo trunca a un máximo de 500 caracteres si es necesario.
+     *
+     * @param mensaje texto a normalizar
+     * @return mensaje normalizado y truncado
+     * @throws IllegalArgumentException si el mensaje es {@code null} o está en blanco
+     */
     private String normalizarMensaje(String mensaje) {
         if (mensaje == null || mensaje.isBlank()) {
             throw new IllegalArgumentException("El mensaje de notificación es obligatorio");
@@ -87,6 +111,16 @@ public class NotificacionServiceImpl implements NotificacionService {
         return normalizado;
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Si la notificación ya está en estado {@code LEIDA}, la operación se ignora
+     * silenciosamente. La verificación de propietario se realiza contra el
+     * usuario autenticado; un {@code AccessDeniedException} se lanza si no coincide.
+     *
+     * @throws NotificacionNotFoundException si no existe la notificación con ese ID
+     * @throws AccessDeniedException         si el usuario autenticado no es el propietario
+     */
     @Override
     @Transactional
     public void marcarLeida(Long notificacionId, Long idUsuarioAutenticado) {
@@ -110,6 +144,12 @@ public class NotificacionServiceImpl implements NotificacionService {
         notificacionRepository.save(n);
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Realiza una consulta optimizada con {@code JOIN FETCH} para cargar
+     * todas las relaciones en una sola sentencia SQL.
+     */
     @Override
     @Transactional(readOnly = true)
     public List<NotificacionResponseDTO> obtenerMias(Long usuarioId) {
@@ -118,6 +158,15 @@ public class NotificacionServiceImpl implements NotificacionService {
                 .stream().map(this::toDTO).toList();
     }
 
+    /**
+     * Convierte una entidad {@link Notificacion} en su DTO de respuesta.
+     * <p>
+     * Mapea los nombres descriptivos de tipo y estado desde sus entidades
+     * relacionadas, y extrae el ID del evento si existe.
+     *
+     * @param n entidad de notificación
+     * @return DTO listo para ser serializado
+     */
     private NotificacionResponseDTO toDTO(Notificacion n) {
         NotificacionResponseDTO dto = new NotificacionResponseDTO();
         dto.setId(n.getId());

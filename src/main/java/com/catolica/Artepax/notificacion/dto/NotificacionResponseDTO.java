@@ -2,6 +2,13 @@ package com.catolica.Artepax.notificacion.dto;
 
 import java.time.LocalDateTime;
 
+/**
+ * DTO para la respuesta de notificaciones en la API.
+ * <p>
+ * Expone los datos relevantes de una {@code Notificacion} al frontend, incluyendo
+ * los nombres descriptivos de tipo y estado en lugar de sus identificadores numéricos,
+ * y un identificador de evento opcional para habilitar navegación directa.
+ */
 public class NotificacionResponseDTO {
     private Long id;
     private String mensaje;
