@@ -254,7 +254,13 @@ public class DocumentoServiceImpl implements DocumentoService {
         }
 
         try {
-            String contenidoGenerado = rellenarPlaceholders(plantilla.getContenidoBase(), evento);
+            String contenidoGenerado;
+            if (documento.getDocuTipo() == DocumentoTipo.AVISO_SALDO_PENDIENTE) {
+                ResumenFinancieroDocumento resumen = obtenerResumenFinanciero(evento);
+                contenidoGenerado = rellenarPlaceholdersAvisoSaldo(plantilla.getContenidoBase(), evento, resumen);
+            } else {
+                contenidoGenerado = rellenarPlaceholders(plantilla.getContenidoBase(), evento);
+            }
             byte[] pdfBytes = pdfGeneratorService.generarDesdeHtml(contenidoGenerado);
             String urlDescarga = guardarPdfEnDisco(pdfBytes, documento.getIdDocumento());
             documento.setArchivoUrl(urlDescarga);
@@ -420,6 +426,7 @@ public class DocumentoServiceImpl implements DocumentoService {
                 escapeHtmlDoc(LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))));
 
         resultado = resultado.replace("{{anticipo_pagado}}", formatearMoneda(resumenFinanciero.anticipoPagado()));
+        resultado = resultado.replace("{{total_pagado}}", formatearMoneda(resumenFinanciero.totalPagado()));
         resultado = resultado.replace("{{saldo_pendiente}}", formatearMoneda(resumenFinanciero.saldoPendiente()));
         resultado = resultado.replace("{{condiciones_cancelacion}}",
                 escapeHtmlDoc(configuracionService.getString(CONFIG_POLITICA_CANCELACION)));
