@@ -3,6 +3,13 @@ package com.catolica.Artepax.evento.dto;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+/**
+ * DTO que representa la rentabilidad calculada de un evento.
+ * <p>
+ * Incluye precios acordados, ingresos cobrados, costos de materiales y mano
+ * de obra, gastos desembolsados y proyectados, y la ganancia neta resultante.
+ * Los datos provienen de la vista de base de datos {@code vista_rentabilidad_evento}.
+ */
 public class RentabilidadEventoDTO {
 
     private Long idEvento;

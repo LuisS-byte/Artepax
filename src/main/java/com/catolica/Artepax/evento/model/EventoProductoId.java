@@ -4,6 +4,13 @@ import java.io.Serializable;
 import java.util.Objects;
 import jakarta.persistence.Embeddable;
 
+/**
+ * Clave compuesta para la entidad {@link EventoProducto}.
+ * <p>
+ * Compuesta por el identificador del evento y el identificador del producto.
+ * Implementa {@link Serializable} y los métodos {@code equals()}/{@code hashCode()}
+ * para ser utilizada como {@link jakarta.persistence.EmbeddedId}.
+ */
 @Embeddable
 public class EventoProductoId implements Serializable {
 

@@ -27,17 +27,34 @@ public class TipoEventoController {
 
     private final TipoEventoService service;
 
+    /**
+     * Retorna todos los tipos de evento activos e inactivos.
+     *
+     * @return lista de tipos de evento
+     */
     @GetMapping
     public List<TipoEventoResponseDTO> listar() {
         return service.listar();
     }
 
+    /**
+     * Crea un nuevo tipo de evento.
+     *
+     * @param dto datos del tipo de evento a crear
+     * @return 201 con el tipo de evento creado
+     */
     @PostMapping
     public ResponseEntity<TipoEventoResponseDTO> crear(@Valid @RequestBody TipoEventoRequestDTO dto) {
         log.info("POST /api/tipos-evento nombre={}", dto.getNombre());
         return ResponseEntity.status(HttpStatus.CREATED).body(service.crear(dto.getNombre(), dto.getDescripcion()));
     }
 
+    /**
+     * Activa o desactiva un tipo de evento (toggle).
+     *
+     * @param id identificador del tipo de evento
+     * @return tipo de evento con estado actualizado
+     */
     @PatchMapping("/{id}/toggle")
     public ResponseEntity<TipoEventoResponseDTO> toggle(@PathVariable Long id) {
         log.info("PATCH /api/tipos-evento/{}/toggle", id);

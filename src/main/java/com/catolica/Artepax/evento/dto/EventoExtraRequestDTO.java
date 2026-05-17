@@ -10,6 +10,12 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.util.List;
 
+/**
+ * DTO de entrada para agregar productos extra a un evento operativo.
+ * <p>
+ * Incluye la lista de ítems extra, la nota de precio y el monto adicional
+ * que incrementa el precio total del evento.
+ */
 @Data
 public class EventoExtraRequestDTO {
 

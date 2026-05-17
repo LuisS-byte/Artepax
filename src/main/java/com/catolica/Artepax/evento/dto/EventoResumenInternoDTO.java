@@ -8,6 +8,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
+/**
+ * DTO de resumen interno de un evento para uso administrativo.
+ * <p>
+ * Agrupa datos básicos del evento, el resumen de pagos, el resumen de gastos
+ * y la rentabilidad calculada en una sola respuesta.
+ */
 @Data
 public class EventoResumenInternoDTO {
     private Long idEvento;

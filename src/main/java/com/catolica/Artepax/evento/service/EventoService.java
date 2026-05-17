@@ -2,6 +2,9 @@ package com.catolica.Artepax.evento.service;
 
 import com.catolica.Artepax.evento.dto.*;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -24,9 +27,12 @@ public interface EventoService {
     EventoResponseDTO crearEvento(EventoRequestDTO requestDTO);
 
     /**
-     * Retorna todos los eventos del sistema.
+     * Retorna los eventos del sistema con paginación.
+     *
+     * @param pageable parámetros de página, tamaño y ordenamiento
+     * @return página de eventos
      */
-    List<EventoResponseDTO> obtenerEventos();
+    Page<EventoResponseDTO> obtenerEventos(Pageable pageable);
 
     /**
      * Retorna un evento por su identificador.

@@ -7,6 +7,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
+/**
+ * DTO que representa un evento en la vista de calendario del dashboard.
+ * <p>
+ * Proviene de la vista de base de datos {@code vista_eventos_periodo} e incluye
+ * datos denormalizados del cliente, decoración, estado, pagos y cronograma.
+ */
 @Data
 public class CalendarioEventoDTO {
     private Long idEvento;

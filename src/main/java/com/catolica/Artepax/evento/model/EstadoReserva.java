@@ -7,6 +7,12 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+/**
+ * Catálogo de estados de reserva de stock en {@code evento_producto}.
+ * <p>
+ * Define los valores posibles para el ciclo de vida de una reserva:
+ * ACTIVA (reservado, no consumido), LIBERADA (cancelado) y CONSUMIDA (finalizado).
+ */
 @Entity
 @Table(name = "estado_reserva")
 public class EstadoReserva {

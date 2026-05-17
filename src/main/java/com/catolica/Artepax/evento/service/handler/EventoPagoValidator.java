@@ -53,6 +53,15 @@ public class EventoPagoValidator {
                 evento.getId(), anticipoMinimo, totalPagado);
     }
 
+    /**
+     * Calcula el monto mínimo de anticipo requerido para confirmar un evento.
+     * <p>
+     * El porcentaje se obtiene de la configuración del sistema
+     * ({@code PORCENTAJE_ANTICIPO_MINIMO}) y se aplica sobre el precio total.
+     *
+     * @param evento evento a evaluar
+     * @return monto mínimo requerido
+     */
     public BigDecimal calcularAnticipoMinimo(Evento evento) {
         BigDecimal porcentaje = configuracionService.getDecimal("PORCENTAJE_ANTICIPO_MINIMO");
 
@@ -61,6 +70,12 @@ public class EventoPagoValidator {
                 .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
     }
 
+    /**
+     * Verifica si el total pagado de un evento alcanza o supera el anticipo mínimo.
+     *
+     * @param evento evento a evaluar
+     * @return true si el anticipo es suficiente para confirmar
+     */
     public boolean tieneAnticipoSuficiente(Evento evento) {
         return getTotalPagado(evento.getId()).compareTo(calcularAnticipoMinimo(evento)) >= 0;
     }

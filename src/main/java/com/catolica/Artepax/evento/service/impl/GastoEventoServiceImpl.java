@@ -36,6 +36,15 @@ import static com.catolica.Artepax.evento.model.EstadoEventoNames.ESTADOS_PERMIT
 import static com.catolica.Artepax.evento.model.GastoEstadoNames.DESEMBOLSADO;
 import static com.catolica.Artepax.evento.model.GastoEstadoNames.PROYECTADO;
 
+/**
+ * Implementación del servicio de gestión de gastos de eventos.
+ * <p>
+ * Los gastos siguen un flujo de dos estados: PROYECTADO → DESEMBOLSADO.
+ * Solo se permite crear gastos en eventos en estado PROGRAMADO, CONFIRMADO
+ * o EN_MONTAJE. Un gasto desembolsado no puede eliminarse ni revertirse.
+ * <p>
+ * Todas las operaciones quedan registradas en la auditoría del sistema.
+ */
 @Service
 public class GastoEventoServiceImpl implements GastoEventoService {
 

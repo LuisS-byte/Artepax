@@ -18,6 +18,11 @@ public class EventoMapper {
 
     /**
      * Convierte un DTO de creación a entidad, asociando cliente y decoración.
+     *
+     * @param dto       DTO con datos de creación
+     * @param cliente   entidad cliente a asociar
+     * @param decoracion entidad decoración a asociar
+     * @return entidad Evento mapeada
      */
     public Evento toEntity(EventoRequestDTO dto, Cliente cliente, Decoracion decoracion) {
         Evento evento = new Evento();
@@ -34,6 +39,9 @@ public class EventoMapper {
 
     /**
      * Convierte una entidad a DTO de respuesta, aplanando relaciones anidadas.
+     *
+     * @param evento entidad a convertir
+     * @return DTO con datos denormalizados del evento
      */
     public EventoResponseDTO toResponseDTO(Evento evento) {
         EventoResponseDTO dto = new EventoResponseDTO();
@@ -80,6 +88,11 @@ public class EventoMapper {
     /**
      * Actualiza campos seleccionados de una entidad desde un DTO de actualización.
      * Solo modifica campos no nulos del DTO.
+     *
+     * @param evento    entidad a actualizar
+     * @param dto       DTO con los campos a modificar
+     * @param cliente   nuevo cliente a asociar (si no es nulo)
+     * @param decoracion nueva decoración a asociar (si no es nulo)
      */
     public void updateEntityFromDTO(Evento evento, EventoUpdateDTO dto,
                                     Cliente cliente, Decoracion decoracion) {

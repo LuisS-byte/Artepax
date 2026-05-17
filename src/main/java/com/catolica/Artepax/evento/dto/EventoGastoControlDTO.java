@@ -8,6 +8,13 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
+/**
+ * DTO que representa el control de gastos de un evento para el panel administrativo.
+ * <p>
+ * Incluye totales agregados (proyectado, desembolsado, pendiente), cantidades
+ * de gastos por estado e indicador de si permite registrar nuevos gastos
+ * según el estado del evento.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

@@ -4,6 +4,11 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
+/**
+ * DTO que representa un producto individual dentro de una solicitud de extras.
+ * <p>
+ * Cada ítem contiene el identificador del producto y la cantidad a agregar.
+ */
 @Data
 public class EventoExtraItemRequestDTO {
 

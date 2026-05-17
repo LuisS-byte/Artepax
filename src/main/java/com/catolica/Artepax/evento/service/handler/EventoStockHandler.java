@@ -116,6 +116,17 @@ public class EventoStockHandler {
         log.info("stock_consumido eventoId={} productos={}", evento.getId(), reservas.size());
     }
 
+    /**
+     * Libera las reservas activas de un evento sin consumir stock.
+     * <p>
+     * Utilizado durante la cancelación de un evento: las reservas ACTIVA
+     * pasan a estado LIBERADA, lo que las excluye del cálculo de
+     * disponibilidad en {@code vista_stock_producto}. No se modifica
+     * la cantidad total del producto.
+     *
+     * @param evento           evento cuyas reservas liberar
+     * @param motivoLiberacion razón de la liberación
+     */
     @Transactional
     public void liberarReservas(Evento evento, String motivoLiberacion) {
         EstadoReserva estadoLiberada = getEstadoReservaOrThrow(ReservaEstados.LIBERADA);
@@ -132,6 +143,18 @@ public class EventoStockHandler {
         log.info("stock_liberado eventoId={} reservas={}", evento.getId(), reservas.size());
     }
 
+    /**
+     * Valida disponibilidad y reserva productos extra para un evento operativo.
+     * <p>
+     * Similar a {@link #validarYReservarStock(Evento)} pero recibe los productos
+     * directamente (no desde una decoración). Las nuevas reservas se suman a las
+     * existentes si el producto ya está reservado para el evento.
+     *
+     * @param evento         evento al que agregar los productos
+     * @param productosExtra mapa de producto a cantidad a reservar
+     * @throws com.catolica.Artepax.inventario.producto.exception.StockInsuficienteException
+     *         si no hay stock disponible para algún producto
+     */
     @Transactional
     public void validarYReservarExtras(Evento evento, Map<Producto, Integer> productosExtra) {
         Map<Long, Integer> cantidadesPorProductoId = productosExtra.entrySet().stream()

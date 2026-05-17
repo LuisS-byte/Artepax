@@ -7,6 +7,14 @@ import org.hibernate.annotations.Immutable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+/**
+ * Vista de base de datos {@code vista_rentabilidad_evento} que calcula
+ * la rentabilidad por evento.
+ * <p>
+ * Incluye precio acordado, ingreso cobrado, costos de materiales y mano de
+ * obra, gastos desembolsados y proyectados, y la ganancia neta. Es de solo
+ * lectura ({@link Immutable}).
+ */
 @Entity
 @Immutable
 @Table(name = "vista_rentabilidad_evento")

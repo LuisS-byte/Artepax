@@ -7,6 +7,14 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
+/**
+ * Vista de base de datos {@code vista_eventos_periodo} que denormaliza datos
+ * de eventos para consultas de calendario y listado.
+ * <p>
+ * Incluye información del cliente, decoración, tipo de evento, precios,
+ * pagos (total cobrado, saldo pendiente, cobro completo) e indicadores
+ * de cronograma. Es de solo lectura ({@link Immutable}).
+ */
 @Entity
 @Immutable
 @Table(name = "vista_eventos_periodo")

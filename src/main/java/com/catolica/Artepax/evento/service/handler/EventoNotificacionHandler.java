@@ -96,6 +96,10 @@ public class EventoNotificacionHandler {
         log.info("notificacion_cancelacion_iniciada eventoId={}", eventoId);
     }
 
+    /**
+     * Notifica que un evento fue cancelado definitivamente.
+     * Tipo: {@code CANCELACION_EVENTO}
+     */
     public void notificarCancelacionConfirmada(Long eventoId, Evento evento, String motivo) {
         notificacionService.notificarAdmins(
                 "CANCELACION_EVENTO",

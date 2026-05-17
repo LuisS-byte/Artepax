@@ -5,6 +5,16 @@ import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
 
+/**
+ * Entidad que representa la reserva de un producto para un evento.
+ * <p>
+ * Actúa como tabla puente entre {@link Evento} y {@link Producto} con
+ * un estado de reserva que determina si el producto está reservado (ACTIVA),
+ * liberado por cancelación (LIBERADA) o consumido al finalizar (CONSUMIDA).
+ * <p>
+ * Utiliza una clave compuesta {@link EventoProductoId} con los IDs del
+ * evento y del producto.
+ */
 @Entity
 @Table(name = "evento_producto")
 public class EventoProducto {

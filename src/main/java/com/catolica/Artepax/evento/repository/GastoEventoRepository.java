@@ -12,14 +12,41 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Repositorio para la entidad {@link GastoEvento}.
+ * <p>
+ * Proporciona consultas con fetch joins para evitar LazyInitializationException
+ * en las relaciones {@code evento → cliente} y {@code evento → estadoEvento},
+ * además de una consulta nativa de control de gastos agregados por evento.
+ */
 @Repository
 public interface GastoEventoRepository extends JpaRepository<GastoEvento, Long> {
+
+    /**
+     * Retorna los gastos de un evento sin relaciones eager.
+     *
+     * @param eventoId identificador del evento
+     * @return lista de gastos del evento
+     */
     List<GastoEvento> findByEventoId(Long eventoId);
 
+    /**
+     * Retorna todos los gastos paginados con datos del evento, cliente y estado cargados eager.
+     *
+     * @param pageable parámetros de paginación
+     * @return página de gastos con relaciones
+     */
     @Query(value = "SELECT g FROM GastoEvento g JOIN FETCH g.evento e JOIN FETCH e.cliente JOIN FETCH e.estadoEvento",
            countQuery = "SELECT COUNT(g) FROM GastoEvento g")
     Page<GastoEvento> findAllWithEvento(Pageable pageable);
 
+    /**
+     * Retorna los gastos de un evento con datos del cliente y estado cargados eager,
+     * ordenados por fecha descendente.
+     *
+     * @param eventoId identificador del evento
+     * @return lista de gastos con relaciones
+     */
     @Query("""
             SELECT g
             FROM GastoEvento g
@@ -31,6 +58,12 @@ public interface GastoEventoRepository extends JpaRepository<GastoEvento, Long> 
             """)
     List<GastoEvento> findByEventoIdWithEvento(@Param("eventoId") Long eventoId);
 
+    /**
+     * Retorna un gasto por su ID con datos del evento, cliente y estado cargados eager.
+     *
+     * @param id identificador del gasto
+     * @return gasto con relaciones, si existe
+     */
     @Query("""
             SELECT g
             FROM GastoEvento g
@@ -41,6 +74,13 @@ public interface GastoEventoRepository extends JpaRepository<GastoEvento, Long> 
             """)
     Optional<GastoEvento> findByIdWithEvento(@Param("id") Long id);
 
+    /**
+     * Suma los montos de gastos de un evento filtrados por estado (PROYECTADO o DESEMBOLSADO).
+     *
+     * @param eventoId identificador del evento
+     * @param estado   estado del gasto (PROYECTADO, DESEMBOLSADO)
+     * @return suma de montos, 0 si no hay gastos
+     */
     @Query("""
             SELECT COALESCE(SUM(g.gastoMonto), 0)
             FROM GastoEvento g
@@ -51,6 +91,16 @@ public interface GastoEventoRepository extends JpaRepository<GastoEvento, Long> 
             @Param("eventoId") Long eventoId,
             @Param("estado") String estado);
 
+    /**
+     * Consulta nativa de control de gastos que retorna un resumen por evento
+     * con totales agregados (proyectado, desembolsado) y cantidades.
+     * <p>
+     * El ordenamiento prioriza eventos con gastos proyectados primero, luego por
+     * estado del evento (EN_MONTAJE &gt; CONFIRMADO &gt; PROGRAMADO &gt; otros),
+     * y finalmente por fecha ascendente e ID descendente.
+     *
+     * @return lista de arreglos con datos agregados de control de gastos
+     */
     @Query(value = """
         SELECT e.id_evento AS eventoId,
                c.cli_nombre AS clienteNombre,

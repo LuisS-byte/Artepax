@@ -49,6 +49,8 @@ import com.catolica.Artepax.inventario.producto.repository.ProductoRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -429,9 +431,9 @@ public class EventoServiceImpl implements EventoService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<EventoResponseDTO> obtenerEventos() {
-        return eventoRepository.findAllWithRelations().stream()
-                .map(eventoMapper::toResponseDTO).toList();
+    public Page<EventoResponseDTO> obtenerEventos(Pageable pageable) {
+        return eventoRepository.findAllWithRelations(pageable)
+                .map(eventoMapper::toResponseDTO);
     }
 
     @Override
@@ -648,6 +650,13 @@ public class EventoServiceImpl implements EventoService {
         return obtenerProductosReservados(evento);
     }
 
+    /**
+     * Retorna la composición de productos de la decoración para un evento en COTIZACION.
+     * Son datos proyectados sin reserva real de stock.
+     *
+     * @param evento evento en estado COTIZACION
+     * @return lista de productos de la decoración con estado COTIZADO
+     */
     private List<EventoProductoDTO> obtenerProductosCotizados(Evento evento) {
         List<DecoracionProducto> composicion = decoracionProductoRepository
                 .findByDecoracionId(evento.getDecoracion().getId());
@@ -664,6 +673,13 @@ public class EventoServiceImpl implements EventoService {
                 .toList();
     }
 
+    /**
+     * Retorna los productos efectivamente reservados para un evento (desde PROGRAMADO en adelante).
+     * Los datos provienen de {@code evento_producto} con el estado de reserva real.
+     *
+     * @param evento evento en estado PROGRAMADO o superior
+     * @return lista de productos con reservas efectivas
+     */
     private List<EventoProductoDTO> obtenerProductosReservados(Evento evento) {
         List<Object[]> filas = eventoProductoRepository.findProductosByEventoId(evento.getId());
 
@@ -679,11 +695,25 @@ public class EventoServiceImpl implements EventoService {
                 .toList();
     }
 
+    /**
+     * Busca un evento por ID o lanza {@link EventoNotFoundException} si no existe.
+     *
+     * @param id identificador del evento
+     * @return entidad del evento encontrada
+     */
     private Evento obtenerOFallar(Long id) {
         return eventoRepository.findById(id)
                 .orElseThrow(() -> new EventoNotFoundException("Evento no encontrado con ID: " + id));
     }
 
+    /**
+     * Valida que el evento esté en el estado requerido para una transición.
+     *
+     * @param evento          evento a validar
+     * @param estadoRequerido estado que debe tener el evento
+     * @param destino         nombre del estado destino (solo para mensaje de error)
+     * @throws EventoException si el estado actual no coincide con el requerido
+     */
     private void validarTransicion(Evento evento, String estadoRequerido, String destino) {
         String actual = evento.getEstadoEvento().getNombre();
         if (!actual.equals(estadoRequerido)) {
@@ -693,6 +723,13 @@ public class EventoServiceImpl implements EventoService {
         }
     }
 
+    /**
+     * Valida que si hay precio adicional, exista una nota que lo justifique.
+     *
+     * @param precioAdicional monto adicional (puede ser nulo o cero)
+     * @param notaPrecio      nota de precio asociada
+     * @throws EventoException si hay precio adicional sin nota
+     */
     private void validarNotaPrecioAdicional(BigDecimal precioAdicional, String notaPrecio) {
         if (precioAdicional != null
                 && precioAdicional.compareTo(BigDecimal.ZERO) > 0
@@ -701,30 +738,64 @@ public class EventoServiceImpl implements EventoService {
         }
     }
 
+    /**
+     * Valida que el cliente esté activo.
+     *
+     * @param cliente cliente a validar
+     * @throws EventoException si el cliente no está activo
+     */
     private void validarClienteActivo(Cliente cliente) {
         if (!Boolean.TRUE.equals(cliente.getActivo())) {
             throw new EventoException("Cliente no encontrado o inactivo");
         }
     }
 
+    /**
+     * Valida que la decoración esté activa.
+     *
+     * @param decoracion decoración a validar
+     * @throws EventoException si la decoración no está activa
+     */
     private void validarDecoracionActiva(Decoracion decoracion) {
         if (!"ACTIVO".equals(decoracion.getEstado())) {
             throw new EventoException("La decoración seleccionada no está activa");
         }
     }
 
+    /**
+     * Valida que el tipo de evento esté activo.
+     *
+     * @param tipoEvento tipo de evento a validar
+     * @throws EventoException si el tipo de evento no está activo
+     */
     private void validarTipoEventoActivo(TipoEvento tipoEvento) {
         if (!Boolean.TRUE.equals(tipoEvento.getTipoActivo())) {
             throw new EventoException("Tipo de evento no encontrado o inactivo");
         }
     }
 
+    /**
+     * Valida que la fecha no sea anterior a la fecha actual.
+     *
+     * @param fecha fecha a validar
+     * @throws EventoException si la fecha es pasada
+     */
     private void validarFechaNoPasada(LocalDate fecha) {
         if (fecha.isBefore(LocalDate.now())) {
             throw new EventoException("No se puede crear o editar un evento en el pasado");
         }
     }
 
+    /**
+     * Valida la consistencia del horario del evento.
+     * <p>
+     * Ambos campos (horaInicio, horaFin) deben estar presentes juntos o ambos ausentes.
+     * Si están presentes, horaFin debe ser posterior a horaInicio.
+     *
+     * @param horaInicio hora de inicio (puede ser nula)
+     * @param horaFin    hora de fin (puede ser nula)
+     * @throws EventoException si el horario es inválido
+     */
     private void validarHorario(LocalTime horaInicio, LocalTime horaFin) {
         if (horaInicio == null && horaFin == null) {
             return;
@@ -739,6 +810,17 @@ public class EventoServiceImpl implements EventoService {
         }
     }
 
+    /**
+     * Valida que no exista otro evento activo con horario solapado en la misma fecha.
+     * Aplica un gap configurable entre eventos.
+     *
+     * @param fecha           fecha del evento
+     * @param horaInicio      hora de inicio
+     * @param horaFin         hora de fin
+     * @param ubicacion       ubicación del evento
+     * @param eventoIdExcluir evento a excluir de la verificación (opcional)
+     * @throws EventoException si hay solapamiento
+     */
     private void validarDisponibilidad(LocalDate fecha,
                                        LocalTime horaInicio,
                                        LocalTime horaFin,
@@ -758,6 +840,17 @@ public class EventoServiceImpl implements EventoService {
         }
     }
 
+    /**
+     * Verifica si existe solapamiento de horario con otros eventos activos.
+     * Aplica un gap configurable ({@code MINUTOS_GAP_ENTRE_EVENTOS}) al horario consultado.
+     *
+     * @param fecha           fecha del evento
+     * @param horaInicio      hora de inicio
+     * @param horaFin         hora de fin
+     * @param ubicacion       ubicación (no filtra en BD, regla de bloqueo global)
+     * @param eventoIdExcluir evento a excluir (opcional)
+     * @return true si existe solapamiento
+     */
     private boolean existeSolapamiento(LocalDate fecha,
                                        LocalTime horaInicio,
                                        LocalTime horaFin,
@@ -780,6 +873,16 @@ public class EventoServiceImpl implements EventoService {
 
     private enum ModoEdicion { COMPLETA, PARCIAL }
 
+    /**
+     * Determina el modo de edición permitido según el estado del evento.
+     * <p>
+     * COTIZACION permite edición completa (todos los campos).
+     * PROGRAMADO solo permite edición parcial (sin cambio de cliente).
+     *
+     * @param evento evento a validar
+     * @return modo de edición (COMPLETA o PARCIAL)
+     * @throws EventoException si el estado no permite edición
+     */
     private ModoEdicion validarEventoEditable(Evento evento) {
         String estado = evento.getEstadoEvento().getNombre();
         if (COTIZACION.equals(estado)) {
@@ -792,6 +895,12 @@ public class EventoServiceImpl implements EventoService {
                 "Solo se pueden editar eventos en estado COTIZACION o PROGRAMADO");
     }
 
+    /**
+     * Valida que en edición parcial no se intenten modificar campos restringidos.
+     *
+     * @param dto DTO con los campos a validar
+     * @throws EventoException si se intenta cambiar el cliente en estado PROGRAMADO
+     */
     private void validarCamposNoEditablesEnParcial(EventoUpdateDTO dto) {
         if (dto.getClienteId() != null) {
             throw new EventoException(
@@ -799,6 +908,12 @@ public class EventoServiceImpl implements EventoService {
         }
     }
 
+    /**
+     * Valida que el evento esté en un estado que permita agregar productos extra.
+     *
+     * @param evento evento a validar
+     * @throws EventoException si el estado no permite extras
+     */
     private void validarEventoPermiteExtras(Evento evento) {
         String estado = evento.getEstadoEvento().getNombre();
         if (!PROGRAMADO.equals(estado) && !CONFIRMADO.equals(estado)) {
@@ -807,12 +922,24 @@ public class EventoServiceImpl implements EventoService {
         }
     }
 
+    /**
+     * Valida que la nota de precio extra no esté vacía.
+     *
+     * @param notaPrecio nota de precio a validar
+     * @throws EventoException si la nota es nula o está en blanco
+     */
     private void validarNotaPrecioExtra(String notaPrecio) {
         if (notaPrecio == null || notaPrecio.isBlank()) {
             throw new EventoException("La nota de precio es obligatoria");
         }
     }
 
+    /**
+     * Valida que el monto adicional extra sea mayor a cero.
+     *
+     * @param montoAdicional monto a validar
+     * @throws EventoException si el monto es nulo, cero o negativo
+     */
     private void validarMontoAdicionalExtra(BigDecimal montoAdicional) {
         if (montoAdicional == null) {
             throw new EventoException("El monto adicional es obligatorio");
@@ -823,6 +950,15 @@ public class EventoServiceImpl implements EventoService {
         }
     }
 
+    /**
+     * Agrupa y suma las cantidades de productos extra por productoId.
+     * <p>
+     * Si el mismo producto aparece múltiples veces en la solicitud de extras,
+     * sus cantidades se consolidan sumándolas.
+     *
+     * @param dto solicitud de extras con lista de ítems
+     * @return mapa de productoId a cantidad total solicitada
+     */
     private Map<Long, Integer> consolidarCantidadesExtra(EventoExtraRequestDTO dto) {
         Map<Long, Integer> cantidades = new LinkedHashMap<>();
 
@@ -833,6 +969,13 @@ public class EventoServiceImpl implements EventoService {
         return cantidades;
     }
 
+    /**
+     * Obtiene las entidades {@link Producto} para cada productoId y valida que estén activos.
+     *
+     * @param cantidadesPorProductoId mapa de productoId a cantidad
+     * @return mapa de entidades Producto a cantidad
+     * @throws EventoException si algún producto no existe o está inactivo
+     */
     private Map<Producto, Integer> obtenerProductosExtra(Map<Long, Integer> cantidadesPorProductoId) {
         Map<Producto, Integer> productosExtra = new LinkedHashMap<>();
 
@@ -850,6 +993,13 @@ public class EventoServiceImpl implements EventoService {
         return productosExtra;
     }
 
+    /**
+     * Combina la nota de precio actual con una nota extra, separándolas con " | ".
+     *
+     * @param notaActual nota de precio existente (puede ser nula o vacía)
+     * @param notaExtra  nueva nota de precio a agregar
+     * @return nota combinada, o solo la nota extra si no había nota anterior
+     */
     private String combinarNotaPrecio(String notaActual, String notaExtra) {
         if (notaActual == null || notaActual.isBlank()) {
             return notaExtra.trim();
@@ -858,6 +1008,14 @@ public class EventoServiceImpl implements EventoService {
         return notaActual + " | " + notaExtra.trim();
     }
 
+    /**
+     * Valida que todos los parámetros necesarios para verificar disponibilidad estén presentes.
+     *
+     * @param horaInicio hora de inicio del bloque
+     * @param horaFin    hora de fin del bloque
+     * @param ubicacion  ubicación del evento
+     * @throws EventoException si falta algún parámetro obligatorio
+     */
     private void validarParametrosDisponibilidad(LocalTime horaInicio,
                                                  LocalTime horaFin,
                                                  String ubicacion) {
@@ -867,6 +1025,14 @@ public class EventoServiceImpl implements EventoService {
         }
     }
 
+    /**
+     * Valida que en edición parcial (PROGRAMADO) no se actualice solo una parte del horario.
+     * Deben enviarse ambos (horaInicio y horaFin) o ninguno.
+     *
+     * @param horaInicio hora de inicio (puede ser nula)
+     * @param horaFin    hora de fin (puede ser nula)
+     * @throws EventoException si solo uno de los dos campos fue proporcionado
+     */
     private void validarHorarioParcial(LocalTime horaInicio, LocalTime horaFin) {
         if ((horaInicio == null) == (horaFin == null)) {
             return;
@@ -875,6 +1041,13 @@ public class EventoServiceImpl implements EventoService {
         throw new EventoException("No se permite actualizar solo una parte del horario");
     }
 
+    /**
+     * Construye un snapshot de auditoría con los datos relevantes del evento
+     * para registrar cambios de estado, precios y ubicación.
+     *
+     * @param e entidad del evento
+     * @return snapshot con datos para auditoría
+     */
     private EventoAuditSnapshot toAuditSnapshot(Evento e) {
         return new EventoAuditSnapshot(
                 e.getId(),
@@ -889,6 +1062,16 @@ public class EventoServiceImpl implements EventoService {
                 e.getMotivoCancelacion());
     }
 
+    /**
+     * Construye el resumen de pagos de un evento desde la vista de base de datos.
+     * <p>
+     * Si no hay datos en la vista (evento sin pagos registrados), retorna un
+     * resumen con valores en cero usando el precio total del evento como saldo pendiente.
+     *
+     * @param eventoId identificador del evento
+     * @param evento   entidad del evento (para obtener precio total como fallback)
+     * @return resumen de pagos
+     */
     private ResumenPagoEventoDTO construirResumenPagos(Long eventoId, Evento evento) {
         return vistaPagosEventoRepository.findByIdEvento(eventoId)
                 .map(vista -> new ResumenPagoEventoDTO(
@@ -909,12 +1092,26 @@ public class EventoServiceImpl implements EventoService {
                         false));
     }
 
+    /**
+     * Construye el resumen de gastos de un evento consultando los totales
+     * proyectados y desembolsados.
+     *
+     * @param eventoId identificador del evento
+     * @return resumen con totales de gastos
+     */
     private ResumenGastoEventoDTO construirResumenGastos(Long eventoId) {
         BigDecimal totalProyectado = gastoEventoRepository.sumMontoByEventoIdAndEstado(eventoId, PROYECTADO);
         BigDecimal totalDesembolsado = gastoEventoRepository.sumMontoByEventoIdAndEstado(eventoId, DESEMBOLSADO);
         return new ResumenGastoEventoDTO(totalProyectado, totalDesembolsado, totalProyectado);
     }
 
+    /**
+     * Construye la rentabilidad de un evento si los datos existen en la vista.
+     * Retorna {@code null} si el evento no tiene datos de rentabilidad calculados.
+     *
+     * @param eventoId identificador del evento
+     * @return DTO de rentabilidad, o null si no hay datos
+     */
     private RentabilidadEventoDTO construirRentabilidadOpcional(Long eventoId) {
         return vistaRentabilidadEventoRepository.findByIdEvento(eventoId)
                 .map(vista -> new RentabilidadEventoDTO(
