@@ -16,10 +16,16 @@ import java.math.BigDecimal;
 import java.util.List;
 
 /**
- * Maneja la transición de estados de pago cuando un evento se cancela.
+ * Handles payment state transitions when an event is cancelled.
  * <p>
- * PENDIENTE → CANCELADO (sin impacto en caja)
- * PAGADO → DEVOLUCION_PENDIENTE (requiere gestión administrativa)
+ * Conversion rules:
+ * <ul>
+ *   <li>{@code PENDIENTE} → {@code CANCELADO} — no financial impact, the payment
+ *       was never confirmed</li>
+ *   <li>{@code PAGADO} → {@code DEVOLUCION_PENDIENTE} — the payment was confirmed
+ *       and requires manual admin processing to issue a refund</li>
+ * </ul>
+ * Notifies administrators when there are pending refunds.
  */
 @Component
 public class PagoCancelacionHandler {

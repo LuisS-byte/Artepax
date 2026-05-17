@@ -36,6 +36,22 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * Core implementation of {@link PagoService} that coordinates the payment lifecycle.
+ * <p>
+ * Manages payment registration (PENDIENTE), confirmation (PAGADO), and cancellation (CANCELADO)
+ * with the following event state transition side effects:
+ * <ul>
+ *   <li><strong>verificarAnticipo</strong> — after confirming a payment, if the event is in
+ *       PROGRAMADO and the advance payment threshold is met, the event auto-transitions to
+ *       CONFIRMADO</li>
+ *   <li><strong>finalizarDesdeCobroCompleto</strong> — after confirming a payment, if the event
+ *       is fully paid, it auto-transitions from PENDIENTE_COBRO to FINALIZADO</li>
+ * </ul>
+ * <p>
+ * All write operations use pessimistic locking ({@code FOR UPDATE}) on the event row via
+ * {@link EventoRepository#findByIdForUpdate(Long)} to prevent race conditions on balance checks.
+ */
 @Service
 public class PagoServiceImpl implements PagoService {
 
@@ -90,6 +106,19 @@ public class PagoServiceImpl implements PagoService {
         this.configuracionService = configuracionService;
     }
 
+    /**
+     * Registra un nuevo pago en estado PENDIENTE para un evento.
+     * <p>
+     * Valida que el evento esté en un estado permitido (PROGRAMADO, CONFIRMADO,
+     * EN_MONTAJE, PENDIENTE_COBRO), que el método de pago esté activo, y que
+     * el monto no exceda el saldo restante del evento. Usa bloqueo pesimista
+     * ({@code FOR UPDATE}) sobre la fila del evento.
+     *
+     * @param dto datos del pago (evento, monto, método, concepto)
+     * @return el pago creado en estado PENDIENTE
+     * @throws PagoException si el evento no está en estado permitido, el método
+     *                       está inactivo, o el monto excede el saldo disponible
+     */
     @Override
     @Transactional
     public PagoResponseDTO registrarPago(PagoRequestDTO dto) {
@@ -135,6 +164,32 @@ public class PagoServiceImpl implements PagoService {
         return pagoMapper.toDTO(pagoRepository.save(pago));
     }
 
+    /**
+     * Confirma un pago pendiente, moviéndolo al estado PAGADO.
+     * <p>
+     * La confirmación establece la fecha de pago y fuerza un flush del
+     * {@link PagoRepository} antes de leer la vista {@code vista_pagos_evento}.
+     * <strong>No eliminar el {@code flush()}</strong> — la vista no se actualiza
+     * hasta que la transacción actual se vacía al menos una vez, y una lectura
+     * posterior devolvería datos obsoletos.
+     * <p>
+     * Después de confirmar el pago:
+     * <ul>
+     *   <li>Notifica a los administradores del pago recibido</li>
+     *   <li>Verifica si el anticipo mínimo está cubierto → posible transición
+     *       PROGRAMADO → CONFIRMADO</li>
+     *   <li>Verifica si el evento quedó completamente pagado → posible transición
+     *       PENDIENTE_COBRO → FINALIZADO</li>
+     * </ul>
+     * Recarga el pago antes de devolverlo para reflejar el estado actualizado
+     * del evento tras las transiciones automáticas.
+     *
+     * @param pagoId ID del pago a confirmar
+     * @return el pago confirmado con estado PAGADO e información del evento actualizada
+     * @throws PagoNotFoundException si no se encuentra el pago
+     * @throws PagoException         si el pago no está en PENDIENTE o el evento
+     *                               no admite confirmaciones
+     */
     @Override
     @Transactional
     public PagoResponseDTO confirmarPago(Long pagoId) {
@@ -198,6 +253,16 @@ public class PagoServiceImpl implements PagoService {
         return pagoMapper.toDTO(pagoRecargado);
     }
 
+    /**
+     * Anula un pago pendiente, moviéndolo al estado CANCELADO.
+     * <p>
+     * Solo se pueden anular pagos en estado PENDIENTE. Los pagos ya confirmados
+     * (PAGADO) deben gestionarse mediante el flujo de cancelación de eventos.
+     *
+     * @param pagoId ID del pago a anular
+     * @return el pago anulado con estado CANCELADO
+     * @throws PagoException si el pago no está en estado PENDIENTE
+     */
     @Override
     @Transactional
     public PagoResponseDTO anularPago(Long pagoId) {
@@ -218,6 +283,12 @@ public class PagoServiceImpl implements PagoService {
         return pagoMapper.toDTO(pagoRepository.save(pago));
     }
 
+    /**
+     * Retorna todos los pagos de un evento con sus relaciones resueltas.
+     *
+     * @param eventoId ID del evento
+     * @return lista de pagos con datos de evento, cliente, estado, concepto y método
+     */
     @Override
     @Transactional(readOnly = true)
     public List<PagoResponseDTO> obtenerPorEvento(Long eventoId) {
@@ -225,6 +296,12 @@ public class PagoServiceImpl implements PagoService {
                 .stream().map(pagoMapper::toDTO).toList();
     }
 
+    /**
+     * Retorna un listado paginado de todos los pagos del sistema.
+     *
+     * @param pageable parámetros de paginación y ordenamiento
+     * @return página de pagos con datos de evento y cliente
+     */
     @Override
     @Transactional(readOnly = true)
     public Page<PagoResponseDTO> obtenerTodos(Pageable pageable) {
@@ -232,6 +309,17 @@ public class PagoServiceImpl implements PagoService {
                 .map(pagoMapper::toDTO);
     }
 
+    /**
+     * Obtiene un resumen completo de pagos para un evento.
+     * <p>
+     * Combina los datos agregados de la vista {@code vista_pagos_evento}
+     * (total cobrado, saldo pendiente, devoluciones) con la información
+     * de anticipo mínimo calculada desde {@link ConfiguracionService}.
+     * Si el evento no tiene datos en la vista, devuelve valores en cero.
+     *
+     * @param eventoId ID del evento
+     * @return resumen de pagos con totales e información de anticipo
+     */
     @Override
     @Transactional(readOnly = true)
     public ResumenPagoEventoDTO getResumenPagos(Long eventoId) {
@@ -261,8 +349,18 @@ public class PagoServiceImpl implements PagoService {
                         anticipo));
     }
 
-    // Auto-transición PROGRAMADO → CONFIRMADO si anticipo mínimo cumplido
-    // No lanza excepción si no alcanza — es seguro llamarlo tras confirmar un pago
+    /**
+     * Verifica si el evento puede avanzar de PROGRAMADO a CONFIRMADO tras un pago.
+     * <p>
+     * Si el evento está en PROGRAMADO y el total pagado alcanza o supera el
+     * umbral mínimo de anticipo (según {@link ConfiguracionService}), gatilla
+     * la transición automática.
+     * <p>
+     * Es seguro llamarlo después de confirmar cualquier pago — retorna
+     * inmediatamente si el evento no está en PROGRAMADO.
+     *
+     * @param evento el evento a evaluar (debe tener estado y precio cargados)
+     */
     private void verificarAnticipo(Evento evento) {
         if (!evento.getEstadoEvento().getNombre().equals(EstadoEventoNames.PROGRAMADO)) {
             return;
@@ -273,6 +371,16 @@ public class PagoServiceImpl implements PagoService {
         }
     }
 
+    /**
+     * Calcula la información de anticipo mínimo para un evento.
+     * <p>
+     * Obtiene el porcentaje mínimo desde la configuración del sistema,
+     * calcula el monto requerido, y compara con el total pagado y el
+     * monto pagado específicamente bajo el concepto ANTICIPO.
+     *
+     * @param evento el evento a evaluar
+     * @return DTO con todos los datos de anticipo (porcentaje, montos, cumplimiento)
+     */
     private AnticipoInfoDTO calcularAnticipo(Evento evento) {
         BigDecimal porcentaje = configuracionService.getDecimal("PORCENTAJE_ANTICIPO_MINIMO");
         BigDecimal montoMinimo = evento.getPrecioTotal()
@@ -302,6 +410,25 @@ public class PagoServiceImpl implements PagoService {
         );
     }
 
+    /**
+     * Retorna el listado de cobranza con eventos activos y su estado financiero.
+     * <p>
+     * Ejecuta una consulta nativa que combina eventos, clientes y la vista
+     * {@code vista_pagos_evento}. Aplica filtros opcionales en memoria:
+     * <ul>
+     *   <li>{@code estado} — filtrar por estado(s) del evento</li>
+     *   <li>{@code soloConSaldo} — solo eventos con saldo pendiente &gt; 0</li>
+     *   <li>{@code soloConDevolucion} — solo eventos con devolución pendiente</li>
+     *   <li>{@code soloConPagosPendientes} — solo eventos con pagos en PENDIENTE</li>
+     *   <li>{@code q} — búsqueda textual por nombre de cliente o ID de evento</li>
+     *   <li>{@code limit} — limite de resultados</li>
+     * </ul>
+     * Los resultados se ordenan por prioridad: primero los que tienen devolución,
+     * luego los que deben saldo, luego los que tienen pagos pendientes.
+     *
+     * @param filtros mapa de filtros opcionales
+     * @return lista de eventos con datos financieros, ordenados por prioridad
+     */
     @Override
     @Transactional(readOnly = true)
     public List<EventoCobranzaDTO> getEventosCobranza(Map<String, Object> filtros) {

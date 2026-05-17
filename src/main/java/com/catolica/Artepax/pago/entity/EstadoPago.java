@@ -2,6 +2,17 @@ package com.catolica.Artepax.pago.entity;
 
 import jakarta.persistence.*;
 
+/**
+ * Catalog entity representing a payment state.
+ * <p>
+ * Defines the possible states for a {@link Pago}:
+ * <ul>
+ *   <li>{@code PENDIENTE} — payment registered but not yet confirmed</li>
+ *   <li>{@code PAGADO} — payment confirmed and processed</li>
+ *   <li>{@code CANCELADO} — payment cancelled (no financial impact)</li>
+ *   <li>{@code DEVOLUCION_PENDIENTE} — payment flagged for manual refund processing</li>
+ * </ul>
+ */
 @Entity
 @Table(name = "estado_pago")
 public class EstadoPago {

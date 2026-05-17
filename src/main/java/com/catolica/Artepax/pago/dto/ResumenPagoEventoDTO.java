@@ -1,8 +1,14 @@
 package com.catolica.Artepax.pago.dto;
 
-
 import java.math.BigDecimal;
 
+/**
+ * DTO aggregating the full payment summary for a single event.
+ * <p>
+ * Combines financial figures from {@code vista_pagos_evento} with
+ * advance-payment (anticipo) information for the event's payment
+ * overview endpoint.
+ */
 public class ResumenPagoEventoDTO {
     private Long idEvento;
     private BigDecimal precioTotal;

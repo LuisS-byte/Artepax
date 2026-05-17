@@ -5,6 +5,17 @@ import org.hibernate.annotations.Immutable;
 
 import java.math.BigDecimal;
 
+/**
+ * Read-only entity mapping to the {@code vista_pagos_evento} database view.
+ * <p>
+ * This view aggregates payment data per event, computing totals for cobrado,
+ * saldo pendiente, cobro completo flag, and devolucion pendiente amounts.
+ * The view is refreshed automatically by the database as underlying payments change.
+ * <p>
+ * Because this entity is {@link Immutable}, Hibernate will never flush updates
+ * back to the database. It is used exclusively for querying aggregated payment
+ * summaries per event.
+ */
 @Entity
 @Immutable
 @Table(name = "vista_pagos_evento")

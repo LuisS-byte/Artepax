@@ -4,6 +4,13 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
+/**
+ * Request DTO for creating a new payment method.
+ * <p>
+ * Validates that the name is non-blank, between 2 and 100 characters,
+ * contains only letters and spaces, and that the description does not
+ * exceed 500 characters.
+ */
 public class MetodoPagoCreateDTO {
 
     @NotBlank(message = "El nombre del método de pago es obligatorio")

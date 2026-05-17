@@ -3,6 +3,14 @@ package com.catolica.Artepax.pago.dto;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
+
+/**
+ * Request DTO for registering a new payment.
+ * <p>
+ * Requires the target event ID, the payment amount (must be positive),
+ * the payment method ID, and the payment concept ID. The amount must not
+ * exceed the event's remaining balance when combined with prior payments.
+ */
 public class PagoRequestDTO {
     @NotNull(message = "El evento es obligatorio")
     private Long eventoId;

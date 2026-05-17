@@ -2,6 +2,13 @@ package com.catolica.Artepax.pago.entity;
 
 import jakarta.persistence.*;
 
+/**
+ * Catalog entity representing a payment method.
+ * <p>
+ * Stores available payment methods (e.g. cash, transfer, card).
+ * Supports soft-delete via the {@link #metodoActivo} flag — inactive methods
+ * are not available for new payments but remain on historical records.
+ */
 @Entity
 @Table(name = "metodo_pago")
 public class MetodoPago {

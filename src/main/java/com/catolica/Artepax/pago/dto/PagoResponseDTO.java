@@ -3,6 +3,13 @@ package com.catolica.Artepax.pago.dto;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * DTO representing a payment record for API responses.
+ * <p>
+ * Includes the payment amount, confirmation date (null if PENDIENTE),
+ * associated event and client info, and the current state, concept,
+ * and method as display names.
+ */
 public class PagoResponseDTO {
 
     private Long id;

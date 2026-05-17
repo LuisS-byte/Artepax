@@ -1,5 +1,10 @@
 package com.catolica.Artepax.pago.dto;
 
+/**
+ * DTO representing a payment state from the catalog.
+ * <p>
+ * Used in read-only responses for the {@code /api/catalogos/estados-pago} endpoint.
+ */
 public class EstadoPagoResponseDTO {
     private Long id;
     private String estadoNombre;

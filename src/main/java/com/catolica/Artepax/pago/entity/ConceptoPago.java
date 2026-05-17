@@ -2,6 +2,17 @@ package com.catolica.Artepax.pago.entity;
 
 import jakarta.persistence.*;
 
+/**
+ * Catalog entity representing a payment concept.
+ * <p>
+ * Defines the possible concepts for a payment, such as:
+ * <ul>
+ *   <li>{@code ANTICIPO} — advance payment / deposit</li>
+ *   <li>{@code ABONO} — partial payment</li>
+ *   <li>{@code SALDO_TOTAL} — remaining balance payment</li>
+ *   <li>{@code PENALIZACION} — penalty charge</li>
+ * </ul>
+ */
 @Entity
 @Table(name = "concepto_pago")
 public class ConceptoPago {
