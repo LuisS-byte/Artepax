@@ -9,6 +9,17 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
+/**
+ * Represents a generated document associated with an event.
+ * <p>
+ * Documents follow a delivery state flow: {@link DocumentoEstadoEnvio#PENDIENTE} →
+ * {@link DocumentoEstadoEnvio#ENVIADO} → {@link DocumentoEstadoEnvio#FALLIDO} →
+ * {@link DocumentoEstadoEnvio#REENVIADO}. The {@code archivoUrl} field stores the
+ * download path to the generated PDF, and {@code docuIntentosEnvio} tracks retry
+ * attempts for failed deliveries. A unique constraint prevents duplicate documents
+ * of the same type for the same event.
+ * </p>
+ */
 @Entity
 @Table(name = "documento",
        uniqueConstraints = @UniqueConstraint(

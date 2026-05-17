@@ -7,12 +7,23 @@ import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
 
+/**
+ * Service for converting HTML content into PDF documents.
+ * <p>
+ * Uses an in-memory renderer to transform HTML strings (with placeholders already
+ * substituted) into PDF byte arrays suitable for email attachment or disk storage.
+ * </p>
+ */
 @Service
 @Slf4j
 public class PdfGeneratorService {
+
     /**
-     * Convierte un HTML (con placeholders ya reemplazados) a PDF en memoria.
-     * Retorna el PDF como array de bytes listo para enviar por email o guardar.
+     * Renders an HTML string into a PDF document in memory.
+     *
+     * @param html the HTML content with placeholders already replaced
+     * @return the PDF as a byte array
+     * @throws PdfGenerationException if rendering or PDF creation fails
      */
     public byte[] generarDesdeHtml(String html) {
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {

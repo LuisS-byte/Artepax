@@ -8,6 +8,15 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
+/**
+ * Represents an HTML document template used to generate PDF documents.
+ * <p>
+ * Each template is uniquely identified by its {@link DocumentoTipo} and
+ * contains base HTML content with {@code {{placeholder}}} markers that are
+ * replaced with actual event data at generation time. The {@code camposEditables}
+ * field describes which placeholders are available for customisation.
+ * </p>
+ */
 @Entity
 @Table(name = "plantilla_documento")
 @Getter

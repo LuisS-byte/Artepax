@@ -11,6 +11,13 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.util.Set;
 
+/**
+ * Business policy and validation rules for document operations.
+ * <p>
+ * Encapsulates all permission checks, state-gating logic, and constraint
+ * validations for document generation, re-sending, and template availability.
+ * </p>
+ */
 @Component
 public class DocumentoPolicy {
 
@@ -34,6 +41,13 @@ public class DocumentoPolicy {
             EstadoEventoNames.FINALIZADO
     );
 
+    /**
+     * Validates that the event is in an allowed state for the given document type.
+     *
+     * @param evento       the event to check
+     * @param tipoDocumento the document type being generated
+     * @throws DocumentoOperacionNoPermitidaException if the event state does not permit generation
+     */
     public void validarGeneracionPermitida(Evento evento, DocumentoTipo tipoDocumento) {
         String estadoEvento = evento.getEstadoEvento().getNombre();
         boolean permitida = switch (tipoDocumento) {
@@ -51,6 +65,14 @@ public class DocumentoPolicy {
         }
     }
 
+    /**
+     * Validates that no duplicate document of the same type exists for the event.
+     *
+     * @param eventoId      the event ID
+     * @param tipoDocumento  the document type
+     * @param yaExiste       whether a document of this type already exists
+     * @throws DocumentoOperacionNoPermitidaException if {@code yaExiste} is {@code true}
+     */
     public void validarSinDocumentoDuplicado(Long eventoId, DocumentoTipo tipoDocumento, boolean yaExiste) {
         if (yaExiste) {
             throw new DocumentoOperacionNoPermitidaException(
@@ -58,6 +80,12 @@ public class DocumentoPolicy {
         }
     }
 
+    /**
+     * Validates that the event has a positive outstanding balance.
+     *
+     * @param saldoPendiente the current outstanding balance
+     * @throws DocumentoOperacionNoPermitidaException if the balance is null, zero, or negative
+     */
     public void validarSaldoPendiente(BigDecimal saldoPendiente) {
         if (saldoPendiente == null || saldoPendiente.compareTo(BigDecimal.ZERO) <= 0) {
             throw new DocumentoOperacionNoPermitidaException(
@@ -65,17 +93,35 @@ public class DocumentoPolicy {
         }
     }
 
+    /**
+     * Validates that a document can be resent by checking both retry limits and client email availability.
+     *
+     * @param documento the document to resend
+     * @throws DocumentoOperacionNoPermitidaException if the resend is not allowed
+     */
     public void validarReenvioPermitido(Documento documento) {
         validarIntentosReenvio(documento);
         validarCorreoCliente(documento.getEvento());
     }
 
+    /**
+     * Validates that a template is available and active.
+     *
+     * @param plantilla the template to check
+     * @throws DocumentoOperacionNoPermitidaException if the template is null or inactive
+     */
     public void validarPlantillaDisponible(PlantillaDocumento plantilla) {
         if (plantilla == null || !Boolean.TRUE.equals(plantilla.getActivo())) {
             throw new DocumentoOperacionNoPermitidaException("No hay una plantilla activa disponible para este documento.");
         }
     }
 
+    /**
+     * Validates that the event's client has a registered email address.
+     *
+     * @param evento the event whose client email to validate
+     * @throws DocumentoOperacionNoPermitidaException if the email is null or blank
+     */
     public void validarCorreoCliente(Evento evento) {
         String correo = evento.getCliente() != null ? evento.getCliente().getCorreo() : null;
         if (correo == null || correo.isBlank()) {
@@ -84,6 +130,12 @@ public class DocumentoPolicy {
         }
     }
 
+    /**
+     * Validates that the maximum resend attempt limit has not been reached.
+     *
+     * @param documento the document whose intent count to check
+     * @throws DocumentoOperacionNoPermitidaException if the limit has been reached
+     */
     public void validarIntentosReenvio(Documento documento) {
         if (documento.getDocuIntentosEnvio() >= MAX_INTENTOS_ENVIO) {
             throw new DocumentoOperacionNoPermitidaException(

@@ -24,6 +24,14 @@ import org.springframework.web.bind.annotation.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+
+/**
+ * REST controller for document and template management.
+ * <p>
+ * Provides endpoints to generate, retrieve, resend, and download documents in PDF format,
+ * as well as manage HTML document templates. All endpoints require the {@code ADMIN} role.
+ * </p>
+ */
 @RestController
 @RequestMapping("/api/documentos")
 @RequiredArgsConstructor

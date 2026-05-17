@@ -6,9 +6,22 @@ import com.catolica.Artepax.documento.entity.Documento;
 import com.catolica.Artepax.documento.entity.PlantillaDocumento;
 import org.springframework.stereotype.Component;
 
+/**
+ * Maps between document/template entities and their corresponding DTOs.
+ */
 @Component
 public class DocumentoMapper {
 
+    /**
+     * Converts a {@link Documento} entity to a {@link DocumentoResponseDTO}.
+     * <p>
+     * Safely handles nullable relationships (event, client, estadoEvento) by
+     * setting the corresponding DTO fields to {@code null} when absent.
+     * </p>
+     *
+     * @param doc the document entity, must not be {@code null}
+     * @return the populated response DTO
+     */
     public DocumentoResponseDTO toDTO(Documento doc) {
         DocumentoResponseDTO dto = new DocumentoResponseDTO();
         dto.setIdDocumento(doc.getIdDocumento());
@@ -31,6 +44,12 @@ public class DocumentoMapper {
         return dto;
     }
 
+    /**
+     * Converts a {@link PlantillaDocumento} entity to a {@link PlantillaResponseDTO}.
+     *
+     * @param plantilla the template entity, must not be {@code null}
+     * @return the populated response DTO
+     */
     public PlantillaResponseDTO toDTO(PlantillaDocumento plantilla) {
         PlantillaResponseDTO dto = new PlantillaResponseDTO();
         dto.setIdPlantilla(plantilla.getIdPlantilla());

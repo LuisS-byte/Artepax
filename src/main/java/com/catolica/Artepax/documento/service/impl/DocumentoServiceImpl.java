@@ -47,6 +47,28 @@ import static com.catolica.Artepax.common.constant.AuditoriaAcciones.GENERAR_DOC
 import static com.catolica.Artepax.common.constant.AuditoriaAcciones.REENVIAR_DOCUMENTO;
 import static com.catolica.Artepax.common.constant.AuditoriaTablas.DOCUMENTO;
 
+/**
+ * Implementation of {@link DocumentoService} for document generation and delivery.
+ * <p>
+ * Documents are generated from HTML templates with placeholder substitution, rendered
+ * to PDF via {@link PdfGeneratorService}, and sent to the client's email. If email
+ * delivery fails, the document is persisted with status {@link DocumentoEstadoEnvio#FALLIDO}
+ * instead of rolling back the transaction, allowing later retry via
+ * {@link #reenviarDocumento}. This fail-soft pattern ensures the generated document
+ * record and its audit trail are never lost due to a transient email issue.
+ * </p>
+ *
+ * <h3>Document state flow</h3>
+ * <pre>{@code
+ * PENDIENTE ──► ENVIADO ──► FALLIDO ──► REENVIADO
+ * }</pre>
+ *
+ * <h3>Financial document generation</h3>
+ * Documents such as the outstanding balance notice ({@link DocumentoTipo#AVISO_SALDO_PENDIENTE})
+ * compute the client's payment summary from both the {@code pago} table and the
+ * {@code vista_pagos_evento} database view, which is read after a flush to ensure
+ * data consistency within the transaction.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -75,6 +97,18 @@ public class DocumentoServiceImpl implements DocumentoService {
     // DOCUMENTOS
     // -------------------------------------------------------------------------
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * <strong>Implementation details:</strong>
+     * The document entity is persisted first (status {@code PENDIENTE}), then the PDF
+     * is generated and emailed. If any {@link RuntimeException} occurs during PDF
+     * generation, disk persistence, or email delivery, the exception is caught and the
+     * document state is set to {@link DocumentoEstadoEnvio#FALLIDO} so the transaction
+     * commits normally. This allows the document to be retried via {@link #reenviarDocumento}
+     * without losing the generation record.
+     * </p>
+     */
     @Override
     @Transactional
     public DocumentoResponseDTO generarDocumento(Long idEvento, DocumentoTipo tipoDocumento) {
@@ -131,6 +165,16 @@ public class DocumentoServiceImpl implements DocumentoService {
         return mapper.toDTO(documento);
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Computes the financial summary from the payment repository and the
+     * {@code vista_pagos_evento} database view before generating the notice.
+     * Like {@link #generarDocumento}, failures during PDF generation or delivery
+     * are caught and result in a {@link DocumentoEstadoEnvio#FALLIDO} state
+     * rather than a rollback.
+     * </p>
+     */
     @Override
     @Transactional
     public DocumentoResponseDTO generarAvisoSaldoPendiente(Long eventoId) {
@@ -185,6 +229,14 @@ public class DocumentoServiceImpl implements DocumentoService {
         return mapper.toDTO(documento);
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Re-renders the PDF from the original (or current active) template and sends it
+     * via email. On failure, the document state is set to {@link DocumentoEstadoEnvio#FALLIDO}
+     * but the transaction commits normally so the updated intent count is preserved.
+     * </p>
+     */
     @Override
     @Transactional
     public DocumentoResponseDTO reenviarDocumento(Long idDocumento) {
@@ -238,6 +290,9 @@ public class DocumentoServiceImpl implements DocumentoService {
         return mapper.toDTO(documento);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     @Transactional(readOnly = true)
     public List<DocumentoResponseDTO> listarPorEvento(Long idEvento) {
@@ -251,6 +306,9 @@ public class DocumentoServiceImpl implements DocumentoService {
                 .toList();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     @Transactional(readOnly = true)
     public Page<DocumentoResponseDTO> obtenerTodos(Pageable pageable) {
@@ -258,6 +316,9 @@ public class DocumentoServiceImpl implements DocumentoService {
                 .map(mapper::toDTO);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     @Transactional(readOnly = true)
     public DocumentoResponseDTO obtenerDocumento(Long idDocumento) {
@@ -270,6 +331,9 @@ public class DocumentoServiceImpl implements DocumentoService {
     // PLANTILLAS
     // -------------------------------------------------------------------------
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     @Transactional(readOnly = true)
     public List<PlantillaResponseDTO> listarPlantillas() {
@@ -279,6 +343,9 @@ public class DocumentoServiceImpl implements DocumentoService {
                 .toList();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     @Transactional(readOnly = true)
     public PlantillaResponseDTO obtenerPlantilla(Long idPlantilla) {
@@ -287,6 +354,9 @@ public class DocumentoServiceImpl implements DocumentoService {
         return mapper.toDTO(plantilla);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     @Transactional
     public PlantillaResponseDTO actualizarPlantilla(Long idPlantilla, PlantillaUpdateDTO dto) {

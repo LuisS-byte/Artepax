@@ -7,7 +7,17 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
+/**
+ * Repository for {@link PlantillaDocumento} entity operations.
+ */
 @Repository
 public interface PlantillaDocumentoRepository extends JpaRepository<PlantillaDocumento, Long> {
+
+    /**
+     * Finds an active template by its document type.
+     *
+     * @param tipoDocumento the document type
+     * @return an {@link Optional} containing the active template, or empty if none found
+     */
     Optional<PlantillaDocumento> findByTipoDocumentoAndActivoTrue(DocumentoTipo tipoDocumento);
 }
