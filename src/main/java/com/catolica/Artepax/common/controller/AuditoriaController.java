@@ -32,9 +32,7 @@ public class AuditoriaController {
             @RequestParam(defaultValue = "0") int pagina,
             @RequestParam(defaultValue = "50") int tamanio) {
 
-        int tamanioSeguro = Math.min(tamanio, 100);
-        Pageable pageable = PageRequest.of(pagina, tamanioSeguro,
-                Sort.by("fecha").descending());
+        Pageable pageable = construirPageable(pagina, tamanio);
 
         return ResponseEntity.ok(
                 auditoriaRepository.findAll(pageable)
@@ -65,6 +63,17 @@ public class AuditoriaController {
                         .stream()
                         .map(auditoriaMapper::toDTO)
                         .toList()
+        );
+    }
+
+    private Pageable construirPageable(int pagina, int tamanio) {
+        int paginaSegura = Math.max(pagina, 0);
+        int tamanioSeguro = Math.min(Math.max(tamanio, 1), 100);
+
+        return PageRequest.of(
+                paginaSegura,
+                tamanioSeguro,
+                Sort.by(Sort.Direction.DESC, "fecha")
         );
     }
 }

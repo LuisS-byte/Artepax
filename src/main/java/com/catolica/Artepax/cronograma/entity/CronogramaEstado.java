@@ -24,10 +24,10 @@ public enum CronogramaEstado {
     }
 
     /**
-     * Estados desde los cuales se puede crear una actividad de cronograma.
-     * Solo eventos CONFIRMADO o EN_MONTAJE permiten cronograma.
+     * Estados del evento que permiten crear/editar actividades de cronograma.
+     * La política real está en CronogramaPolicy. Este set es referencial.
      */
-    public static final Set<String> ESTADOS_EVENTO_PERMITIDOS = Set.of("CONFIRMADO", "EN_MONTAJE");
+    public static final Set<String> ESTADOS_EVENTO_PERMITIDOS = Set.of("PROGRAMADO", "CONFIRMADO", "EN_MONTAJE");
 
     /**
      * Estados terminales que no permiten transiciones posteriores.

@@ -568,6 +568,20 @@ public class EventoServiceImpl implements EventoService {
             validarDisponibilidad(fechaFinal, horaInicioFinal, horaFinFinal, ubicacionFinal, evento.getId());
         } else {
             validarHorarioParcial(dto.getHoraInicio(), dto.getHoraFin());
+
+            // Re-validar disponibilidad si cambiaron datos de agenda
+            boolean agendaCambiada = dto.getFecha() != null || dto.getHoraInicio() != null
+                    || dto.getHoraFin() != null || dto.getUbicacion() != null;
+            if (agendaCambiada) {
+                if (dto.getFecha() != null && dto.getFecha().isBefore(LocalDate.now())) {
+                    throw new EventoException("No se puede cambiar la fecha a una fecha pasada");
+                }
+                // Usar valores finales (del DTO si vienen, del evento si no) para disponibilidad
+                if (horaInicioFinal != null && horaFinFinal != null
+                        && ubicacionFinal != null && !ubicacionFinal.isBlank()) {
+                    validarDisponibilidad(fechaFinal, horaInicioFinal, horaFinFinal, ubicacionFinal, evento.getId());
+                }
+            }
         }
         validarNotaPrecioAdicional(evento.getPrecioAdicional(), notaPrecioFinal);
 
@@ -779,11 +793,9 @@ public class EventoServiceImpl implements EventoService {
     }
 
     private void validarCamposNoEditablesEnParcial(EventoUpdateDTO dto) {
-        if (dto.getClienteId() != null || dto.getDecoracionId() != null
-                || dto.getFecha() != null || dto.getHoraInicio() != null
-                || dto.getHoraFin() != null) {
+        if (dto.getClienteId() != null) {
             throw new EventoException(
-                    "En estado PROGRAMADO solo se pueden editar ubicación, nota y motivo del precio adicional");
+                    "En estado PROGRAMADO no se puede cambiar el cliente");
         }
     }
 

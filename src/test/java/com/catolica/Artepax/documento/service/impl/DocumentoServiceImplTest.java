@@ -176,7 +176,7 @@ class DocumentoServiceImplTest {
         when(eventoRepository.findDocumentoContextById(1L)).thenReturn(Optional.of(evento));
         when(plantillaRepository.findByTipoDocumentoAndActivoTrue(DocumentoTipo.CONFIRMACION_RESERVA))
                 .thenReturn(Optional.of(plantilla));
-        when(pdfGeneratorService.generarDesdHtml(any())).thenReturn(new byte[]{1, 2, 3});
+        when(pdfGeneratorService.generarDesdeHtml(any())).thenReturn(new byte[]{1, 2, 3});
 
         DocumentoResponseDTO response = documentoService.generarDocumento(1L, DocumentoTipo.CONFIRMACION_RESERVA);
 
@@ -197,7 +197,7 @@ class DocumentoServiceImplTest {
 
         assertEquals("PENDIENTE", response.getDocuEstadoEnvio());
         assertEquals(0, response.getDocuIntentosEnvio());
-        verify(pdfGeneratorService, never()).generarDesdHtml(any());
+        verify(pdfGeneratorService, never()).generarDesdeHtml(any());
         verify(emailService, never()).enviarConAdjunto(any(), any(), any(), any(), any());
     }
 
@@ -224,7 +224,7 @@ class DocumentoServiceImplTest {
         when(eventoRepository.findDocumentoContextById(1L)).thenReturn(Optional.of(evento));
         when(plantillaRepository.findByTipoDocumentoAndActivoTrue(DocumentoTipo.CONFIRMACION_RESERVA))
                 .thenReturn(Optional.of(plantilla));
-        when(pdfGeneratorService.generarDesdHtml(any())).thenReturn(new byte[]{1, 2, 3});
+        when(pdfGeneratorService.generarDesdeHtml(any())).thenReturn(new byte[]{1, 2, 3});
         doThrow(new RuntimeException("smtp caido")).when(emailService)
                 .enviarConAdjunto(any(), any(), any(), any(), any());
 
@@ -241,7 +241,7 @@ class DocumentoServiceImplTest {
         when(eventoRepository.findDocumentoContextById(1L)).thenReturn(Optional.of(evento));
         when(plantillaRepository.findByTipoDocumentoAndActivoTrue(DocumentoTipo.CONFIRMACION_RESERVA))
                 .thenReturn(Optional.of(plantilla));
-        when(pdfGeneratorService.generarDesdHtml(any())).thenReturn(new byte[]{1, 2, 3});
+        when(pdfGeneratorService.generarDesdeHtml(any())).thenReturn(new byte[]{1, 2, 3});
         doThrow(new RuntimeException("smtp caido")).when(emailService)
                 .enviarConAdjunto(any(), any(), any(), any(), any());
 
@@ -259,7 +259,7 @@ class DocumentoServiceImplTest {
         when(eventoRepository.findDocumentoContextById(1L)).thenReturn(Optional.of(evento));
         when(plantillaRepository.findByTipoDocumentoAndActivoTrue(DocumentoTipo.CONFIRMACION_RESERVA))
                 .thenReturn(Optional.of(plantilla));
-        when(pdfGeneratorService.generarDesdHtml(any())).thenReturn(new byte[]{1, 2, 3});
+        when(pdfGeneratorService.generarDesdeHtml(any())).thenReturn(new byte[]{1, 2, 3});
         doThrow(new RuntimeException("smtp caido")).when(emailService)
                 .enviarConAdjunto(any(), any(), any(), any(), any());
 
@@ -277,7 +277,7 @@ class DocumentoServiceImplTest {
         when(eventoRepository.findDocumentoContextById(1L)).thenReturn(Optional.of(evento));
         when(plantillaRepository.findByTipoDocumentoAndActivoTrue(DocumentoTipo.CONFIRMACION_RESERVA))
                 .thenReturn(Optional.of(plantilla));
-        when(pdfGeneratorService.generarDesdHtml(any())).thenReturn(new byte[]{1, 2, 3});
+        when(pdfGeneratorService.generarDesdeHtml(any())).thenReturn(new byte[]{1, 2, 3});
 
         documentoService.generarDocumento(1L, DocumentoTipo.CONFIRMACION_RESERVA);
 
@@ -320,7 +320,7 @@ class DocumentoServiceImplTest {
     void reenviarDocumento_exitoso_quedaReenviado() {
         Documento documento = crearDocumentoExistente("cliente@test.com", 1, true);
         when(documentoRepository.findByIdWithRelations(99L)).thenReturn(Optional.of(documento));
-        when(pdfGeneratorService.generarDesdHtml(any())).thenReturn(new byte[]{1, 2, 3});
+        when(pdfGeneratorService.generarDesdeHtml(any())).thenReturn(new byte[]{1, 2, 3});
 
         DocumentoResponseDTO response = documentoService.reenviarDocumento(99L);
 
@@ -332,7 +332,7 @@ class DocumentoServiceImplTest {
     void reenviarDocumento_exitoso_actualizaFechaEnvio() {
         Documento documento = crearDocumentoExistente("cliente@test.com", 1, true);
         when(documentoRepository.findByIdWithRelations(99L)).thenReturn(Optional.of(documento));
-        when(pdfGeneratorService.generarDesdHtml(any())).thenReturn(new byte[]{1, 2, 3});
+        when(pdfGeneratorService.generarDesdeHtml(any())).thenReturn(new byte[]{1, 2, 3});
 
         DocumentoResponseDTO response = documentoService.reenviarDocumento(99L);
 
@@ -343,7 +343,7 @@ class DocumentoServiceImplTest {
     void reenviarDocumento_exitoso_marcaClienteNotificado() {
         Documento documento = crearDocumentoExistente("cliente@test.com", 1, true);
         when(documentoRepository.findByIdWithRelations(99L)).thenReturn(Optional.of(documento));
-        when(pdfGeneratorService.generarDesdHtml(any())).thenReturn(new byte[]{1, 2, 3});
+        when(pdfGeneratorService.generarDesdeHtml(any())).thenReturn(new byte[]{1, 2, 3});
 
         documentoService.reenviarDocumento(99L);
 
@@ -355,7 +355,7 @@ class DocumentoServiceImplTest {
     void reenviarDocumento_fallaEnvio_quedaFallidoEIncrementaIntento() {
         Documento documento = crearDocumentoExistente("cliente@test.com", 1, true);
         when(documentoRepository.findByIdWithRelations(99L)).thenReturn(Optional.of(documento));
-        when(pdfGeneratorService.generarDesdHtml(any())).thenReturn(new byte[]{1, 2, 3});
+        when(pdfGeneratorService.generarDesdeHtml(any())).thenReturn(new byte[]{1, 2, 3});
         doThrow(new RuntimeException("smtp caido")).when(emailService)
                 .enviarConAdjunto(any(), any(), any(), any(), any());
 
@@ -375,7 +375,7 @@ class DocumentoServiceImplTest {
         when(eventoRepository.findDocumentoContextById(1L)).thenReturn(Optional.of(evento));
         when(plantillaRepository.findByTipoDocumentoAndActivoTrue(DocumentoTipo.CONFIRMACION_RESERVA))
                 .thenReturn(Optional.of(plantilla));
-        when(pdfGeneratorService.generarDesdHtml(any())).thenReturn(new byte[]{1, 2, 3});
+        when(pdfGeneratorService.generarDesdeHtml(any())).thenReturn(new byte[]{1, 2, 3});
 
         documentoService.generarDocumento(1L, DocumentoTipo.CONFIRMACION_RESERVA);
 
@@ -390,7 +390,7 @@ class DocumentoServiceImplTest {
         when(eventoRepository.findDocumentoContextById(1L)).thenReturn(Optional.of(evento));
         when(plantillaRepository.findByTipoDocumentoAndActivoTrue(DocumentoTipo.CONFIRMACION_RESERVA))
                 .thenReturn(Optional.of(plantilla));
-        when(pdfGeneratorService.generarDesdHtml(any())).thenReturn(new byte[]{1, 2, 3});
+        when(pdfGeneratorService.generarDesdeHtml(any())).thenReturn(new byte[]{1, 2, 3});
 
         DocumentoResponseDTO response = documentoService.generarDocumento(1L, DocumentoTipo.CONFIRMACION_RESERVA);
 
@@ -488,7 +488,7 @@ class DocumentoServiceImplTest {
 
         assertEquals("PENDIENTE", response.getDocuEstadoEnvio());
         assertEquals(0, response.getDocuIntentosEnvio());
-        verify(pdfGeneratorService, never()).generarDesdHtml(any());
+        verify(pdfGeneratorService, never()).generarDesdeHtml(any());
         verify(comunicacionClienteService, never()).enviarAvisoSaldoPendienteConDocumento(any(), any());
     }
 
@@ -500,7 +500,7 @@ class DocumentoServiceImplTest {
         when(eventoRepository.findDocumentoContextById(1L)).thenReturn(Optional.of(evento));
         when(plantillaRepository.findByTipoDocumentoAndActivoTrue(DocumentoTipo.AVISO_SALDO_PENDIENTE))
                 .thenReturn(Optional.of(plantilla));
-        when(pdfGeneratorService.generarDesdHtml(any())).thenReturn(new byte[]{1, 2, 3});
+        when(pdfGeneratorService.generarDesdeHtml(any())).thenReturn(new byte[]{1, 2, 3});
 
         DocumentoResponseDTO response = documentoService.generarAvisoSaldoPendiente(1L);
 
@@ -517,7 +517,7 @@ class DocumentoServiceImplTest {
         when(eventoRepository.findDocumentoContextById(1L)).thenReturn(Optional.of(evento));
         when(plantillaRepository.findByTipoDocumentoAndActivoTrue(DocumentoTipo.AVISO_SALDO_PENDIENTE))
                 .thenReturn(Optional.of(plantilla));
-        when(pdfGeneratorService.generarDesdHtml(any())).thenReturn(new byte[]{1, 2, 3});
+        when(pdfGeneratorService.generarDesdeHtml(any())).thenReturn(new byte[]{1, 2, 3});
         doThrow(new RuntimeException("smtp caido")).when(comunicacionClienteService)
                 .enviarAvisoSaldoPendienteConDocumento(any(), any());
 
@@ -536,7 +536,7 @@ class DocumentoServiceImplTest {
         when(eventoRepository.findDocumentoContextById(1L)).thenReturn(Optional.of(evento));
         when(plantillaRepository.findByTipoDocumentoAndActivoTrue(DocumentoTipo.AVISO_SALDO_PENDIENTE))
                 .thenReturn(Optional.of(plantilla));
-        when(pdfGeneratorService.generarDesdHtml(any())).thenReturn(new byte[]{1, 2, 3});
+        when(pdfGeneratorService.generarDesdeHtml(any())).thenReturn(new byte[]{1, 2, 3});
 
         documentoService.generarAvisoSaldoPendiente(1L);
 
@@ -552,7 +552,7 @@ class DocumentoServiceImplTest {
         when(eventoRepository.findDocumentoContextById(1L)).thenReturn(Optional.of(evento));
         when(plantillaRepository.findByTipoDocumentoAndActivoTrue(DocumentoTipo.AVISO_SALDO_PENDIENTE))
                 .thenReturn(Optional.of(plantilla));
-        when(pdfGeneratorService.generarDesdHtml(any())).thenReturn(new byte[]{1, 2, 3});
+        when(pdfGeneratorService.generarDesdeHtml(any())).thenReturn(new byte[]{1, 2, 3});
         doThrow(new RuntimeException("smtp caido")).when(comunicacionClienteService)
                 .enviarAvisoSaldoPendienteConDocumento(any(), any());
 

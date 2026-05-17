@@ -5,16 +5,24 @@ import com.catolica.Artepax.documento.dto.DocumentoResponseDTO;
 import com.catolica.Artepax.documento.dto.PlantillaResponseDTO;
 import com.catolica.Artepax.documento.dto.PlantillaUpdateDTO;
 import com.catolica.Artepax.documento.entity.DocumentoTipo;
+import com.catolica.Artepax.documento.exception.DocumentoNotFoundException;
+import com.catolica.Artepax.documento.repository.DocumentoRepository;
 import com.catolica.Artepax.documento.service.DocumentoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.PathResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 @RestController
 @RequestMapping("/api/documentos")
@@ -117,5 +125,23 @@ public class DocumentoController {
     public ResponseEntity<Page<DocumentoResponseDTO>> obtenerTodos(
             @PageableDefault(size = 50, sort = "docuFechaGeneracion") Pageable pageable) {
         return ResponseEntity.ok(documentoService.obtenerTodos(pageable));
+    }
+
+    /**
+     * GET /api/documentos/{id}/descarga
+     * Descarga el PDF generado para un documento.
+     * El archivo debe existir en disco (storage/documentos/{id}.pdf).
+     */
+    @GetMapping("/{id}/descarga")
+    public ResponseEntity<Resource> descargarPdf(@PathVariable Long id) {
+        Path archivo = Path.of("storage", "documentos", id + ".pdf");
+        if (!Files.exists(archivo)) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "inline; filename=\"documento_" + id + ".pdf\"")
+                .body(new PathResource(archivo));
     }
 }

@@ -1,5 +1,6 @@
 package com.catolica.Artepax.cronograma.dto;
 
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import java.math.BigDecimal;
@@ -13,6 +14,7 @@ public class CronogramaUsuarioRequestDTO {
     @NotNull(message = "El usuario es obligatorio")
     private Long usuarioId;
 
+    @DecimalMin(value = "0.00", message = "El pago asignado no puede ser negativo")
     private BigDecimal pagoAsignado = BigDecimal.ZERO;
 
     @Pattern(regexp = "^(FIJO|POR_HORA)$", message = "El tipo de pago debe ser FIJO o POR_HORA")

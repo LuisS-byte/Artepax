@@ -40,6 +40,8 @@ public class DocumentoPolicy {
             case CONFIRMACION_RESERVA -> ESTADOS_CONFIRMACION_RESERVA.contains(estadoEvento);
             case COTIZACION_EVENTO -> ESTADOS_COTIZACION_EVENTO.contains(estadoEvento);
             case AVISO_SALDO_PENDIENTE -> ESTADOS_AVISO_SALDO_PENDIENTE.contains(estadoEvento);
+            case SALDO_PENDIENTE -> throw new DocumentoOperacionNoPermitidaException(
+                    "El tipo SALDO_PENDIENTE no está habilitado directamente. Use AVISO_SALDO_PENDIENTE.");
             default -> true;
         };
 

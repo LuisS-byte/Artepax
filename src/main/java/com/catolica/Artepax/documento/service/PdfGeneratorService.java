@@ -14,7 +14,7 @@ public class PdfGeneratorService {
      * Convierte un HTML (con placeholders ya reemplazados) a PDF en memoria.
      * Retorna el PDF como array de bytes listo para enviar por email o guardar.
      */
-    public byte[] generarDesdHtml(String html) {
+    public byte[] generarDesdeHtml(String html) {
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             ITextRenderer renderer = new ITextRenderer();
             renderer.setDocumentFromString(html);

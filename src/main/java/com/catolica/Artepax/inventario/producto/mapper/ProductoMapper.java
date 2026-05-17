@@ -36,7 +36,7 @@ public class ProductoMapper {
         if (dto.getNombre() != null) producto.setNombre(dto.getNombre());
         if (dto.getDescripcion() != null) producto.setDescripcion(dto.getDescripcion());
         if (dto.getEstado() != null) producto.setEstado(dto.getEstado());
-        if (dto.getPrecioUnitario() != null) producto.setPrecioUnitario(dto.getPrecioUnitario()); // P17
+        if (dto.getPrecioUnitario() != null) producto.setPrecioUnitario(dto.getPrecioUnitario());
         if (dto.getStockMinimo() != null) producto.setStockMinimo(dto.getStockMinimo());
     }
 }

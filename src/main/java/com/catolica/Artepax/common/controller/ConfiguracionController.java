@@ -23,8 +23,8 @@ public class ConfiguracionController {
     private final ConfiguracionService configuracionService;
 
     @GetMapping
-    public List<ConfiguracionResponseDTO> listar() {
-        return configuracionService.listar();
+    public ResponseEntity<List<ConfiguracionResponseDTO>> listar() {
+        return ResponseEntity.ok(configuracionService.listar());
     }
 
     @GetMapping("/{clave}")
@@ -36,8 +36,27 @@ public class ConfiguracionController {
     public ResponseEntity<ConfiguracionResponseDTO> actualizar(
             @PathVariable String clave,
             @RequestBody String nuevoValor) {
-        String valor = nuevoValor.trim().replace("\"", "");
+        String valor = normalizarBodyString(nuevoValor);
         log.info("Actualizando configuración: clave={}", clave);
         return ResponseEntity.ok(configuracionService.actualizar(clave, valor));
+    }
+
+    /**
+     * Normaliza el body string plano recibido en PUT.
+     * Solo quita comillas envolventes si el valor completo está entre comillas dobles.
+     * No elimina comillas internas para no destruir JSON.
+     */
+    private String normalizarBodyString(String nuevoValor) {
+        if (nuevoValor == null) {
+            return null;
+        }
+
+        String valor = nuevoValor.trim();
+
+        if (valor.length() >= 2 && valor.startsWith("\"") && valor.endsWith("\"")) {
+            valor = valor.substring(1, valor.length() - 1);
+        }
+
+        return valor;
     }
 }

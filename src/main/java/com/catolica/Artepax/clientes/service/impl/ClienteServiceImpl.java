@@ -13,11 +13,12 @@ import com.catolica.Artepax.evento.dto.EventoResponseDTO;
 import com.catolica.Artepax.evento.mapper.EventoMapper;
 import com.catolica.Artepax.evento.repository.EventoRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
-public class ClienteServiceImpl  implements ClienteService {
+public class ClienteServiceImpl implements ClienteService {
 
     private final ClienteRepository clienteRepository;
     private final ClienteMapper clienteMapper;
@@ -35,61 +36,77 @@ public class ClienteServiceImpl  implements ClienteService {
     }
 
     @Override
+    @Transactional
     public ClienteResponseDTO crearCliente(ClienteRequestDTO dto) {
-        if (clienteRepository.existsByCorreo(dto.getCorreo())) {
+        String correoNormalizado = normalizarCorreo(dto.getCorreo());
+
+        if (clienteRepository.existsByCorreoIgnoreCase(correoNormalizado)) {
             throw new IllegalArgumentException("El correo ya está en uso");
         }
-        return clienteMapper.toDTO(clienteRepository.save(clienteMapper.toEntity(dto)));
+
+        Cliente cliente = clienteMapper.toEntity(dto);
+        cliente.setNombre(trimRequired(cliente.getNombre()));
+        cliente.setTelefono(trimRequired(cliente.getTelefono()));
+        cliente.setCorreo(correoNormalizado);
+        cliente.setDireccion(trimToNull(cliente.getDireccion()));
+
+        return clienteMapper.toDTO(clienteRepository.save(cliente));
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ClienteResponseDTO> obtenerTodos() {
-        // Solo retorna activos
-        return clienteRepository.findByActivoTrue()
+        return clienteRepository.findByActivoTrueOrderByNombreAsc()
                 .stream().map(clienteMapper::toDTO).toList();
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ClienteResponseDTO> obtenerInactivos() {
-        return clienteRepository.findByActivoFalse()
+        return clienteRepository.findByActivoFalseOrderByNombreAsc()
                 .stream().map(clienteMapper::toDTO).toList();
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ClienteResponseDTO obtenerPorId(Long id) {
         return clienteMapper.toDTO(clienteRepository.findById(id)
                 .orElseThrow(() -> new ClienteNotFoundException(id)));
     }
 
     @Override
+    @Transactional
     public ClienteResponseDTO actualizar(Long id, ClienteUpdateDTO dto) {
         Cliente cliente = clienteRepository.findById(id)
                 .orElseThrow(() -> new ClienteNotFoundException(id));
 
-        if (dto.getCorreo() != null
-                && !dto.getCorreo().equals(cliente.getCorreo())
-                && clienteRepository.existsByCorreo(dto.getCorreo())) {
+        String correoNormalizado = normalizarCorreo(dto.getCorreo());
+        String correoActual = normalizarCorreo(cliente.getCorreo());
+
+        if (!correoNormalizado.equals(correoActual)
+                && clienteRepository.existsByCorreoIgnoreCase(correoNormalizado)) {
             throw new IllegalArgumentException("El correo ya está en uso");
         }
 
-        cliente.setNombre(dto.getNombre());
-        cliente.setTelefono(dto.getTelefono());
-        cliente.setDireccion(dto.getDireccion());
-        cliente.setCorreo(dto.getCorreo());
+        cliente.setNombre(trimRequired(dto.getNombre()));
+        cliente.setTelefono(trimRequired(dto.getTelefono()));
+        cliente.setCorreo(correoNormalizado);
+        cliente.setDireccion(trimToNull(dto.getDireccion()));
 
         return clienteMapper.toDTO(clienteRepository.save(cliente));
     }
 
     @Override
+    @Transactional
     public void eliminar(Long id) {
         Cliente cliente = clienteRepository.findById(id)
                 .orElseThrow(() -> new ClienteNotFoundException(id));
-        // Soft delete — nunca DELETE físico
         cliente.setActivo(false);
         clienteRepository.save(cliente);
     }
 
     @Override
+    @Transactional
     public ClienteResponseDTO reactivar(Long id) {
         Cliente cliente = clienteRepository.findById(id)
                 .orElseThrow(() -> new ClienteNotFoundException(id));
@@ -98,17 +115,37 @@ public class ClienteServiceImpl  implements ClienteService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ClienteResponseDTO> buscarPorNombre(String nombre) {
-        return clienteRepository.findByNombreContainingIgnoreCaseAndActivoTrue(nombre)
+        return clienteRepository.findByNombreContainingIgnoreCaseAndActivoTrueOrderByNombreAsc(nombre)
                 .stream().map(clienteMapper::toDTO).toList();
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<EventoResponseDTO> obtenerEventosPorCliente(Long clienteId) {
         if (!clienteRepository.existsById(clienteId)) {
             throw new ClienteNotFoundException(clienteId);
         }
-        return eventoRepository.findByClienteId(clienteId)
+        return eventoRepository.findByClienteIdWithRelations(clienteId)
                 .stream().map(eventoMapper::toResponseDTO).toList();
+    }
+
+    // -------------------------------------------------------------------------
+    // HELPERS DE NORMALIZACIÓN
+    // -------------------------------------------------------------------------
+
+    private String trimRequired(String value) {
+        return value == null ? null : value.trim();
+    }
+
+    private String trimToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private String normalizarCorreo(String correo) {
+        return correo == null || correo.isBlank()
+                ? null
+                : correo.trim().toLowerCase();
     }
 }

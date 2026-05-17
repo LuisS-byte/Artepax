@@ -192,17 +192,34 @@ class EventoServiceImplTest {
     }
 
     @Test
-    void actualizarEventoEnProgramadoSoloPermiteUbicacionYNota() {
+    void actualizarEventoEnProgramadoBloqueaCliente() {
         Evento evento = crearEventoBase("PROGRAMADO");
 
         when(eventoRepository.findById(10L)).thenReturn(Optional.of(evento));
 
         EventoUpdateDTO dto = new EventoUpdateDTO();
-        dto.setFecha(LocalDate.now().plusDays(5));
+        dto.setClienteId(99L);
 
         assertThrows(EventoException.class, () -> service.actualizarEvento(10L, dto));
-
         verify(eventoRepository, never()).save(any(Evento.class));
+    }
+
+    @Test
+    void actualizarEventoEnProgramadoAceptaFecha() {
+        Evento evento = crearEventoBase("PROGRAMADO");
+        evento.setId(10L);
+
+        when(eventoRepository.findById(10L)).thenReturn(Optional.of(evento));
+        when(eventoRepository.existeSolapamientoExcluyendoEvento(eq(10L), any(LocalDate.class), any(LocalTime.class), any(LocalTime.class), any(String.class)))
+                .thenReturn(false);
+        when(eventoRepository.save(any(Evento.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        EventoUpdateDTO dto = new EventoUpdateDTO();
+        dto.setFecha(LocalDate.now().plusDays(5));
+
+        EventoResponseDTO response = service.actualizarEvento(10L, dto);
+
+        assertEquals(LocalDate.now().plusDays(5), response.getFecha());
     }
 
     @Test

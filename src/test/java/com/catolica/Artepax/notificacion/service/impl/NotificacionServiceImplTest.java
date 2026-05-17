@@ -50,7 +50,7 @@ class NotificacionServiceImplTest {
     @Test
     void duenioMarcaLeida_permitido() {
         Notificacion notificacion = crearNotificacion(10L, 5L, "PENDIENTE");
-        when(notificacionRepository.findById(10L)).thenReturn(Optional.of(notificacion));
+        when(notificacionRepository.findByIdWithOwnerAndEstado(10L)).thenReturn(Optional.of(notificacion));
         when(estadoRepository.findByNombreEstado("LEIDA")).thenReturn(Optional.of(crearEstado("LEIDA")));
 
         service.marcarLeida(10L, 5L);
@@ -61,7 +61,7 @@ class NotificacionServiceImplTest {
     @Test
     void otroUsuarioMarcaLeida_lanzaAccessDenied() {
         Notificacion notificacion = crearNotificacion(10L, 5L, "PENDIENTE");
-        when(notificacionRepository.findById(10L)).thenReturn(Optional.of(notificacion));
+        when(notificacionRepository.findByIdWithOwnerAndEstado(10L)).thenReturn(Optional.of(notificacion));
 
         assertThrows(AccessDeniedException.class, () -> service.marcarLeida(10L, 9L));
 
@@ -71,7 +71,7 @@ class NotificacionServiceImplTest {
 
     @Test
     void notificacionInexistente_lanzaNotFound() {
-        when(notificacionRepository.findById(10L)).thenReturn(Optional.empty());
+        when(notificacionRepository.findByIdWithOwnerAndEstado(10L)).thenReturn(Optional.empty());
 
         assertThrows(NotificacionNotFoundException.class, () -> service.marcarLeida(10L, 5L));
 
@@ -82,7 +82,7 @@ class NotificacionServiceImplTest {
     @Test
     void notificacionYaLeida_esIdempotente() {
         Notificacion notificacion = crearNotificacion(10L, 5L, "LEIDA");
-        when(notificacionRepository.findById(10L)).thenReturn(Optional.of(notificacion));
+        when(notificacionRepository.findByIdWithOwnerAndEstado(10L)).thenReturn(Optional.of(notificacion));
 
         service.marcarLeida(10L, 5L);
 

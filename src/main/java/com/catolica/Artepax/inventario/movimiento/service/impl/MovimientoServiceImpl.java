@@ -2,7 +2,7 @@ package com.catolica.Artepax.inventario.movimiento.service.impl;
 
 import com.catolica.Artepax.common.audit.ProductoAuditSnapshot;
 import com.catolica.Artepax.common.service.AuditoriaService;
-import com.catolica.Artepax.evento.model.ReservaEstados;
+
 import com.catolica.Artepax.evento.repository.EventoProductoRepository;
 import com.catolica.Artepax.inventario.movimiento.dto.AjusteInventarioRequestDTO;
 import com.catolica.Artepax.inventario.movimiento.dto.MovimientoRequestDTO;
@@ -81,11 +81,24 @@ public class MovimientoServiceImpl implements MovimientoService {
                             ". Válidos: " + ORIGENES_ENTRADA);
         }
 
-        Producto producto = obtenerProductoOFallar(dto.getProductoId());
+        Producto producto = productoRepository.findByIdForUpdate(dto.getProductoId())
+                .orElseThrow(() -> new ProductoNotFoundException(dto.getProductoId()));
+        validarProductoActivo(producto);
+
+        ProductoAuditSnapshot antes = new ProductoAuditSnapshot(
+                producto.getId(), producto.getNombre(), producto.getCantidadTotal(), producto.getEstado());
+
         producto.setCantidadTotal(producto.getCantidadTotal() + dto.getCantidad());
         productoRepository.save(producto);
 
-        registrarMovimiento(producto, "ENTRADA", origen, dto.getCantidad(), dto.getMotivo());
+        MovimientoInventario movimiento = registrarMovimiento(producto, "ENTRADA", origen, dto.getCantidad(), dto.getMotivo());
+
+        ProductoAuditSnapshot despues = new ProductoAuditSnapshot(
+                producto.getId(), producto.getNombre(), producto.getCantidadTotal(), producto.getEstado());
+        String descripcion = "Entrada: " + dto.getCantidad() + " unidades, origen: " + origen;
+        auditoriaService.registrar(AJUSTAR_STOCK, PRODUCTO, producto.getId(), antes, despues, descripcion);
+        auditoriaService.registrar(AJUSTAR_STOCK, MOVIMIENTO_INVENTARIO, movimiento.getId(),
+                null, movimiento, "Movimiento creado: ENTRADA " + origen);
 
         verificarYNotificarStockBajo(producto);
     }
@@ -101,7 +114,9 @@ public class MovimientoServiceImpl implements MovimientoService {
                             ". Válidos: " + ORIGENES_SALIDA);
         }
 
-        Producto producto = obtenerProductoOFallar(dto.getProductoId());
+        Producto producto = productoRepository.findByIdForUpdate(dto.getProductoId())
+                .orElseThrow(() -> new ProductoNotFoundException(dto.getProductoId()));
+        validarProductoActivo(producto);
 
         StockProducto stock = stockProductoRepository.findById(dto.getProductoId())
                 .orElseThrow(() -> new ProductoNotFoundException(dto.getProductoId()));
@@ -113,10 +128,20 @@ public class MovimientoServiceImpl implements MovimientoService {
                     dto.getCantidad());
         }
 
+        ProductoAuditSnapshot antes = new ProductoAuditSnapshot(
+                producto.getId(), producto.getNombre(), producto.getCantidadTotal(), producto.getEstado());
+
         producto.setCantidadTotal(producto.getCantidadTotal() - dto.getCantidad());
         productoRepository.save(producto);
 
-        registrarMovimiento(producto, "SALIDA", origen, dto.getCantidad(), dto.getMotivo());
+        MovimientoInventario movimiento = registrarMovimiento(producto, "SALIDA", origen, dto.getCantidad(), dto.getMotivo());
+
+        ProductoAuditSnapshot despues = new ProductoAuditSnapshot(
+                producto.getId(), producto.getNombre(), producto.getCantidadTotal(), producto.getEstado());
+        String descripcion = "Salida: " + dto.getCantidad() + " unidades, origen: " + origen;
+        auditoriaService.registrar(AJUSTAR_STOCK, PRODUCTO, producto.getId(), antes, despues, descripcion);
+        auditoriaService.registrar(AJUSTAR_STOCK, MOVIMIENTO_INVENTARIO, movimiento.getId(),
+                null, movimiento, "Movimiento creado: SALIDA " + origen);
 
         verificarYNotificarStockBajo(producto);
     }
@@ -124,7 +149,8 @@ public class MovimientoServiceImpl implements MovimientoService {
     @Override
     @Transactional
     public void registrarAjuste(Long productoId, AjusteInventarioRequestDTO request) {
-        Producto producto = obtenerProductoOFallar(productoId);
+        Producto producto = productoRepository.findByIdForUpdate(productoId)
+                .orElseThrow(() -> new ProductoNotFoundException(productoId));
 
         if (!"ACTIVO".equalsIgnoreCase(producto.getEstado())) {
             throw new IllegalArgumentException("No se puede ajustar stock de un producto inactivo: " + producto.getNombre());
@@ -190,12 +216,12 @@ public class MovimientoServiceImpl implements MovimientoService {
     }
 
     @Override
-    public List<MovimientoResponseDTO> obtenerMovimientosPorProducto(Long productoId) {
+    public Page<MovimientoResponseDTO> obtenerMovimientosPorProducto(Long productoId, Pageable pageable) {
         if (!productoRepository.existsById(productoId)) {
             throw new ProductoNotFoundException(productoId);
         }
-        return movimientoRepository.findByProductoId(productoId)
-                .stream().map(movimientoMapper::toDTO).toList();
+        return movimientoRepository.findByProductoIdWithRelationsOrderByFechaDesc(productoId, pageable)
+                .map(movimientoMapper::toDTO);
     }
 
     @Override
@@ -205,6 +231,13 @@ public class MovimientoServiceImpl implements MovimientoService {
     }
 
     // ─── HELPERS ──────────────────────────────────────────────────────────────
+    private void validarProductoActivo(Producto producto) {
+        if (!"ACTIVO".equalsIgnoreCase(producto.getEstado())) {
+            throw new IllegalArgumentException(
+                    "No se pueden registrar movimientos para productos inactivos: " + producto.getNombre());
+        }
+    }
+
     private Producto obtenerProductoOFallar(Long id) {
         return productoRepository.findById(id)
                 .orElseThrow(() -> new ProductoNotFoundException(id));
@@ -214,17 +247,20 @@ public class MovimientoServiceImpl implements MovimientoService {
         StockProducto stock = stockProductoRepository.findById(producto.getId())
                 .orElse(null);
         if (stock != null && Boolean.TRUE.equals(stock.getStockBajoAlerta())) {
-            notificacionService.notificarAdmins(
-                    "ALERTA_STOCK",
-                    "Stock bajo alerta para el producto: " + producto.getNombre() +
-                            ". Disponible: " + stock.getCantidadDisponible() +
-                            " (mínimo: " + stock.getStockMinimo() + ")",
-                    null
-            );
+            try {
+                notificacionService.notificarAdmins(
+                        "ALERTA_STOCK",
+                        "Stock bajo alerta para el producto: " + producto.getNombre() +
+                                ". Disponible: " + stock.getCantidadDisponible() +
+                                " (mínimo: " + stock.getStockMinimo() + ")",
+                        null
+                );
+            } catch (Exception e) {
+                log.error("Error al notificar stock bajo para producto {}: {}", producto.getNombre(), e.getMessage(), e);
+            }
         }
     }
 
-    // Reemplazar el método registrarMovimiento() existente
     private MovimientoInventario registrarMovimiento(Producto producto, String tipo,
                                       String origen, int cantidad, String motivo) {
         MovimientoInventario m = new MovimientoInventario();

@@ -19,6 +19,21 @@ public class EmailService {
 
     public void enviarConAdjunto(String destinatario, String asunto,
                                  String cuerpo, byte[] pdfBytes, String nombreArchivo) {
+        if (destinatario == null || destinatario.isBlank()) {
+            throw new IllegalArgumentException("El destinatario no puede estar vacío.");
+        }
+        if (asunto == null || asunto.isBlank()) {
+            throw new IllegalArgumentException("El asunto no puede estar vacío.");
+        }
+        if (cuerpo == null || cuerpo.isBlank()) {
+            throw new IllegalArgumentException("El cuerpo no puede estar vacío.");
+        }
+        if (pdfBytes == null || pdfBytes.length == 0) {
+            throw new IllegalArgumentException("El archivo PDF adjunto no puede estar vacío.");
+        }
+        if (nombreArchivo == null || nombreArchivo.isBlank()) {
+            throw new IllegalArgumentException("El nombre del archivo adjunto no puede estar vacío.");
+        }
         try {
             MimeMessage mensaje = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mensaje, true, "UTF-8");
@@ -42,6 +57,15 @@ public class EmailService {
     }
 
     public void enviarSimple(String destinatario, String asunto, String cuerpo) {
+        if (destinatario == null || destinatario.isBlank()) {
+            throw new IllegalArgumentException("El destinatario no puede estar vacío.");
+        }
+        if (asunto == null || asunto.isBlank()) {
+            throw new IllegalArgumentException("El asunto no puede estar vacío.");
+        }
+        if (cuerpo == null || cuerpo.isBlank()) {
+            throw new IllegalArgumentException("El cuerpo no puede estar vacío.");
+        }
         try {
             MimeMessage mensaje = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mensaje, true, "UTF-8");

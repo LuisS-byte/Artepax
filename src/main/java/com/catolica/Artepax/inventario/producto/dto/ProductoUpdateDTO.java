@@ -1,5 +1,7 @@
 package com.catolica.Artepax.inventario.producto.dto;
 
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 
 import java.math.BigDecimal;
@@ -13,9 +15,11 @@ public class ProductoUpdateDTO {
 
     private String estado;
 
-    private BigDecimal precioUnitario; // P17
+    @DecimalMin(value = "0.00", message = "El precio unitario no puede ser negativo")
+    private BigDecimal precioUnitario;
 
-    private Integer stockMinimo;       // P17
+    @Min(value = 0, message = "El stock mínimo no puede ser negativo")
+    private Integer stockMinimo;
 
     // 🔹 Getters y Setters
 

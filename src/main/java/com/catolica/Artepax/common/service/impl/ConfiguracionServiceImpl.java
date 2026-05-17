@@ -3,6 +3,8 @@ package com.catolica.Artepax.common.service.impl;
 import com.catolica.Artepax.common.exception.ConfiguracionNotFoundException;
 import com.catolica.Artepax.common.repository.ConfiguracionRepository;
 import com.catolica.Artepax.common.service.ConfiguracionService;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import com.catolica.Artepax.common.dto.ConfiguracionResponseDTO;
 import com.catolica.Artepax.common.entity.Configuracion;
@@ -14,24 +16,25 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class ConfiguracionServiceImpl implements ConfiguracionService {
 
-
     private final ConfiguracionRepository repo;
+    private final ObjectMapper objectMapper;
 
-    private final ConcurrentHashMap<String, String> cache = new ConcurrentHashMap<>(); // P11
+    private final ConcurrentHashMap<String, String> cache = new ConcurrentHashMap<>();
 
-    public ConfiguracionServiceImpl(ConfiguracionRepository repo) {
+    public ConfiguracionServiceImpl(ConfiguracionRepository repo, ObjectMapper objectMapper) {
         this.repo = repo;
+        this.objectMapper = objectMapper;
     }
 
     private String getRaw(String clave) {
-        return cache.computeIfAbsent(clave, k ->          // P11: hit = retorna del cache, miss = query a BD
+        return cache.computeIfAbsent(clave, k ->
                 repo.findById(k)
                         .orElseThrow(() -> new ConfiguracionNotFoundException(k))
                         .getConfigValor()
         );
     }
 
-    public void invalidarCache(String clave) { // P11: llamar desde ConfiguracionController al hacer PUT
+    public void invalidarCache(String clave) {
         cache.remove(clave);
     }
 
@@ -58,12 +61,22 @@ public class ConfiguracionServiceImpl implements ConfiguracionService {
 
     @Override
     public Boolean getBoolean(String clave) {
-        return Boolean.parseBoolean(getRaw(clave));
+        String valor = getRaw(clave);
+
+        if ("true".equalsIgnoreCase(valor)) {
+            return true;
+        }
+        if ("false".equalsIgnoreCase(valor)) {
+            return false;
+        }
+
+        throw new IllegalStateException(
+                "La configuración '" + clave + "' no contiene un boolean válido. Valor actual: '" + valor + "'");
     }
 
     @Override
     public List<ConfiguracionResponseDTO> listar() {
-        return repo.findAll().stream().map(this::toDTO).toList();
+        return repo.findAllByOrderByConfigClaveAsc().stream().map(this::toDTO).toList();
     }
 
     @Override
@@ -78,32 +91,58 @@ public class ConfiguracionServiceImpl implements ConfiguracionService {
         Configuracion c = repo.findById(clave)
                 .orElseThrow(() -> new ConfiguracionNotFoundException(clave));
 
-        switch (c.getConfigTipo()) {
-            case "INT" -> {
-                try { Integer.parseInt(valor); }
-                catch (NumberFormatException e) {
-                    throw new IllegalArgumentException(
-                            "La clave '" + clave + "' es de tipo INT. Valor inválido: '" + valor + "'");
-                }
-            }
-            case "DECIMAL" -> {
-                try { new java.math.BigDecimal(valor); }
-                catch (NumberFormatException e) {
-                    throw new IllegalArgumentException(
-                            "La clave '" + clave + "' es de tipo DECIMAL. Valor inválido: '" + valor + "'");
-                }
-            }
-            case "BOOLEAN" -> {
-                if (!valor.equalsIgnoreCase("true") && !valor.equalsIgnoreCase("false"))
-                    throw new IllegalArgumentException(
-                            "La clave '" + clave + "' es de tipo BOOLEAN. Valores permitidos: true, false");
-            }
-        }
+        validarValorPorTipo(c.getConfigTipo(), valor);
 
         c.setConfigValor(valor);
         Configuracion guardada = repo.save(c);
         invalidarCache(clave);
         return toDTO(guardada);
+    }
+
+    private void validarValorPorTipo(String tipo, String valor) {
+        switch (tipo) {
+            case "INT" -> validarInt(valor);
+            case "DECIMAL" -> validarDecimal(valor);
+            case "BOOLEAN" -> validarBoolean(valor);
+            case "JSON" -> validarJson(valor);
+            case "STRING" -> { /* sin validación especial */ }
+            default -> throw new IllegalArgumentException(
+                    "Tipo de configuración no soportado: " + tipo);
+        }
+    }
+
+    private void validarInt(String valor) {
+        try {
+            Integer.parseInt(valor);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(
+                    "La clave es de tipo INT. Valor inválido: '" + valor + "'");
+        }
+    }
+
+    private void validarDecimal(String valor) {
+        try {
+            new BigDecimal(valor);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(
+                    "La clave es de tipo DECIMAL. Valor inválido: '" + valor + "'");
+        }
+    }
+
+    private void validarBoolean(String valor) {
+        if (!valor.equalsIgnoreCase("true") && !valor.equalsIgnoreCase("false")) {
+            throw new IllegalArgumentException(
+                    "La clave es de tipo BOOLEAN. Valores permitidos: true, false");
+        }
+    }
+
+    private void validarJson(String valor) {
+        try {
+            objectMapper.readTree(valor);
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException(
+                    "El valor debe ser un JSON válido. Error: " + e.getMessage());
+        }
     }
 
     private ConfiguracionResponseDTO toDTO(Configuracion c) {

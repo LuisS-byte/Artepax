@@ -67,6 +67,7 @@ public class ClienteController {
         clienteService.eliminar(id);
         return ResponseEntity.noContent().build();
     }
+
     // ✅ Historial de eventos por cliente
     @GetMapping("/{id}/eventos")
     public ResponseEntity<List<EventoResponseDTO>> obtenerEventosPorCliente(
@@ -76,7 +77,7 @@ public class ClienteController {
         return ResponseEntity.ok(eventos);
     }
 
-    // GET /clientes?nombre=Juan
+    // GET /api/clientes/buscar?nombre=Juan
     @GetMapping("/buscar")
     public ResponseEntity<List<ClienteResponseDTO>> buscarPorNombre(
             @RequestParam String nombre) {
@@ -86,8 +87,8 @@ public class ClienteController {
     }
 
     @GetMapping("/inactivos")
-    public List<ClienteResponseDTO> listarInactivos() {
-        return clienteService.obtenerInactivos();
+    public ResponseEntity<List<ClienteResponseDTO>> listarInactivos() {
+        return ResponseEntity.ok(clienteService.obtenerInactivos());
     }
 
     @PatchMapping("/{id}/reactivar")

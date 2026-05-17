@@ -1,5 +1,6 @@
 package com.catolica.Artepax.evento.service;
 
+import com.catolica.Artepax.evento.dto.EventoGastoControlDTO;
 import com.catolica.Artepax.evento.dto.GastoEventoRequestDTO;
 import com.catolica.Artepax.evento.dto.GastoEventoResponseDTO;
 import com.catolica.Artepax.evento.dto.ResumenGastoEventoDTO;
@@ -34,4 +35,6 @@ public interface GastoEventoService {
     Page<GastoEventoResponseDTO> obtenerTodos(Pageable pageable);
 
     ResumenGastoEventoDTO getResumen(Long eventoId);
+
+    List<EventoGastoControlDTO> obtenerEventosControl();
 }

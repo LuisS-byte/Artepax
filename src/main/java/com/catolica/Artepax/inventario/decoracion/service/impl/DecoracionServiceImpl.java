@@ -25,11 +25,16 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class DecoracionServiceImpl implements DecoracionService {
+
+    private static final String ESTADO_ACTIVO = "ACTIVO";
+    private static final String ESTADO_INACTIVO = "INACTIVO";
+    private static final Set<String> ESTADOS_VALIDOS = Set.of(ESTADO_ACTIVO, ESTADO_INACTIVO);
 
     private final DecoracionRepository decoracionRepository;
     private final DecoracionProductoRepository decoracionProductoRepository;
@@ -37,13 +42,39 @@ public class DecoracionServiceImpl implements DecoracionService {
     private final StockProductoRepository stockProductoRepository;
     private final DecoracionMapper decoracionMapper;
 
+    private String normalizarEstado(String estado) {
+        if (estado == null || estado.isBlank()) return ESTADO_ACTIVO;
+        String normalizado = estado.trim().toUpperCase();
+        if (!ESTADOS_VALIDOS.contains(normalizado)) {
+            throw new IllegalArgumentException("Estado de decoración inválido: " + estado + ". Válidos: " + ESTADOS_VALIDOS);
+        }
+        return normalizado;
+    }
+
+    private String normalizarNombre(String nombre) {
+        return nombre == null ? null : nombre.trim().replaceAll("\\s+", " ");
+    }
+
+    private void validarNombreDisponible(String nombre, Long idActual) {
+        decoracionRepository.findByNombreIgnoreCase(nombre)
+                .filter(d -> idActual == null || !d.getId().equals(idActual))
+                .ifPresent(d -> {
+                    throw new IllegalArgumentException("Ya existe una decoración con el nombre: " + nombre);
+                });
+    }
+
     @Override
     @Transactional
     public DecoracionResponseDTO crearDecoracion(DecoracionRequestDTO dto) {
+        String nombreNormalizado = normalizarNombre(dto.getNombre());
+        validarNombreDisponible(nombreNormalizado, null);
+        dto.setNombre(nombreNormalizado);
+
         validarStockProductos(dto.getProductos());
 
         // guardar decoracion
         Decoracion decoracion = decoracionMapper.toEntity(dto);
+        decoracion.setEstado(normalizarEstado(decoracion.getEstado()));
         Decoracion guardada = decoracionRepository.save(decoracion);
 
         // asociar productos
@@ -51,6 +82,11 @@ public class DecoracionServiceImpl implements DecoracionService {
 
             Producto producto = productoRepository.findById(p.getProductoId())
                     .orElseThrow(() -> new ProductoNotFoundException(p.getProductoId()));
+
+            if (!ESTADO_ACTIVO.equalsIgnoreCase(producto.getEstado())) {
+                throw new IllegalArgumentException(
+                        "El producto '" + producto.getNombre() + "' está inactivo y no puede usarse en una decoración");
+            }
 
             DecoracionProducto dp = new DecoracionProducto();
             dp.setId(new DecoracionProductoId(guardada.getId(), producto.getId()));
@@ -75,6 +111,10 @@ public class DecoracionServiceImpl implements DecoracionService {
 
         List<Long> ids = decoraciones.stream().map(Decoracion::getId).toList();
 
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+
         Map<Long, List<DecoracionProducto>> productosPorDecoracion =
                 decoracionProductoRepository.findByDecoracionIds(ids)
                         .stream()
@@ -89,10 +129,10 @@ public class DecoracionServiceImpl implements DecoracionService {
     @Override
     public DecoracionResponseDTO obtenerPorId(Long id) {
         Decoracion decoracion = decoracionRepository.findById(id)
-                .orElseThrow(() -> new DecoracionNotFoundException(id)); // P4
+                .orElseThrow(() -> new DecoracionNotFoundException(id));
 
         List<DecoracionProducto> productos =
-                decoracionProductoRepository.findByDecoracionId(id);
+                decoracionProductoRepository.findByDecoracionIdWithProducto(id);
 
         return decoracionMapper.toDTO(decoracion, productos);
     }
@@ -102,9 +142,20 @@ public class DecoracionServiceImpl implements DecoracionService {
     public DecoracionResponseDTO actualizar(Long id, DecoracionUpdateDTO dto) {
 
         Decoracion decoracion = decoracionRepository.findById(id)
-                .orElseThrow(() -> new DecoracionNotFoundException(id)); // P4
+                .orElseThrow(() -> new DecoracionNotFoundException(id));
+
+        if (dto.getNombre() != null) {
+            String nombreNormalizado = normalizarNombre(dto.getNombre());
+            validarNombreDisponible(nombreNormalizado, id);
+            dto.setNombre(nombreNormalizado);
+        }
 
         decoracionMapper.updateEntity(decoracion, dto);
+
+        if (dto.getEstado() != null) {
+            decoracion.setEstado(normalizarEstado(dto.getEstado()));
+        }
+
         decoracionRepository.save(decoracion);
 
         // si vienen productos nuevos, reemplazar los existentes
@@ -122,6 +173,11 @@ public class DecoracionServiceImpl implements DecoracionService {
                 Producto producto = productoRepository.findById(p.getProductoId())
                         .orElseThrow(() -> new ProductoNotFoundException(p.getProductoId()));
 
+                if (!ESTADO_ACTIVO.equalsIgnoreCase(producto.getEstado())) {
+                    throw new IllegalArgumentException(
+                            "El producto '" + producto.getNombre() + "' está inactivo y no puede usarse en una decoración");
+                }
+
                 DecoracionProducto dp = new DecoracionProducto();
                 dp.setId(new DecoracionProductoId(id, producto.getId()));
                 dp.setDecoracion(decoracion);
@@ -138,7 +194,7 @@ public class DecoracionServiceImpl implements DecoracionService {
         }
 
         List<DecoracionProducto> productos =
-                decoracionProductoRepository.findByDecoracionId(id);
+                decoracionProductoRepository.findByDecoracionIdWithProducto(id);
         return decoracionMapper.toDTO(decoracion, productos);
     }
 
@@ -146,7 +202,7 @@ public class DecoracionServiceImpl implements DecoracionService {
     @Transactional
     public void eliminar(Long id) {
         Decoracion decoracion = decoracionRepository.findById(id)
-                .orElseThrow(() -> new DecoracionNotFoundException(id)); // P4
+                .orElseThrow(() -> new DecoracionNotFoundException(id));
 
         decoracion.setEstado("INACTIVO");
         decoracionRepository.save(decoracion);

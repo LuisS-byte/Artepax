@@ -61,9 +61,34 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.CONFLICT)
     public ErrorResponse handleDataIntegrity(DataIntegrityViolationException ex) {
         log.warn("Violación de integridad de datos: {}", ex.getMessage());
-        if (ex.getMessage() != null && ex.getMessage().contains("uk_documento_evento_tipo")) {
+        String msg = ex.getMessage();
+        if (msg == null) {
+            return ErrorResponse.of(HttpStatus.CONFLICT.value(), "Error de integridad de datos");
+        }
+
+        if (msg.contains("uk_documento_evento_tipo")) {
             return ErrorResponse.of(HttpStatus.CONFLICT.value(),
                     "Ya existe un documento de este tipo para el evento especificado");
+        }
+        if (msg.contains("idx_cliente_correo_unique")) {
+            return ErrorResponse.of(HttpStatus.CONFLICT.value(),
+                    "Ya existe un cliente con ese correo electrónico");
+        }
+        if (msg.contains("idx_usuario_correo_lower")) {
+            return ErrorResponse.of(HttpStatus.CONFLICT.value(),
+                    "Ya existe un usuario con ese correo electrónico");
+        }
+        if (msg.contains("tipo_evento_tipo_nombre_key")) {
+            return ErrorResponse.of(HttpStatus.CONFLICT.value(),
+                    "Ya existe un tipo de evento con ese nombre");
+        }
+        if (msg.contains("metodo_pago_metodo_nombre_key")) {
+            return ErrorResponse.of(HttpStatus.CONFLICT.value(),
+                    "Ya existe un método de pago con ese nombre");
+        }
+        if (msg.contains("producto_produ_nombre_key")) {
+            return ErrorResponse.of(HttpStatus.CONFLICT.value(),
+                    "Ya existe un producto con ese nombre");
         }
         return ErrorResponse.of(HttpStatus.CONFLICT.value(), "Error de integridad de datos");
     }

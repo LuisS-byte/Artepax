@@ -18,6 +18,9 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
     // 🔍 Buscar por nombre (opcional)
     Optional<Producto> findByNombre(String nombre);
 
+    // 🔍 Buscar por nombre sin distinguir mayúsculas/minúsculas
+    Optional<Producto> findByNombreIgnoreCase(String nombre);
+
     // 🔍 Validar si ya existe un producto con ese nombre
     boolean existsByNombre(String nombre);
 
@@ -30,4 +33,8 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
             WHERE p.id IN :ids
             """)
     List<Producto> findAllByIdInForUpdate(@Param("ids") Collection<Long> ids);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Producto p WHERE p.id = :id")
+    Optional<Producto> findByIdForUpdate(@Param("id") Long id);
 }

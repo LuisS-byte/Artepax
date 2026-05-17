@@ -12,6 +12,8 @@ import com.catolica.Artepax.notificacion.repository.EstadoNotificacionRepository
 import com.catolica.Artepax.notificacion.repository.NotificacionRepository;
 import com.catolica.Artepax.notificacion.repository.TipoNotificacionRepository;
 import com.catolica.Artepax.notificacion.service.NotificacionService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +22,8 @@ import java.util.List;
 
 @Service
 public class NotificacionServiceImpl implements NotificacionService {
+
+    private static final Logger log = LoggerFactory.getLogger(NotificacionServiceImpl.class);
 
     private static final String ESTADO_PENDIENTE = "PENDIENTE";
     private static final String ESTADO_LEIDA = "LEIDA";
@@ -50,23 +54,43 @@ public class NotificacionServiceImpl implements NotificacionService {
                 .orElseThrow(() -> new IllegalStateException(
                         "Estado " + ESTADO_PENDIENTE + " no encontrado en BD"));
 
-        List<Usuario> admins = usuarioRepository.findAdminsActivos();
+        String mensajeNormalizado = normalizarMensaje(mensaje);
 
-        for (Usuario admin : admins) {
-            Notificacion n = new Notificacion();
-            n.setUsuario(admin);
-            n.setTipoNotificacion(tipo);
-            n.setEstadoNotificacion(estadoPendiente);
-            n.setEvento(evento);
-            n.setMensaje(mensaje);
-            notificacionRepository.save(n);
+        List<Notificacion> notificaciones = usuarioRepository.findAdminsActivos()
+                .stream()
+                .map(admin -> {
+                    Notificacion n = new Notificacion();
+                    n.setUsuario(admin);
+                    n.setTipoNotificacion(tipo);
+                    n.setEstadoNotificacion(estadoPendiente);
+                    n.setEvento(evento);
+                    n.setMensaje(mensajeNormalizado);
+                    return n;
+                })
+                .toList();
+
+        notificacionRepository.saveAll(notificaciones);
+    }
+
+    private String normalizarMensaje(String mensaje) {
+        if (mensaje == null || mensaje.isBlank()) {
+            throw new IllegalArgumentException("El mensaje de notificación es obligatorio");
         }
+
+        String normalizado = mensaje.trim();
+
+        if (normalizado.length() > 500) {
+            log.warn("Mensaje de notificación supera 500 caracteres ({}); será truncado", normalizado.length());
+            return normalizado.substring(0, 500);
+        }
+
+        return normalizado;
     }
 
     @Override
     @Transactional
     public void marcarLeida(Long notificacionId, Long idUsuarioAutenticado) {
-        Notificacion n = notificacionRepository.findById(notificacionId)
+        Notificacion n = notificacionRepository.findByIdWithOwnerAndEstado(notificacionId)
                 .orElseThrow(() -> new NotificacionNotFoundException(notificacionId));
 
         Long ownerId = n.getUsuario().getIdUsuario();
@@ -87,9 +111,10 @@ public class NotificacionServiceImpl implements NotificacionService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<NotificacionResponseDTO> obtenerMias(Long usuarioId) {
         return notificacionRepository
-                .findByUsuarioIdUsuarioOrderByFechaEnvioDesc(usuarioId)
+                .findByUsuarioIdWithRelationsOrderByFechaEnvioDesc(usuarioId)
                 .stream().map(this::toDTO).toList();
     }
 

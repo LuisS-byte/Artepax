@@ -16,4 +16,12 @@ public interface DecoracionProductoRepository  extends JpaRepository<DecoracionP
 
     @Query("SELECT dp FROM DecoracionProducto dp JOIN FETCH dp.producto WHERE dp.decoracion.id IN :ids")
     List<DecoracionProducto> findByDecoracionIds(@Param("ids") List<Long> ids);
+
+    @Query("""
+        SELECT dp
+        FROM DecoracionProducto dp
+        JOIN FETCH dp.producto
+        WHERE dp.decoracion.id = :decoracionId
+    """)
+    List<DecoracionProducto> findByDecoracionIdWithProducto(@Param("decoracionId") Long decoracionId);
 }

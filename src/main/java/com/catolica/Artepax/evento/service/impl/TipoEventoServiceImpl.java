@@ -9,6 +9,7 @@ import com.catolica.Artepax.evento.service.TipoEventoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -25,25 +26,37 @@ public class TipoEventoServiceImpl implements TipoEventoService {
     private final TipoEventoRepository repo;
 
     @Override
+    @Transactional(readOnly = true)
     public List<TipoEventoResponseDTO> listar() {
-        return repo.findAll().stream().map(this::toDTO).toList();
+        return repo.findAllByOrderByTipoNombreAsc().stream().map(this::toDTO).toList();
     }
 
     @Override
+    @Transactional
     public TipoEventoResponseDTO crear(String nombre, String descripcion) {
-        validarTexto(nombre, "nombre");
-        validarDescripcion(descripcion);
+        String nombreNormalizado = nombre.trim();
+        String descripcionNormalizada = (descripcion == null || descripcion.isBlank())
+                ? null
+                : descripcion.trim();
+
+        validarTexto(nombreNormalizado, "nombre");
+        validarDescripcion(descripcionNormalizada);
+
+        if (repo.existsByTipoNombreIgnoreCase(nombreNormalizado)) {
+            throw new TipoEventoException("Ya existe un tipo de evento con el nombre: " + nombreNormalizado);
+        }
 
         TipoEvento t = new TipoEvento();
-        t.setTipoNombre(nombre);
-        t.setTipoDescripcion(descripcion);
+        t.setTipoNombre(nombreNormalizado);
+        t.setTipoDescripcion(descripcionNormalizada);
         t.setTipoActivo(true);
         TipoEvento saved = repo.save(t);
-        log.info("Tipo de evento creado: id={}, nombre={}", saved.getId(), nombre);
+        log.info("Tipo de evento creado: id={}, nombre={}", saved.getId(), nombreNormalizado);
         return toDTO(saved);
     }
 
     @Override
+    @Transactional
     public TipoEventoResponseDTO toggle(Long id) {
         TipoEvento t = repo.findById(id)
                 .orElseThrow(() -> new TipoEventoNotFoundException(id));

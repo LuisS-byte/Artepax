@@ -15,7 +15,7 @@ public interface MovimientoService {
     void registrarSalida(MovimientoRequestDTO dto);
     void registrarAjuste(Long productoId, AjusteInventarioRequestDTO request);
     StockProductoResponseDTO obtenerStock(Long productoId);
-    List<MovimientoResponseDTO> obtenerMovimientosPorProducto(Long productoId);
+    Page<MovimientoResponseDTO> obtenerMovimientosPorProducto(Long productoId, Pageable pageable);
 
     Page<MovimientoResponseDTO> obtenerTodosMovimientos(Pageable pageable);
 }

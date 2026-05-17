@@ -1,6 +1,8 @@
 package com.catolica.Artepax.common.aspect;
 
 
+import com.catolica.Artepax.common.constant.AuditoriaAcciones;
+import com.catolica.Artepax.common.constant.AuditoriaTablas;
 import com.catolica.Artepax.common.service.AuditoriaService;
 import com.catolica.Artepax.evento.dto.EventoResponseDTO;
 import com.catolica.Artepax.evento.repository.EventoRepository;
@@ -54,7 +56,7 @@ public class AuditoriaAspect {
         try {
             EventoResponseDTO dto = (EventoResponseDTO) resultado;
             auditoriaService.registrar(
-                    "CREAR", "evento", dto.getId(),
+                    AuditoriaAcciones.CREAR, AuditoriaTablas.EVENTO, dto.getId(),
                     null,
                     toJson(resultado),
                     "Nuevo evento creado para cliente: " + dto.getClienteNombre()
@@ -75,7 +77,7 @@ public class AuditoriaAspect {
             Object resultado = pjp.proceed();
 
             auditoriaService.registrar(
-                    "EDITAR", "evento", id,
+                    AuditoriaAcciones.EDITAR, AuditoriaTablas.EVENTO, id,
                     valorAnterior,
                     toJson(resultado),
                     "Evento actualizado"
@@ -99,7 +101,7 @@ public class AuditoriaAspect {
             Object resultado = pjp.proceed();
 
             auditoriaService.registrar(
-                    "CANCELAR", "evento", id,
+                    AuditoriaAcciones.CANCELAR, AuditoriaTablas.EVENTO, id,
                     valorAnterior,
                     toJson(resultado),
                     "Cancelación iniciada. Motivo: " + motivo
@@ -118,7 +120,7 @@ public class AuditoriaAspect {
         try {
             EventoResponseDTO dto = (EventoResponseDTO) resultado;
             auditoriaService.registrar(
-                    "EDITAR", "evento", dto.getId(),
+                    AuditoriaAcciones.EDITAR, AuditoriaTablas.EVENTO, dto.getId(),
                     null,
                     toJson(resultado),
                     "Cancelación revertida — evento restaurado a estado anterior"
@@ -135,7 +137,7 @@ public class AuditoriaAspect {
         try {
             EventoResponseDTO dto = (EventoResponseDTO) resultado;
             auditoriaService.registrar(
-                    "FINALIZAR", "evento", dto.getId(),
+                    AuditoriaAcciones.FINALIZAR, AuditoriaTablas.EVENTO, dto.getId(),
                     null,
                     toJson(resultado),
                     "Evento finalizado — movimientos de salida generados"
@@ -153,7 +155,7 @@ public class AuditoriaAspect {
         try {
             EventoResponseDTO dto = (EventoResponseDTO) resultado;
             auditoriaService.registrar(
-                    "INICIAR_MONTAJE", "evento", dto.getId(),
+                    AuditoriaAcciones.INICIAR_MONTAJE, AuditoriaTablas.EVENTO, dto.getId(),
                     null,
                     toJson(resultado),
                     "Montaje iniciado — evento en EN_MONTAJE"
@@ -177,7 +179,7 @@ public class AuditoriaAspect {
                     .map(this::toJson).orElse(null);
 
             auditoriaService.registrar(
-                    "CANCELAR", "evento", id,
+                    AuditoriaAcciones.CANCELAR, AuditoriaTablas.EVENTO, id,
                     valorAnterior,
                     valorNuevo,
                     "Cancelación definitiva del evento confirmada"
@@ -203,7 +205,7 @@ public class AuditoriaAspect {
                     .map(this::toJson).orElse(null);
 
             auditoriaService.registrar(
-                    "FINALIZAR", "evento", id,
+                    AuditoriaAcciones.FINALIZAR, AuditoriaTablas.EVENTO, id,
                     valorAnterior,
                     valorNuevo,
                     "Evento finalizado automáticamente por cobro completo"
@@ -224,7 +226,7 @@ public class AuditoriaAspect {
         try {
             PagoResponseDTO dto = (PagoResponseDTO) resultado;
             auditoriaService.registrar(
-                    "CREAR", "pago", dto.getId(),
+                    AuditoriaAcciones.CREAR, AuditoriaTablas.PAGO, dto.getId(),
                     null,
                     toJson(resultado),
                     "Pago registrado por $" + dto.getMonto()
@@ -246,7 +248,7 @@ public class AuditoriaAspect {
 
             PagoResponseDTO dto = (PagoResponseDTO) resultado;
             auditoriaService.registrar(
-                    "CONFIRMAR", "pago", dto.getId(),
+                    AuditoriaAcciones.CONFIRMAR, AuditoriaTablas.PAGO, dto.getId(),
                     valorAnterior,
                     toJson(resultado),
                     "Pago confirmado por $" + dto.getMonto()
@@ -265,7 +267,7 @@ public class AuditoriaAspect {
         try {
             PagoResponseDTO dto = (PagoResponseDTO) resultado;
             auditoriaService.registrar(
-                    "ANULAR", "pago", dto.getId(),
+                    AuditoriaAcciones.ANULAR, AuditoriaTablas.PAGO, dto.getId(),
                     null,
                     toJson(resultado),
                     "Pago anulado"
@@ -284,7 +286,7 @@ public class AuditoriaAspect {
         try {
             ClienteResponseDTO dto = (ClienteResponseDTO) resultado;
             auditoriaService.registrar(
-                    "CREAR", "cliente", dto.getId(),
+                    AuditoriaAcciones.CREAR, AuditoriaTablas.CLIENTE, dto.getId(),
                     null,
                     toJson(resultado),
                     "Nuevo cliente registrado: " + dto.getNombre()
@@ -306,7 +308,7 @@ public class AuditoriaAspect {
 
             ClienteResponseDTO dto = (ClienteResponseDTO) resultado;
             auditoriaService.registrar(
-                    "EDITAR", "cliente", dto.getId(),
+                    AuditoriaAcciones.EDITAR, AuditoriaTablas.CLIENTE, dto.getId(),
                     valorAnterior,
                     toJson(resultado),
                     "Cliente actualizado: " + dto.getNombre()

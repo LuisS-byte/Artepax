@@ -15,7 +15,7 @@ public class MovimientoRequestDTO {
     private String motivo;
 
     // REPOSICION, AJUSTE_MANUAL, DAÑO, PERDIDA
-    private String tipoOrigen = "REPOSICION";
+    private String tipoOrigen;
 
     public Long getProductoId() { return productoId; }
     public void setProductoId(Long productoId) { this.productoId = productoId; }

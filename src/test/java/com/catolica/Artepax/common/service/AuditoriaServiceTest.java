@@ -44,6 +44,7 @@ class AuditoriaServiceTest {
         auditoriaService = new AuditoriaService(auditoriaRepository, usuarioRepository, objectMapper);
 
         lenient().when(securityContext.getAuthentication()).thenReturn(authentication);
+        lenient().when(authentication.isAuthenticated()).thenReturn(true);
         lenient().when(authentication.getName()).thenReturn("admin@test.com");
         lenient().when(usuarioRepository.findByCorreo("admin@test.com"))
                 .thenReturn(Optional.of(new Usuario()));

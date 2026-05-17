@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -23,4 +24,16 @@ public interface MovimientoInventarioRepository extends JpaRepository<Movimiento
     @Query(value = "SELECT m FROM MovimientoInventario m JOIN FETCH m.producto LEFT JOIN FETCH m.evento e LEFT JOIN FETCH e.cliente LEFT JOIN FETCH e.estadoEvento",
            countQuery = "SELECT COUNT(m) FROM MovimientoInventario m")
     Page<MovimientoInventario> findAllWithProductoYEvento(Pageable pageable);
+
+    @Query(value = """
+        SELECT m
+        FROM MovimientoInventario m
+        JOIN FETCH m.producto
+        LEFT JOIN FETCH m.evento e
+        LEFT JOIN FETCH e.cliente
+        WHERE m.producto.id = :productoId
+        ORDER BY m.fecha DESC
+    """,
+           countQuery = "SELECT COUNT(m) FROM MovimientoInventario m WHERE m.producto.id = :productoId")
+    Page<MovimientoInventario> findByProductoIdWithRelationsOrderByFechaDesc(@Param("productoId") Long productoId, Pageable pageable);
 }

@@ -3,7 +3,6 @@ package com.catolica.Artepax.inventario.producto.entity;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.Immutable;
-import org.hibernate.annotations.Subselect;
 
 @Entity
 @Immutable

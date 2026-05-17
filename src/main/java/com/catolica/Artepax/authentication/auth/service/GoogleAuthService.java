@@ -16,6 +16,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Locale;
+
 @Service
 @RequiredArgsConstructor
 public class GoogleAuthService {
@@ -43,7 +45,7 @@ public class GoogleAuthService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token inválido");
         }
 
-        String email = payload.getEmail();
+        String email = payload.getEmail().trim().toLowerCase(Locale.ROOT);
 
         Usuario usuario = usuarioService.findByCorreo(email);
 

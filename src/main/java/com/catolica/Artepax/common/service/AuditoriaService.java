@@ -8,6 +8,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -34,14 +35,14 @@ public class AuditoriaService {
             auditoria.setAccion(accion);
             auditoria.setTablaAfectada(tablaAfectada);
             auditoria.setIdRegistro(idRegistro);
-            auditoria.setValorAnterior(valorAnterior);
-            auditoria.setValorNuevo(valorNuevo);
+            auditoria.setValorAnterior(asegurarJson(valorAnterior));
+            auditoria.setValorNuevo(asegurarJson(valorNuevo));
             auditoria.setDescripcion(descripcion);
 
-            String correo = SecurityContextHolder.getContext()
-                    .getAuthentication().getName();
-
-            usuarioRepository.findByCorreo(correo).ifPresent(auditoria::setUsuario);
+            Usuario usuario = resolverUsuarioActual();
+            if (usuario != null) {
+                auditoria.setUsuario(usuario);
+            }
 
             auditoriaRepository.save(auditoria);
 
@@ -55,6 +56,35 @@ public class AuditoriaService {
                           Object valorAnterior, Object valorNuevo, String descripcion) {
         registrar(accion, tablaAfectada, idRegistro,
                 toJson(valorAnterior), toJson(valorNuevo), descripcion);
+    }
+
+    private Usuario resolverUsuarioActual() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        if (auth == null || !auth.isAuthenticated() || auth.getName() == null) {
+            return null;
+        }
+
+        return usuarioRepository.findByCorreo(auth.getName()).orElse(null);
+    }
+
+    /**
+     * Asegura que el valor sea JSON válido para columnas jsonb.
+     * Si ya es JSON válido (objeto, arreglo, número, booleano), lo pasa sin cambios.
+     * Si es texto plano, lo envuelve como JSON string.
+     */
+    private String asegurarJson(String valor) {
+        if (valor == null) return null;
+        try {
+            objectMapper.readTree(valor);
+            return valor;
+        } catch (Exception e) {
+            try {
+                return objectMapper.writeValueAsString(valor);
+            } catch (JsonProcessingException ex) {
+                return "\"" + valor.replace("\"", "\\\"") + "\"";
+            }
+        }
     }
 
     private String toJson(Object obj) {

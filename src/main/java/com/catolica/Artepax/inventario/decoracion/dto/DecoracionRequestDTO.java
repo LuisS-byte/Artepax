@@ -1,5 +1,7 @@
 package com.catolica.Artepax.inventario.decoracion.dto;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -16,11 +18,13 @@ private String nombre;
     private String descripcion;
 
     @NotNull(message = "El precio es obligatorio")
+    @DecimalMin(value = "0.01", message = "El precio debe ser mayor a 0")
     private BigDecimal precio;
 
     private String estado;
 
     @NotEmpty(message = "Debe incluir al menos un producto")
+    @Valid
     private List<DecoracionProductoRequestDTO> productos;
 
     public String getNombre() { return nombre; }

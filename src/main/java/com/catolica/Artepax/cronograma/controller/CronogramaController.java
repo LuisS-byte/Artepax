@@ -57,7 +57,7 @@ public class CronogramaController {
     @PutMapping("/{id}")
     public ResponseEntity<CronogramaResponseDTO> actualizar(
             @PathVariable Long id,
-            @RequestBody CronogramaUpdateDTO dto) {
+            @Valid @RequestBody CronogramaUpdateDTO dto) {
         log.info("Actualizando actividad de cronograma {}", id);
         return ResponseEntity.ok(cronogramaService.actualizar(id, dto));
     }

@@ -30,6 +30,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -83,7 +84,7 @@ public class CronogramaServiceImpl implements CronogramaService {
     @Override
     public List<CronogramaResponseDTO> obtenerPorEvento(Long idEvento) {
         log.debug("Obteniendo cronograma para evento {}", idEvento);
-        return cronogramaRepository.findByEventoId(idEvento)
+        return cronogramaRepository.findByEventoIdWithEvento(idEvento)
                 .stream().map(cronogramaMapper::toDTO).toList();
     }
 
@@ -95,7 +96,9 @@ public class CronogramaServiceImpl implements CronogramaService {
 
     @Override
     public CronogramaResponseDTO obtenerPorId(Long id) {
-        return cronogramaMapper.toDTO(obtenerOFallar(id));
+        Cronograma cronograma = cronogramaRepository.findByIdWithEvento(id)
+                .orElseThrow(() -> new CronogramaNotFoundException(id));
+        return cronogramaMapper.toDTO(cronograma);
     }
 
     @Override
@@ -132,6 +135,11 @@ public class CronogramaServiceImpl implements CronogramaService {
             return cronogramaMapper.toDTO(cronograma);
         }
 
+        if (CronogramaEstados.EN_PROGRESO.equals(nuevoEstado)
+                || CronogramaEstados.COMPLETADO.equals(nuevoEstado)) {
+            cronogramaPolicy.validarEventoPermiteCronograma(cronograma.getEvento());
+        }
+
         cronograma.setCronoEstado(nuevoEstado);
         Cronograma saved = cronogramaRepository.save(cronograma);
         log.info("Estado de actividad cambiado: id={}, nuevoEstado={}", id, nuevoEstado);
@@ -150,6 +158,8 @@ public class CronogramaServiceImpl implements CronogramaService {
                 cronograma.getCronoEstado(),
                 CronogramaEstados.CANCELADO);
 
+        cronogramaPolicy.validarEventoPermiteCronograma(cronograma.getEvento());
+
         cronograma.setCronoEstado(CronogramaEstados.CANCELADO);
         cronogramaRepository.save(cronograma);
         log.info("Actividad cancelada: id={}", id);
@@ -158,8 +168,8 @@ public class CronogramaServiceImpl implements CronogramaService {
     @Override
     @Transactional
     public void cancelarPorEvento(Long eventoId) {
-        cronogramaRepository.cancelarPorEvento(eventoId);
-        log.info("Cronograma cancelado en cascada para evento {}", eventoId);
+        int afectadas = cronogramaRepository.cancelarPorEvento(eventoId);
+        log.info("Cronograma cancelado en cascada para evento {}: {} actividades afectadas", eventoId, afectadas);
     }
 
     @Override
@@ -186,6 +196,10 @@ public class CronogramaServiceImpl implements CronogramaService {
             throw new CronogramaException("Tipo de pago inválido: " + dto.getPagoTipo());
         }
 
+        if (dto.getPagoAsignado().compareTo(BigDecimal.ZERO) < 0) {
+            throw new CronogramaException("El pago asignado no puede ser negativo");
+        }
+
         CronogramaUsuarioId cuId = new CronogramaUsuarioId(cronogramaId, dto.getUsuarioId());
 
         CronogramaUsuario cu = cronogramaUsuarioRepository.findById(cuId)
@@ -206,7 +220,7 @@ public class CronogramaServiceImpl implements CronogramaService {
     @Override
     public List<CronogramaUsuarioResponseDTO> obtenerUsuarios(Long cronogramaId) {
         obtenerOFallar(cronogramaId);
-        return cronogramaUsuarioRepository.findByIdIdCronograma(cronogramaId)
+        return cronogramaUsuarioRepository.findByCronogramaIdWithUsuario(cronogramaId)
                 .stream().map(this::toUsuarioDTO).toList();
     }
 

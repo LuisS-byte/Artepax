@@ -21,13 +21,15 @@ import java.util.List;
 @RequiredArgsConstructor
 public class JobCancelacionesPendientes {
 
+    private static final int FALLBACK_MINUTOS_GRACIA = 1440; // 24 horas
+
     private final EventoRepository eventoRepository;
     private final EventoService eventoService;
     private final ConfiguracionService configuracionService;
 
     @Scheduled(fixedDelayString = "${artepax.job.cancelacion.intervalo-ms:60000}")
     public void procesarCancelacionesPendientes() {
-        int minutosGracia = configuracionService.getInt("TIEMPO_GRACIA_CANCELACION_MINUTOS");
+        int minutosGracia = obtenerMinutosGracia();
         LocalDateTime limite = LocalDateTime.now().minusMinutes(minutosGracia);
 
         List<Evento> pendientes = eventoRepository.findEnCancelacionPendiente();
@@ -41,9 +43,23 @@ public class JobCancelacionesPendientes {
                             evento.getId());
 
                 } catch (Exception e) {
-                    log.error("Error al cancelar evento {}: {}", evento.getId(), e.getMessage());
+                    log.error("Error al cancelar evento {}: {}", evento.getId(), e.getMessage(), e);
                 }
             }
+        }
+    }
+
+    /**
+     * Obtiene los minutos de gracia desde configuración, con fallback seguro
+     * si el valor falta o está mal formado.
+     */
+    private int obtenerMinutosGracia() {
+        try {
+            return configuracionService.getInt("TIEMPO_GRACIA_CANCELACION_MINUTOS");
+        } catch (Exception e) {
+            log.warn("No se pudo leer TIEMPO_GRACIA_CANCELACION_MINUTOS, usando fallback de {} minutos: {}",
+                    FALLBACK_MINUTOS_GRACIA, e.getMessage());
+            return FALLBACK_MINUTOS_GRACIA;
         }
     }
 }

@@ -6,6 +6,7 @@ import com.catolica.Artepax.evento.model.EstadoEvento;
 import com.catolica.Artepax.evento.model.Evento;
 import com.catolica.Artepax.evento.model.TipoEvento;
 import com.catolica.Artepax.inventario.decoracion.entity.Decoracion;
+import com.catolica.Artepax.pago.entity.Pago;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,7 +14,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -79,6 +84,79 @@ class ComunicacionClienteServiceTest {
                 () -> service.enviarAvisoSaldoPendienteConDocumento(evento, pdfBytes));
     }
 
+    @Test
+    void enviarConfirmacionReserva_escapaHtmlEnNombreCliente() {
+        Evento evento = crearEventoConNombre("cliente@test.com", "<script>alert(1)</script>");
+
+        service.enviarConfirmacionReserva(evento, new byte[]{1});
+
+        verify(emailService).enviarConAdjunto(
+                eq("cliente@test.com"),
+                any(String.class),
+                org.mockito.ArgumentMatchers.argThat(cuerpo ->
+                        cuerpo != null
+                                && !cuerpo.contains("<script>")
+                                && cuerpo.contains("&lt;script&gt;")),
+                any(),
+                any());
+    }
+
+    @Test
+    void enviarConfirmacionReserva_escapaHtmlEnUbicacion() {
+        Evento evento = crearEvento("cliente@test.com");
+        evento.setUbicacion("Salon <b>VIP</b> & Suite");
+
+        service.enviarConfirmacionReserva(evento, new byte[]{1});
+
+        verify(emailService).enviarConAdjunto(
+                eq("cliente@test.com"),
+                any(),
+                org.mockito.ArgumentMatchers.argThat(cuerpo ->
+                        cuerpo != null
+                                && !cuerpo.contains("<b>VIP</b>")
+                                && cuerpo.contains("&lt;b&gt;VIP&lt;/b&gt;")
+                                && cuerpo.contains("&amp;")),
+                any(),
+                any());
+    }
+
+    @Test
+    void enviarRecordatorioEvento_escapaHtmlEnNombreCliente() {
+        Evento evento = crearEventoConNombre("cliente@test.com", "Cliente \"test\" & amigos");
+
+        service.enviarRecordatorioEvento(evento);
+
+        verify(emailService).enviarSimple(
+                eq("cliente@test.com"),
+                any(),
+                org.mockito.ArgumentMatchers.argThat(cuerpo ->
+                        cuerpo != null
+                                && cuerpo.contains("&quot;test&quot;")
+                                && cuerpo.contains("&amp;")));
+    }
+
+    @Test
+    void enviarComprobantePago_noEscapaValoresNumericos() {
+        Evento evento = crearEvento("cliente@test.com");
+        Pago pago = new Pago();
+        pago.setMonto(new java.math.BigDecimal("1500.50"));
+        pago.setFecha(java.time.LocalDateTime.of(2026, 5, 10, 14, 30));
+
+        service.enviarComprobantePago(evento, pago);
+
+        verify(emailService).enviarSimple(
+                eq("cliente@test.com"),
+                any(),
+                org.mockito.ArgumentMatchers.argThat(cuerpo ->
+                        cuerpo != null && cuerpo.contains("$1500.50")));
+    }
+
+    private Evento crearEventoConNombre(String correo, String nombre) {
+        Evento evento = crearEvento(correo);
+        evento.getCliente().setNombre(nombre);
+        return evento;
+    }
+
     private Evento crearEvento(String correo) {
         Cliente cliente = new Cliente();
         cliente.setNombre("Cliente Demo");
@@ -100,6 +178,8 @@ class ComunicacionClienteServiceTest {
         evento.setTipoEvento(tipoEvento);
         evento.setDecoracion(decoracion);
         evento.setFecha(LocalDate.of(2026, 5, 10));
+        evento.setHoraInicio(LocalTime.of(10, 0));
+        evento.setHoraFin(LocalTime.of(18, 0));
         evento.setUbicacion("Salon central");
         return evento;
     }

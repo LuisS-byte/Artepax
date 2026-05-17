@@ -19,7 +19,8 @@ import java.util.List;
 @RequestMapping("/api/decoraciones")
 @PreAuthorize("hasRole('ADMIN')")
 @RequiredArgsConstructor
-public class DecoracionController {private final DecoracionService decoracionService;
+public class DecoracionController {
+    private final DecoracionService decoracionService;
 
     @PostMapping
     public ResponseEntity<DecoracionResponseDTO> crearDecoracion(

@@ -15,9 +15,9 @@ import jakarta.validation.constraints.Size;
  * @param rolId    the role identifier, must reference an existing {@code Rol.idRol}
  */
 public record UsuarioCreateRequest(
-        @NotBlank String nombre,
-        @NotBlank @Email String correo,
+        @NotBlank @Size(max = 100) String nombre,
+        @NotBlank @Email @Size(max = 100) String correo,
         @NotBlank @Size(min = 8, max = 72) String password,
-        String telefono,
+        @Size(max = 20) String telefono,
         @NotNull Integer rolId
 ) {}

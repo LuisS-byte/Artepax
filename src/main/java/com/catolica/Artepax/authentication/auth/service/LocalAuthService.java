@@ -13,6 +13,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Locale;
+
 /**
  * Service for local email+password authentication.
  * <p>
@@ -49,8 +51,9 @@ public class LocalAuthService {
      * @throws ResponseStatusException 401 for invalid credentials, 403 for inactive/non-admin
      */
     public AuthResponse login(LoginRequest request) {
+        String correo = request.getEmail().trim().toLowerCase(Locale.ROOT);
         Usuario usuario = usuarioRepository
-                .findByCorreoAndTipoAuth(request.getEmail(), "LOCAL")
+                .findByCorreoAndTipoAuth(correo, "LOCAL")
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.UNAUTHORIZED, "Credenciales inválidas"));
 

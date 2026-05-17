@@ -8,6 +8,7 @@ public final class AuditoriaTablas {
     public static final String EVENTO_PRODUCTO = "evento_producto";
     public static final String DOCUMENTO = "documento";
     public static final String CLIENTE = "cliente";
+    public static final String GASTO_EVENTO = "gasto_evento";
 
     private AuditoriaTablas() {}
 }

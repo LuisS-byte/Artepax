@@ -31,11 +31,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.util.HtmlUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -61,7 +64,6 @@ public class DocumentoServiceImpl implements DocumentoService {
     private final DocumentoPolicy documentoPolicy;
     private final ComunicacionClienteService comunicacionClienteService;
     private final AuditoriaService auditoriaService;
-    private static final int MAX_INTENTOS_ENVIO = 3;
     private static final String CONCEPTO_ANTICIPO = "ANTICIPO";
     private static final String CONFIG_NEGOCIO_NOMBRE = "NEGOCIO_NOMBRE";
     private static final String CONFIG_POLITICA_CANCELACION = "POLITICA_CANCELACION_MONTAJE";
@@ -92,7 +94,6 @@ public class DocumentoServiceImpl implements DocumentoService {
         documentoPolicy.validarPlantillaDisponible(plantilla);
 
         Documento documento = crearDocumentoPendiente(evento, plantilla, tipoDocumento);
-        documento = documentoRepository.save(documento);
         log.info("Documento creado: id={}, tipo={}, evento={}", documento.getIdDocumento(), tipoDocumento, idEvento);
 
         String correo = evento.getCliente().getCorreo();
@@ -105,13 +106,15 @@ public class DocumentoServiceImpl implements DocumentoService {
 
         try {
             String contenidoGenerado = rellenarPlaceholders(plantilla.getContenidoBase(), evento);
-            byte[] pdfBytes = pdfGeneratorService.generarDesdHtml(contenidoGenerado);
+            byte[] pdfBytes = pdfGeneratorService.generarDesdeHtml(contenidoGenerado);
+            String urlDescarga = guardarPdfEnDisco(pdfBytes, documento.getIdDocumento());
+            documento.setArchivoUrl(urlDescarga);
             emailService.enviarConAdjunto(
                     correo,
                     construirAsunto(tipoDocumento),
                     construirCuerpoDocumento(evento, tipoDocumento),
                     pdfBytes,
-                    construirNombreArchivo(evento));
+                    construirNombreArchivo(tipoDocumento, evento));
 
             documento = actualizarEstadoEnvio(documento, DocumentoEstadoEnvio.ENVIADO, 1, LocalDateTime.now());
             marcarClienteNotificado(evento);
@@ -162,7 +165,9 @@ public class DocumentoServiceImpl implements DocumentoService {
 
         try {
             String contenidoGenerado = rellenarPlaceholdersAvisoSaldo(plantilla.getContenidoBase(), evento, resumen);
-            byte[] pdfBytes = pdfGeneratorService.generarDesdHtml(contenidoGenerado);
+            byte[] pdfBytes = pdfGeneratorService.generarDesdeHtml(contenidoGenerado);
+            String urlDescarga = guardarPdfEnDisco(pdfBytes, documento.getIdDocumento());
+            documento.setArchivoUrl(urlDescarga);
             comunicacionClienteService.enviarAvisoSaldoPendienteConDocumento(evento, pdfBytes);
 
             documento = actualizarEstadoEnvio(documento, DocumentoEstadoEnvio.ENVIADO, 1, LocalDateTime.now());
@@ -192,16 +197,21 @@ public class DocumentoServiceImpl implements DocumentoService {
 
         Evento evento = documento.getEvento();
         String correo = evento.getCliente().getCorreo();
+        if (correo == null || correo.isBlank()) {
+            throw new IllegalArgumentException("El cliente no tiene correo registrado para reenviar el documento.");
+        }
 
         try {
             String contenidoGenerado = rellenarPlaceholders(plantilla.getContenidoBase(), evento);
-            byte[] pdfBytes = pdfGeneratorService.generarDesdHtml(contenidoGenerado);
+            byte[] pdfBytes = pdfGeneratorService.generarDesdeHtml(contenidoGenerado);
+            String urlDescarga = guardarPdfEnDisco(pdfBytes, documento.getIdDocumento());
+            documento.setArchivoUrl(urlDescarga);
             emailService.enviarConAdjunto(
                     correo,
                     construirAsunto(documento.getDocuTipo()),
                     construirCuerpoReenvio(evento),
                     pdfBytes,
-                    construirNombreArchivo(evento));
+                    construirNombreArchivo(documento.getDocuTipo(), evento));
 
             documento = actualizarEstadoEnvio(
                     documento,
@@ -283,7 +293,7 @@ public class DocumentoServiceImpl implements DocumentoService {
         PlantillaDocumento plantilla = plantillaRepository.findById(idPlantilla)
                 .orElseThrow(() -> new PlantillaDocumentoNotFoundException(idPlantilla));
 
-        plantilla.setContenidoBase(dto.getContenidoBase());
+        plantilla.setContenidoBase(dto.getContenidoBase().trim());
         if (dto.getCamposEditables() != null) {
             plantilla.setCamposEditables(dto.getCamposEditables());
         }
@@ -310,39 +320,42 @@ public class DocumentoServiceImpl implements DocumentoService {
 
         String resultado = template;
 
-        resultado = resultado.replace("{{negocio_nombre}}", configuracionService.getString(CONFIG_NEGOCIO_NOMBRE));
+        resultado = resultado.replace("{{negocio_nombre}}", escapeHtmlDoc(configuracionService.getString(CONFIG_NEGOCIO_NOMBRE)));
 
         resultado = resultado.replace("{{cliente_nombre}}",
-                evento.getCliente() != null ? evento.getCliente().getNombre() : "");
+                escapeHtmlDoc(evento.getCliente() != null ? evento.getCliente().getNombre() : ""));
 
         resultado = resultado.replace("{{tipo_evento}}",
-                evento.getTipoEvento() != null ? evento.getTipoEvento().getTipoNombre() : "");
+                escapeHtmlDoc(evento.getTipoEvento() != null ? evento.getTipoEvento().getTipoNombre() : ""));
 
         resultado = resultado.replace("{{fecha_evento}}",
-                evento.getFecha() != null ? evento.getFecha().format(fechaFmt) : "");
+                escapeHtmlDoc(evento.getFecha() != null ? evento.getFecha().format(fechaFmt) : ""));
 
         resultado = resultado.replace("{{hora_inicio}}",
-                evento.getHoraInicio() != null ? evento.getHoraInicio().format(horaFmt) : "");
+                escapeHtmlDoc(evento.getHoraInicio() != null ? evento.getHoraInicio().format(horaFmt) : ""));
 
         resultado = resultado.replace("{{hora_fin}}",
-                evento.getHoraFin() != null ? evento.getHoraFin().format(horaFmt) : "");
+                escapeHtmlDoc(evento.getHoraFin() != null ? evento.getHoraFin().format(horaFmt) : ""));
 
         resultado = resultado.replace("{{ubicacion}}",
-                evento.getUbicacion() != null ? evento.getUbicacion() : "");
+                escapeHtmlDoc(evento.getUbicacion() != null ? evento.getUbicacion() : ""));
 
         resultado = resultado.replace("{{decoracion}}",
-                evento.getDecoracion() != null ? evento.getDecoracion().getNombre() : "");
+                escapeHtmlDoc(evento.getDecoracion() != null ? evento.getDecoracion().getNombre() : ""));
 
         resultado = resultado.replace("{{precio_total}}",
                 formatearMoneda(evento.getPrecioTotal()));
 
         resultado = resultado.replace("{{fecha_generacion}}",
-                LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
+                escapeHtmlDoc(LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))));
 
         resultado = resultado.replace("{{anticipo_pagado}}", formatearMoneda(resumenFinanciero.anticipoPagado()));
         resultado = resultado.replace("{{saldo_pendiente}}", formatearMoneda(resumenFinanciero.saldoPendiente()));
         resultado = resultado.replace("{{condiciones_cancelacion}}",
-                configuracionService.getString(CONFIG_POLITICA_CANCELACION));
+                escapeHtmlDoc(configuracionService.getString(CONFIG_POLITICA_CANCELACION)));
+
+        resultado = resultado.replace("{{negocio_correo}}", escapeHtmlDoc(configuracionService.getString(CONFIG_NEGOCIO_CORREO)));
+        resultado = resultado.replace("{{negocio_telefono}}", escapeHtmlDoc(configuracionService.getString(CONFIG_NEGOCIO_TELEFONO)));
 
         resultado = resultado.replace("{{texto_adicional}}", "");
         return resultado;
@@ -354,33 +367,33 @@ public class DocumentoServiceImpl implements DocumentoService {
 
         String resultado = template;
 
-        resultado = resultado.replace("{{negocio_nombre}}", configuracionService.getString(CONFIG_NEGOCIO_NOMBRE));
+        resultado = resultado.replace("{{negocio_nombre}}", escapeHtmlDoc(configuracionService.getString(CONFIG_NEGOCIO_NOMBRE)));
         resultado = resultado.replace("{{cliente_nombre}}",
-                evento.getCliente() != null ? evento.getCliente().getNombre() : "");
+                escapeHtmlDoc(evento.getCliente() != null ? evento.getCliente().getNombre() : ""));
         resultado = resultado.replace("{{tipo_evento}}",
-                evento.getTipoEvento() != null ? evento.getTipoEvento().getTipoNombre() : "");
+                escapeHtmlDoc(evento.getTipoEvento() != null ? evento.getTipoEvento().getTipoNombre() : ""));
         resultado = resultado.replace("{{fecha_evento}}",
-                evento.getFecha() != null ? evento.getFecha().format(fechaFmt) : "");
+                escapeHtmlDoc(evento.getFecha() != null ? evento.getFecha().format(fechaFmt) : ""));
         resultado = resultado.replace("{{hora_inicio}}",
-                evento.getHoraInicio() != null ? evento.getHoraInicio().format(horaFmt) : "");
+                escapeHtmlDoc(evento.getHoraInicio() != null ? evento.getHoraInicio().format(horaFmt) : ""));
         resultado = resultado.replace("{{hora_fin}}",
-                evento.getHoraFin() != null ? evento.getHoraFin().format(horaFmt) : "");
+                escapeHtmlDoc(evento.getHoraFin() != null ? evento.getHoraFin().format(horaFmt) : ""));
         resultado = resultado.replace("{{ubicacion}}",
-                evento.getUbicacion() != null ? evento.getUbicacion() : "");
+                escapeHtmlDoc(evento.getUbicacion() != null ? evento.getUbicacion() : ""));
         resultado = resultado.replace("{{decoracion}}",
-                evento.getDecoracion() != null ? evento.getDecoracion().getNombre() : "");
+                escapeHtmlDoc(evento.getDecoracion() != null ? evento.getDecoracion().getNombre() : ""));
         resultado = resultado.replace("{{precio_total}}",
                 formatearMoneda(evento.getPrecioTotal()));
         resultado = resultado.replace("{{fecha_generacion}}",
-                LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
-        resultado = resultado.replace("{{total_pagado}}", formatearMoneda(resumen.anticipoPagado()));
+                escapeHtmlDoc(LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))));
+        resultado = resultado.replace("{{total_pagado}}", formatearMoneda(resumen.totalPagado()));
         resultado = resultado.replace("{{saldo_pendiente}}", formatearMoneda(resumen.saldoPendiente()));
-        resultado = resultado.replace("{{negocio_correo}}", configuracionService.getString(CONFIG_NEGOCIO_CORREO));
-        resultado = resultado.replace("{{negocio_telefono}}", configuracionService.getString(CONFIG_NEGOCIO_TELEFONO));
-        resultado = resultado.replace("{{instrucciones_pago}}", configuracionService.getString(CONFIG_INSTRUCCIONES_PAGO));
+        resultado = resultado.replace("{{negocio_correo}}", escapeHtmlDoc(configuracionService.getString(CONFIG_NEGOCIO_CORREO)));
+        resultado = resultado.replace("{{negocio_telefono}}", escapeHtmlDoc(configuracionService.getString(CONFIG_NEGOCIO_TELEFONO)));
+        resultado = resultado.replace("{{instrucciones_pago}}", escapeHtmlDoc(configuracionService.getString(CONFIG_INSTRUCCIONES_PAGO)));
         resultado = resultado.replace("{{mensaje_adicional}}", "");
         resultado = resultado.replace("{{fecha_limite_pago}}",
-                evento.getFecha() != null ? evento.getFecha().minusDays(7).format(fechaFmt) : "");
+                escapeHtmlDoc(evento.getFecha() != null ? evento.getFecha().minusDays(7).format(fechaFmt) : ""));
 
         return resultado;
     }
@@ -406,8 +419,14 @@ public class DocumentoServiceImpl implements DocumentoService {
         return documentoRepository.save(documento);
     }
 
-    private String construirNombreArchivo(Evento evento) {
-        return "confirmacion_evento_" + evento.getId() + ".pdf";
+    private String construirNombreArchivo(DocumentoTipo tipo, Evento evento) {
+        String prefijo = switch (tipo) {
+            case COTIZACION_EVENTO -> "cotizacion_evento";
+            case CONFIRMACION_RESERVA -> "confirmacion_reserva";
+            case AVISO_SALDO_PENDIENTE -> "aviso_saldo_pendiente";
+            case SALDO_PENDIENTE -> "saldo_pendiente";
+        };
+        return prefijo + "_" + evento.getId() + ".pdf";
     }
 
     private PlantillaDocumento resolverPlantillaParaReenvio(Documento documento) {
@@ -448,50 +467,76 @@ public class DocumentoServiceImpl implements DocumentoService {
 
     private String construirCuerpoConfirmacion(Evento evento) {
         String negocioNombre = configuracionService.getString(CONFIG_NEGOCIO_NOMBRE);
-        return "<p>Estimado/a <b>" + evento.getCliente().getNombre()
+        return "<p>Estimado/a <b>" + escapeHtmlDoc(evento.getCliente().getNombre())
                 + "</b>,</p><p>Adjuntamos el documento de confirmación de su evento. "
-                + "Gracias por confiar en " + negocioNombre + ".</p>";
+                + "Gracias por confiar en " + escapeHtmlDoc(negocioNombre) + ".</p>";
     }
 
     private String construirCuerpoReenvio(Evento evento) {
         String negocioNombre = configuracionService.getString(CONFIG_NEGOCIO_NOMBRE);
-        return "<p>Estimado/a <b>" + evento.getCliente().getNombre()
+        return "<p>Estimado/a <b>" + escapeHtmlDoc(evento.getCliente().getNombre())
                 + "</b>,</p><p>Le reenviamos el documento adjunto. "
-                + "Gracias por confiar en " + negocioNombre + ".</p>";
+                + "Gracias por confiar en " + escapeHtmlDoc(negocioNombre) + ".</p>";
     }
 
     private String construirCuerpoCotizacion(Evento evento) {
         String negocioNombre = configuracionService.getString(CONFIG_NEGOCIO_NOMBRE);
-        return "<p>Estimado/a <b>" + evento.getCliente().getNombre()
+        return "<p>Estimado/a <b>" + escapeHtmlDoc(evento.getCliente().getNombre())
                 + "</b>,</p><p>Adjuntamos la cotización de su evento. "
-                + "Gracias por considerar a " + negocioNombre + ".</p>";
+                + "Gracias por considerar a " + escapeHtmlDoc(negocioNombre) + ".</p>";
     }
 
     private String construirCuerpoAvisoSaldo(Evento evento) {
         String negocioNombre = configuracionService.getString(CONFIG_NEGOCIO_NOMBRE);
-        return "<p>Estimado/a <b>" + evento.getCliente().getNombre()
+        return "<p>Estimado/a <b>" + escapeHtmlDoc(evento.getCliente().getNombre())
                 + "</b>,</p><p>Adjuntamos el aviso formal de saldo pendiente de su evento. "
-                + "Gracias por su atención. <b>" + negocioNombre + "</b></p>";
+                + "Gracias por su atención. <b>" + escapeHtmlDoc(negocioNombre) + "</b></p>";
     }
 
     private ResumenFinancieroDocumento obtenerResumenFinanciero(Evento evento) {
         BigDecimal anticipoPagado = pagoRepository
                 .sumMontoConfirmadoByEventoIdAndConceptoNombre(evento.getId(), CONCEPTO_ANTICIPO);
 
+        BigDecimal totalPagado = pagoRepository.sumMontoConfirmadoByEventoId(evento.getId());
+
         BigDecimal saldoPendiente = vistaPagosEventoRepository.findByIdEvento(evento.getId())
                 .map(VistaPagosEvento::getSaldoPendiente)
                 .orElseGet(() -> {
-                    BigDecimal totalPagado = pagoRepository.sumMontoConfirmadoByEventoId(evento.getId());
                     BigDecimal precioTotal = evento.getPrecioTotal() != null ? evento.getPrecioTotal() : BigDecimal.ZERO;
                     return precioTotal.subtract(totalPagado).max(BigDecimal.ZERO);
                 });
 
-        return new ResumenFinancieroDocumento(anticipoPagado, saldoPendiente);
+        return new ResumenFinancieroDocumento(anticipoPagado, totalPagado, saldoPendiente);
     }
 
     private String formatearMoneda(BigDecimal monto) {
         BigDecimal valor = monto != null ? monto : BigDecimal.ZERO;
         return "$" + valor.setScale(2, RoundingMode.HALF_UP).toPlainString();
+    }
+
+    private String escapeHtmlDoc(String value) {
+        if (value == null) {
+            return "";
+        }
+        return HtmlUtils.htmlEscape(value);
+    }
+
+    /**
+     * Persiste el PDF generado en disco local y retorna la URL de descarga.
+     * Si falla la escritura, solo loguea la advertencia sin interrumpir el flujo.
+     */
+    private String guardarPdfEnDisco(byte[] pdfBytes, Long documentoId) {
+        try {
+            Path directorio = Path.of("storage", "documentos");
+            Files.createDirectories(directorio);
+            Path archivo = directorio.resolve(documentoId + ".pdf");
+            Files.write(archivo, pdfBytes);
+            log.info("PDF guardado en disco: {}", archivo.toAbsolutePath());
+            return "/api/documentos/" + documentoId + "/descarga";
+        } catch (Exception e) {
+            log.warn("No se pudo guardar el PDF en disco para documento {}: {}", documentoId, e.getMessage());
+            return null;
+        }
     }
 
     private DocumentoAuditSnapshot toSnapshot(Documento d) {
@@ -504,6 +549,6 @@ public class DocumentoServiceImpl implements DocumentoService {
                 d.getDocuFechaEnvio());
     }
 
-    private record ResumenFinancieroDocumento(BigDecimal anticipoPagado, BigDecimal saldoPendiente) {
+    private record ResumenFinancieroDocumento(BigDecimal anticipoPagado, BigDecimal totalPagado, BigDecimal saldoPendiente) {
     }
 }

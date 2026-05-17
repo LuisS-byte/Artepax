@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 /**
  * DTO para crear una nueva actividad en el cronograma de un evento.
  * Las fechas deben estar dentro del rango del evento y el evento debe estar
- * en estado CONFIRMADO o EN_MONTAJE.
+ * en estado PROGRAMADO, CONFIRMADO o EN_MONTAJE.
  */
 public class CronogramaRequestDTO {
 

@@ -6,6 +6,7 @@ import com.catolica.Artepax.pago.entity.Pago;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.web.util.HtmlUtils;
 
 import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
@@ -120,80 +121,83 @@ public class ComunicacionClienteService {
         DateTimeFormatter fechaFmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
         DateTimeFormatter horaFmt = DateTimeFormatter.ofPattern("HH:mm");
 
-        return "<p>Estimado/a <b>" + evento.getCliente().getNombre() + "</b>,</p>"
+        return "<p>Estimado/a <b>" + escapeHtml(evento.getCliente().getNombre()) + "</b>,</p>"
                 + "<p>Nos complace confirmar la reserva de tu evento con los siguientes detalles:</p>"
                 + "<ul>"
-                + "<li><b>Tipo:</b> " + safe(evento.getTipoEvento() != null ? evento.getTipoEvento().getTipoNombre() : "") + "</li>"
-                + "<li><b>Fecha:</b> " + safe(evento.getFecha() != null ? evento.getFecha().format(fechaFmt) : "") + "</li>"
-                + "<li><b>Horario:</b> " + safe(formatHora(evento.getHoraInicio(), horaFmt)) + " - " + safe(formatHora(evento.getHoraFin(), horaFmt)) + "</li>"
-                + "<li><b>Ubicación:</b> " + safe(evento.getUbicacion()) + "</li>"
-                + "<li><b>Decoración:</b> " + safe(evento.getDecoracion() != null ? evento.getDecoracion().getNombre() : "") + "</li>"
+                + "<li><b>Tipo:</b> " + escapeHtml(evento.getTipoEvento() != null ? evento.getTipoEvento().getTipoNombre() : "") + "</li>"
+                + "<li><b>Fecha:</b> " + escapeHtml(evento.getFecha() != null ? evento.getFecha().format(fechaFmt) : "") + "</li>"
+                + "<li><b>Horario:</b> " + escapeHtml(formatHora(evento.getHoraInicio(), horaFmt)) + " - " + escapeHtml(formatHora(evento.getHoraFin(), horaFmt)) + "</li>"
+                + "<li><b>Ubicación:</b> " + escapeHtml(evento.getUbicacion()) + "</li>"
+                + "<li><b>Decoración:</b> " + escapeHtml(evento.getDecoracion() != null ? evento.getDecoracion().getNombre() : "") + "</li>"
                 + "</ul>"
-                + "<p>Adjuntamos el documento de confirmación. Para cualquier consulta, comunicate al " + configuracionService.getString(CONFIG_NEGOCIO_TELEFONO) + ".</p>"
-                + "<p>Gracias por confiar en <b>" + negocioNombre + "</b>.</p>";
+                + "<p>Adjuntamos el documento de confirmación. Para cualquier consulta, comunicate al " + escapeHtml(configuracionService.getString(CONFIG_NEGOCIO_TELEFONO)) + ".</p>"
+                + "<p>Gracias por confiar en <b>" + escapeHtml(negocioNombre) + "</b>.</p>";
     }
 
     private String construirCuerpoRecordatorio(Evento evento, String negocioNombre) {
         DateTimeFormatter fechaFmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
         DateTimeFormatter horaFmt = DateTimeFormatter.ofPattern("HH:mm");
 
-        return "<p>Estimado/a <b>" + evento.getCliente().getNombre() + "</b>,</p>"
+        return "<p>Estimado/a <b>" + escapeHtml(evento.getCliente().getNombre()) + "</b>,</p>"
                 + "<p>Te recordamos que tu evento se acerca:</p>"
                 + "<ul>"
-                + "<li><b>Fecha:</b> " + safe(evento.getFecha() != null ? evento.getFecha().format(fechaFmt) : "") + "</li>"
-                + "<li><b>Horario:</b> " + safe(formatHora(evento.getHoraInicio(), horaFmt)) + " - " + safe(formatHora(evento.getHoraFin(), horaFmt)) + "</li>"
-                + "<li><b>Ubicación:</b> " + safe(evento.getUbicacion()) + "</li>"
+                + "<li><b>Fecha:</b> " + escapeHtml(evento.getFecha() != null ? evento.getFecha().format(fechaFmt) : "") + "</li>"
+                + "<li><b>Horario:</b> " + escapeHtml(formatHora(evento.getHoraInicio(), horaFmt)) + " - " + escapeHtml(formatHora(evento.getHoraFin(), horaFmt)) + "</li>"
+                + "<li><b>Ubicación:</b> " + escapeHtml(evento.getUbicacion()) + "</li>"
                 + "</ul>"
-                + "<p>Si tenés alguna consulta, no dudes en contactarnos al " + configuracionService.getString(CONFIG_NEGOCIO_TELEFONO) + ".</p>"
-                + "<p><b>" + negocioNombre + "</b></p>";
+                + "<p>Si tenés alguna consulta, no dudes en contactarnos al " + escapeHtml(configuracionService.getString(CONFIG_NEGOCIO_TELEFONO)) + ".</p>"
+                + "<p><b>" + escapeHtml(negocioNombre) + "</b></p>";
     }
 
     private String construirCuerpoAvisoSaldoPendiente(Evento evento, String negocioNombre) {
         DateTimeFormatter fechaFmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-        return "<p>Estimado/a <b>" + evento.getCliente().getNombre() + "</b>,</p>"
+        return "<p>Estimado/a <b>" + escapeHtml(evento.getCliente().getNombre()) + "</b>,</p>"
                 + "<p>Le informamos que su evento aún registra un saldo pendiente. "
                 + "Adjuntamos el documento formal con los detalles.</p>"
                 + "<ul>"
-                + "<li><b>Tipo de evento:</b> " + safe(evento.getTipoEvento() != null ? evento.getTipoEvento().getTipoNombre() : "") + "</li>"
-                + "<li><b>Fecha:</b> " + safe(evento.getFecha() != null ? evento.getFecha().format(fechaFmt) : "") + "</li>"
-                + "<li><b>Ubicación:</b> " + safe(evento.getUbicacion()) + "</li>"
+                + "<li><b>Tipo de evento:</b> " + escapeHtml(evento.getTipoEvento() != null ? evento.getTipoEvento().getTipoNombre() : "") + "</li>"
+                + "<li><b>Fecha:</b> " + escapeHtml(evento.getFecha() != null ? evento.getFecha().format(fechaFmt) : "") + "</li>"
+                + "<li><b>Ubicación:</b> " + escapeHtml(evento.getUbicacion()) + "</li>"
                 + "</ul>"
                 + "<p>Si ya realizó el pago, puede ignorar este aviso o comunicarse con nosotros al "
-                + configuracionService.getString(CONFIG_NEGOCIO_TELEFONO) + " para confirmar la actualización.</p>"
-                + "<p><b>" + negocioNombre + "</b></p>";
+                + escapeHtml(configuracionService.getString(CONFIG_NEGOCIO_TELEFONO)) + " para confirmar la actualización.</p>"
+                + "<p><b>" + escapeHtml(negocioNombre) + "</b></p>";
     }
 
     private String construirCuerpoSaldoPendiente(Evento evento, BigDecimal saldo, String negocioNombre) {
         DateTimeFormatter fechaFmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-        return "<p>Estimado/a <b>" + evento.getCliente().getNombre() + "</b>,</p>"
-                + "<p>Te informamos que tu evento del <b>" + safe(evento.getFecha() != null ? evento.getFecha().format(fechaFmt) : "") + "</b>"
+        return "<p>Estimado/a <b>" + escapeHtml(evento.getCliente().getNombre()) + "</b>,</p>"
+                + "<p>Te informamos que tu evento del <b>" + escapeHtml(evento.getFecha() != null ? evento.getFecha().format(fechaFmt) : "") + "</b>"
                 + " tiene un saldo pendiente de <b>$" + saldo + "</b>.</p>"
                 + "<p>Te agradecemos regularizar el pago antes de la fecha del evento. "
-                + "Podés comunicarte al " + configuracionService.getString(CONFIG_NEGOCIO_TELEFONO) + " para coordinar.</p>"
-                + "<p><b>" + negocioNombre + "</b></p>";
+                + "Podés comunicarte al " + escapeHtml(configuracionService.getString(CONFIG_NEGOCIO_TELEFONO)) + " para coordinar.</p>"
+                + "<p><b>" + escapeHtml(negocioNombre) + "</b></p>";
     }
 
     private String construirCuerpoComprobantePago(Evento evento, Pago pago, String negocioNombre) {
         DateTimeFormatter fechaFmt = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
-        return "<p>Estimado/a <b>" + evento.getCliente().getNombre() + "</b>,</p>"
+        return "<p>Estimado/a <b>" + escapeHtml(evento.getCliente().getNombre()) + "</b>,</p>"
                 + "<p>Tu pago fue registrado exitosamente:</p>"
                 + "<ul>"
                 + "<li><b>Monto:</b> $" + pago.getMonto() + "</li>"
-                + "<li><b>Fecha:</b> " + safe(pago.getFecha() != null ? pago.getFecha().format(fechaFmt) : "") + "</li>"
+                + "<li><b>Fecha:</b> " + escapeHtml(pago.getFecha() != null ? pago.getFecha().format(fechaFmt) : "") + "</li>"
                 + "<li><b>Evento:</b> #" + evento.getId() + "</li>"
                 + "</ul>"
-                + "<p>Gracias por tu pago. <b>" + negocioNombre + "</b></p>";
+                + "<p>Gracias por tu pago. <b>" + escapeHtml(negocioNombre) + "</b></p>";
     }
 
     // -------------------------------------------------------------------------
     // HELPERS
     // -------------------------------------------------------------------------
 
-    private String safe(String value) {
-        return value != null ? value : "";
+    private String escapeHtml(String value) {
+        if (value == null) {
+            return "";
+        }
+        return HtmlUtils.htmlEscape(value);
     }
 
     private String formatHora(java.time.LocalTime hora, DateTimeFormatter fmt) {

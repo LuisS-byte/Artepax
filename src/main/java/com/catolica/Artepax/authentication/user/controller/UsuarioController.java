@@ -50,11 +50,10 @@ public class UsuarioController {
      */
     @GetMapping("/me")
     public ResponseEntity<Map<String, Object>> obtenerUsuarioActual(Authentication auth) {
-        if (auth == null || !auth.isAuthenticated()) {
+        if (auth == null || !auth.isAuthenticated()
+                || !(auth.getPrincipal() instanceof Usuario usuario)) {
             return ResponseEntity.status(401).build();
         }
-
-        Usuario usuario = (Usuario) auth.getPrincipal();
 
         Map<String, Object> body = Map.of(
                 "id", usuario.getIdUsuario(),

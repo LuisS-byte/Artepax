@@ -15,7 +15,7 @@ public interface CronogramaService {
 
     /**
      * Crea una nueva actividad de cronograma para un evento.
-     * El evento debe estar en estado CONFIRMADO o EN_MONTAJE.
+     * El evento debe estar en estado PROGRAMADO, CONFIRMADO o EN_MONTAJE.
      */
     CronogramaResponseDTO crear(CronogramaRequestDTO dto);
 

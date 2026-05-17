@@ -1,5 +1,6 @@
 package com.catolica.Artepax.evento.controller;
 
+import com.catolica.Artepax.evento.dto.EventoGastoControlDTO;
 import com.catolica.Artepax.evento.dto.GastoEventoRequestDTO;
 import com.catolica.Artepax.evento.dto.GastoEventoResponseDTO;
 import com.catolica.Artepax.evento.dto.ResumenGastoEventoDTO;
@@ -10,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -49,6 +51,12 @@ public class GastoEventoController {
         return ResponseEntity.ok(gastoService.getResumen(eventoId));
     }
 
+    @GetMapping("/eventos-control")
+    public ResponseEntity<List<EventoGastoControlDTO>> obtenerEventosControl() {
+        log.info("GET /api/gastos/eventos-control");
+        return ResponseEntity.ok(gastoService.obtenerEventosControl());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<GastoEventoResponseDTO> obtenerPorId(@PathVariable Long id) {
         return ResponseEntity.ok(gastoService.obtenerPorId(id));
@@ -69,7 +77,7 @@ public class GastoEventoController {
 
     @GetMapping
     public ResponseEntity<Page<GastoEventoResponseDTO>> obtenerTodos(
-            @PageableDefault(size = 50, sort = "gastoFecha") Pageable pageable) {
+            @PageableDefault(size = 50, sort = "gastoFecha", direction = Sort.Direction.DESC) Pageable pageable) {
         return ResponseEntity.ok(gastoService.obtenerTodos(pageable));
     }
 }

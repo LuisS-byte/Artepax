@@ -3,6 +3,7 @@ package com.catolica.Artepax.evento.dto;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -19,6 +20,7 @@ public class GastoEventoRequestDTO {
     private Long eventoId;
 
     @NotBlank(message = "El concepto es obligatorio")
+    @Size(max = 100, message = "El concepto no puede superar 100 caracteres")
     private String gastoConcepto;
 
     @NotNull(message = "El monto es obligatorio")
@@ -26,5 +28,6 @@ public class GastoEventoRequestDTO {
     private BigDecimal gastoMonto;
 
     private String gastoEstado = PROYECTADO;
+    @Size(max = 255, message = "La nota no puede superar 255 caracteres")
     private String gastoNota;
 }

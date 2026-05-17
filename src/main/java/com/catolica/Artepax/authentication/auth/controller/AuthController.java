@@ -22,7 +22,7 @@ public class AuthController {
 
     // 🔐 LOGIN CON GOOGLE
     @PostMapping("/google")
-    public ResponseEntity<AuthResponse> loginWithGoogle(@RequestBody GoogleAuthRequest request) {
+    public ResponseEntity<AuthResponse> loginWithGoogle(@Valid @RequestBody GoogleAuthRequest request) {
 
         AuthResponse response = googleAuthService.authenticateWithGoogle(request);
 

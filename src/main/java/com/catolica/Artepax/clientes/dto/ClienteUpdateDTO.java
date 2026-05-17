@@ -2,19 +2,25 @@ package com.catolica.Artepax.clientes.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 public class ClienteUpdateDTO {
 
     @NotBlank(message = "El nombre es obligatorio")
+    @Size(max = 100, message = "El nombre no puede exceder 100 caracteres")
     private String nombre;
 
     @NotBlank(message = "El teléfono es obligatorio")
+    @Size(max = 20, message = "El teléfono no puede exceder 20 caracteres")
     private String telefono;
 
-    private String direccion;
-
+    @NotBlank(message = "El correo es obligatorio")
     @Email(message = "El correo debe ser válido")
+    @Size(max = 100, message = "El correo no puede exceder 100 caracteres")
     private String correo;
+
+    @Size(max = 255, message = "La dirección no puede exceder 255 caracteres")
+    private String direccion;
 
     // 🔹 Getters y Setters
 

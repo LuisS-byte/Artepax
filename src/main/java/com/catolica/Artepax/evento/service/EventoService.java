@@ -37,7 +37,12 @@ public interface EventoService {
     EventoResponseDTO obtenerEventoPorId(Long id);
 
     /**
-     * Actualiza los datos de un evento que se encuentra en estado COTIZACION.
+     * Actualiza los datos de un evento.
+     * <p>
+     * En estado {@code COTIZACION} permite edición completa (todos los campos).
+     * En estado {@code PROGRAMADO} permite edición parcial: fecha, horario, ubicación,
+     * decoración, nota y notaPrecio — con re-validación de disponibilidad si cambian
+     * datos de agenda. No permite cambiar cliente.
      *
      * @param id identificador del evento
      * @param updateDTO datos a actualizar

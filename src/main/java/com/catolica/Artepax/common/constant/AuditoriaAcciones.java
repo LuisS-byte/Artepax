@@ -19,6 +19,8 @@ public final class AuditoriaAcciones {
     public static final String CREAR_RESERVA = "CREAR_RESERVA";
     public static final String LIBERAR_RESERVA = "LIBERAR_RESERVA";
     public static final String CONSUMIR_RESERVA = "CONSUMIR_RESERVA";
+    public static final String DESEMBOLSAR = "DESEMBOLSAR";
+    public static final String ELIMINAR = "ELIMINAR";
 
     private AuditoriaAcciones() {}
 }

@@ -81,6 +81,18 @@ public interface EventoRepository extends JpaRepository<Evento, Long> {
 
     List<Evento> findByClienteId(Long clienteId);
 
+    @Query("""
+            SELECT e
+            FROM Evento e
+            JOIN FETCH e.cliente
+            JOIN FETCH e.decoracion
+            JOIN FETCH e.tipoEvento
+            JOIN FETCH e.estadoEvento
+            WHERE e.cliente.id = :clienteId
+            ORDER BY e.fecha DESC, e.horaInicio DESC
+            """)
+    List<Evento> findByClienteIdWithRelations(@Param("clienteId") Long clienteId);
+
     // para disponibilidad
     List<Evento> findByFecha(LocalDate fecha);
 
@@ -105,11 +117,17 @@ public interface EventoRepository extends JpaRepository<Evento, Long> {
     long countByEstadoEventoNombre(String nombre);
 
     // Para job de cotizaciones vencidas
-    @Query("SELECT e FROM Evento e JOIN e.estadoEvento ee " +
+    @Query("SELECT e FROM Evento e JOIN FETCH e.cliente JOIN e.estadoEvento ee " +
             "WHERE ee.nombre = 'COTIZACION' " +
             "AND e.fechaExpiracion IS NOT NULL " +
             "AND e.fechaExpiracion < :hoy")
     List<Evento> findCotizacionesVencidas(@Param("hoy") LocalDate hoy);
+
+    /**
+     * Para jobs que necesitan evento con cliente y estado cargados (evita LazyInitializationException).
+     */
+    @Query("SELECT e FROM Evento e JOIN FETCH e.cliente JOIN FETCH e.estadoEvento WHERE e.id = :id")
+    Optional<Evento> findByIdWithClienteAndEstado(@Param("id") Long id);
 
     @Query("""
             SELECT e

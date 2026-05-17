@@ -27,7 +27,7 @@ public class Decoracion {
     @Column(name = "decor_imagen_url", length = 500)
     private String imagenUrl;
 
-    @Column(name = "decor_estado", length = 10)
+    @Column(name = "decor_estado", nullable = false, length = 10)
     private String estado;
 
     @CreationTimestamp

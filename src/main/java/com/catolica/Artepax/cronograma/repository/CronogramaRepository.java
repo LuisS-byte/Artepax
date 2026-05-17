@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Repositorio para entidades Cronograma.
@@ -16,6 +17,27 @@ import java.util.List;
 public interface CronogramaRepository extends JpaRepository<Cronograma, Long> {
 
     List<Cronograma> findByEventoId(Long eventoId);
+
+    @Query("""
+            SELECT c
+            FROM Cronograma c
+            JOIN FETCH c.evento e
+            JOIN FETCH e.cliente
+            JOIN FETCH e.estadoEvento
+            WHERE c.evento.id = :eventoId
+            ORDER BY c.fechaInicio ASC
+            """)
+    List<Cronograma> findByEventoIdWithEvento(@Param("eventoId") Long eventoId);
+
+    @Query("""
+            SELECT c
+            FROM Cronograma c
+            JOIN FETCH c.evento e
+            JOIN FETCH e.cliente
+            JOIN FETCH e.estadoEvento
+            WHERE c.id = :id
+            """)
+    Optional<Cronograma> findByIdWithEvento(@Param("id") Long id);
 
     /**
      * Cancela todas las actividades activas de un evento (cascade cancellation).
@@ -25,7 +47,7 @@ public interface CronogramaRepository extends JpaRepository<Cronograma, Long> {
     @Query("UPDATE Cronograma c SET c.cronoEstado = 'CANCELADO' " +
             "WHERE c.evento.id = :eventoId " +
             "AND c.cronoEstado NOT IN ('COMPLETADO', 'CANCELADO')")
-    void cancelarPorEvento(@Param("eventoId") Long eventoId);
+    int cancelarPorEvento(@Param("eventoId") Long eventoId);
 
     @Query(value = "SELECT c FROM Cronograma c JOIN FETCH c.evento e JOIN FETCH e.cliente JOIN FETCH e.estadoEvento",
            countQuery = "SELECT COUNT(c) FROM Cronograma c")

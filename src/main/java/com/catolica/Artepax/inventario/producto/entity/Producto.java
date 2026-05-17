@@ -30,7 +30,7 @@ public class Producto {
     @Column(name = "produ_stock_minimo", nullable = false)
     private Integer stockMinimo = 0;
 
-    @Column(name = "produ_estado", length = 10)
+    @Column(name = "produ_estado", nullable = false, length = 10)
     private String estado;
 
     @CreationTimestamp

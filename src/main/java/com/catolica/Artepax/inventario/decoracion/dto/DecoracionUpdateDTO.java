@@ -1,5 +1,7 @@
 package com.catolica.Artepax.inventario.decoracion.dto;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 
 import java.math.BigDecimal;
@@ -10,8 +12,10 @@ public class DecoracionUpdateDTO {
 private String nombre;
 
     private String descripcion;
+    @DecimalMin(value = "0.01", message = "El precio debe ser mayor a 0")
     private BigDecimal precio;
     private String estado;
+    @Valid
     private List<DecoracionProductoRequestDTO> productos;
 
     public String getNombre() { return nombre; }
