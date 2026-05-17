@@ -78,7 +78,6 @@ import static com.catolica.Artepax.evento.model.GastoEstadoNames.PROYECTADO;
 public class EventoServiceImpl implements EventoService {
 
     private static final Logger log = LoggerFactory.getLogger(EventoServiceImpl.class);
-    private static final int MINIMO_GAP_ENTRE_EVENTOS_MINUTOS = 120;
 
     private final EventoRepository eventoRepository;
     private final ClienteRepository clienteRepository;
@@ -575,7 +574,14 @@ public class EventoServiceImpl implements EventoService {
         eventoMapper.updateEntityFromDTO(evento, dto, cliente, decoracion);
         evento.setCliente(cliente);
         evento.setDecoracion(decoracion);
-        evento.setPrecioBase(decoracion.getPrecio());
+
+        // Solo recalcular precioBase en edición COMPLETA (COTIZACION)
+        // cuando explícitamente se cambia la decoración.
+        // En PROGRAMADO (edición parcial) NUNCA se sobreescribe el precio pactado.
+        if (modo == ModoEdicion.COMPLETA && dto.getDecoracionId() != null) {
+            evento.setPrecioBase(decoracion.getPrecio());
+        }
+
         Evento guardado = eventoRepository.save(evento);
         log.info("evento_actualizado id={} modo={}", id, modo);
 
@@ -749,7 +755,6 @@ public class EventoServiceImpl implements EventoService {
         } catch (Exception e) {
             gapMinutos = 0;
         }
-        gapMinutos = Math.max(gapMinutos, MINIMO_GAP_ENTRE_EVENTOS_MINUTOS);
         LocalTime horaInicioConGap = horaInicio.minusMinutes(gapMinutos);
         LocalTime horaFinConGap = horaFin.plusMinutes(gapMinutos);
 

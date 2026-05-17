@@ -20,6 +20,22 @@ public interface EventoRepository extends JpaRepository<Evento, Long> {
         String ubicacion
     );
 
+    /**
+     * Verifica si existe otro evento activo en la misma fecha con horario solapado.
+     * <p>
+     * <strong>Regla de negocio — bloqueo global:</strong> Artepax solo atiende
+     * un evento por bloque horario, independientemente de la ubicación. El
+     * parámetro {@code ubicacion} se recibe para validación del formulario
+     * (el cliente debe indicarla) pero NO se usa en el filtro de la query.
+     * Si en el futuro se permiten eventos simultáneos en distintas ubicaciones,
+         * debe agregarse {@code AND e.ubicacion = :ubicacion} a esta query.
+     *
+     * @param fecha       fecha del evento
+     * @param horaInicio  inicio del bloque (con gap aplicado)
+     * @param horaFin     fin del bloque (con gap aplicado)
+     * @param ubicacion   se valida en el service pero NO filtra en BD
+     * @return true si hay solapamiento
+     */
     @Query("""
             SELECT COUNT(e) > 0
             FROM Evento e
@@ -34,6 +50,19 @@ public interface EventoRepository extends JpaRepository<Evento, Long> {
                                @Param("horaFin") LocalTime horaFin,
                                @Param("ubicacion") String ubicacion);
 
+    /**
+     * Ídem {@link #existeSolapamiento} pero excluyendo un evento específico
+     * (útil al editar un evento existente para no detectarse a sí mismo).
+     * <p>
+     * Misma regla de bloqueo global: {@code ubicacion} no participa en el filtro.
+     *
+     * @param eventoIdExcluir ID del evento a excluir de la verificación
+     * @param fecha           fecha del evento
+     * @param horaInicio      inicio del bloque (con gap aplicado)
+     * @param horaFin         fin del bloque (con gap aplicado)
+     * @param ubicacion       se valida en el service pero NO filtra en BD
+     * @return true si hay solapamiento
+     */
     @Query("""
             SELECT COUNT(e) > 0
             FROM Evento e

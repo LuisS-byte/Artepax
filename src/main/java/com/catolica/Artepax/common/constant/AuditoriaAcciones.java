@@ -5,6 +5,7 @@ public final class AuditoriaAcciones {
     public static final String EDITAR = "EDITAR";
     public static final String PROGRAMAR = "PROGRAMAR";
     public static final String CONFIRMAR = "CONFIRMAR";
+    public static final String INICIAR_MONTAJE = "INICIAR_MONTAJE";
     public static final String CANCELAR = "CANCELAR";
     public static final String REVERTIR_CANCELACION = "REVERTIR_CANCELACION";
     public static final String FINALIZAR = "FINALIZAR";

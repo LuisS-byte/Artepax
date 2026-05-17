@@ -59,13 +59,15 @@ public class CatalogosPagoServiceImpl implements CatalogosPagoService {
         validarTexto(nombre, "nombre");
         validarDescripcion(descripcion);
 
-        metodoRepo.findByMetodoNombre(nombre)
+        String nombreNormalizado = nombre.trim();
+
+        metodoRepo.findByMetodoNombreIgnoreCase(nombreNormalizado)
                 .ifPresent(existing -> {
                     throw new MetodoPagoDuplicadoException(nombre);
                 });
 
         MetodoPago m = new MetodoPago();
-        m.setMetodoNombre(nombre);
+        m.setMetodoNombre(nombreNormalizado);
         m.setMetodoDescripcion(descripcion);
         m.setMetodoActivo(true);
         return toMetodoDTO(metodoRepo.save(m));
@@ -75,7 +77,7 @@ public class CatalogosPagoServiceImpl implements CatalogosPagoService {
     public MetodoPagoResponseDTO toggleMetodo(Long id) {
         MetodoPago m = metodoRepo.findById(id)
                 .orElseThrow(() -> new MetodoPagoNotFoundException(id));
-        m.setMetodoActivo(!m.getMetodoActivo());
+        m.setMetodoActivo(!Boolean.TRUE.equals(m.getMetodoActivo()));
         return toMetodoDTO(metodoRepo.save(m));
     }
 

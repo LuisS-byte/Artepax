@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface PagoRepository extends JpaRepository<Pago, Long> {
@@ -27,6 +28,19 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
             WHERE e.id = :eventoId
             """)
     List<Pago> findByEventoIdWithRelations(@Param("eventoId") Long eventoId);
+
+    @Query("""
+            SELECT p
+            FROM Pago p
+            JOIN FETCH p.evento e
+            JOIN FETCH e.cliente
+            JOIN FETCH e.estadoEvento
+            JOIN FETCH p.estadoPago
+            JOIN FETCH p.conceptoPago
+            JOIN FETCH p.metodoPago
+            WHERE p.id = :id
+            """)
+    Optional<Pago> findByIdWithRelations(@Param("id") Long id);
 
     // Suma total de pagos PAGADO para validar sobrepago
     @Query("SELECT COALESCE(SUM(p.monto), 0) FROM Pago p " +

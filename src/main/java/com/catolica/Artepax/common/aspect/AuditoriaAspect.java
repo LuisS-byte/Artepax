@@ -145,6 +145,76 @@ public class AuditoriaAspect {
         }
     }
 
+    // INICIAR MONTAJE — CONFIRMADO → EN_MONTAJE, retorna EventoResponseDTO (AfterReturning)
+    @AfterReturning(
+            pointcut = "execution(* com.catolica.Artepax.evento.service.impl.EventoServiceImpl.iniciarMontaje(..))",
+            returning = "resultado")
+    public void auditarIniciarMontaje(JoinPoint jp, Object resultado) {
+        try {
+            EventoResponseDTO dto = (EventoResponseDTO) resultado;
+            auditoriaService.registrar(
+                    "INICIAR_MONTAJE", "evento", dto.getId(),
+                    null,
+                    toJson(resultado),
+                    "Montaje iniciado — evento en EN_MONTAJE"
+            );
+        } catch (Exception e) {
+            log.error("Error en aspecto iniciarMontaje: {}", e.getMessage());
+        }
+    }
+
+    // CONFIRMAR CANCELACIÓN — CANCELACION_PENDIENTE → CANCELADO, retorna void (Around)
+    @Around("execution(* com.catolica.Artepax.evento.service.impl.EventoServiceImpl.confirmarCancelacion(..))")
+    public Object auditarConfirmarCancelacion(ProceedingJoinPoint pjp) throws Throwable {
+        try {
+            Long id = (Long) pjp.getArgs()[0];
+            String valorAnterior = eventoRepository.findById(id)
+                    .map(this::toJson).orElse(null);
+
+            Object resultado = pjp.proceed();
+
+            String valorNuevo = eventoRepository.findById(id)
+                    .map(this::toJson).orElse(null);
+
+            auditoriaService.registrar(
+                    "CANCELAR", "evento", id,
+                    valorAnterior,
+                    valorNuevo,
+                    "Cancelación definitiva del evento confirmada"
+            );
+            return resultado;
+        } catch (Exception e) {
+            log.error("Error en aspecto confirmarCancelacion: {}", e.getMessage());
+            throw e;
+        }
+    }
+
+    // FINALIZAR DESDE COBRO — PENDIENTE_COBRO → FINALIZADO, retorna void (Around)
+    @Around("execution(* com.catolica.Artepax.evento.service.impl.EventoServiceImpl.finalizarDesdeCobroCompleto(..))")
+    public Object auditarFinalizarDesdeCobroCompleto(ProceedingJoinPoint pjp) throws Throwable {
+        try {
+            Long id = (Long) pjp.getArgs()[0];
+            String valorAnterior = eventoRepository.findById(id)
+                    .map(this::toJson).orElse(null);
+
+            Object resultado = pjp.proceed();
+
+            String valorNuevo = eventoRepository.findById(id)
+                    .map(this::toJson).orElse(null);
+
+            auditoriaService.registrar(
+                    "FINALIZAR", "evento", id,
+                    valorAnterior,
+                    valorNuevo,
+                    "Evento finalizado automáticamente por cobro completo"
+            );
+            return resultado;
+        } catch (Exception e) {
+            log.error("Error en aspecto finalizarDesdeCobroCompleto: {}", e.getMessage());
+            throw e;
+        }
+    }
+
     // ─── PAGOS ────────────────────────────────────────────────────────────────
 
     @AfterReturning(

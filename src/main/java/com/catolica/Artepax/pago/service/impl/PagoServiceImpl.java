@@ -52,6 +52,13 @@ public class PagoServiceImpl implements PagoService {
     private final EventoPagoValidator eventoPagoValidator;
     private final ConfiguracionService configuracionService;
 
+    private static final Set<String> ESTADOS_EVENTO_PERMITIDOS_PARA_REGISTRAR = Set.of(
+            EstadoEventoNames.PROGRAMADO,
+            EstadoEventoNames.CONFIRMADO,
+            EstadoEventoNames.EN_MONTAJE,
+            EstadoEventoNames.PENDIENTE_COBRO
+    );
+
     private static final Set<String> ESTADOS_EVENTO_PERMITIDOS_PARA_CONFIRMAR = Set.of(
             EstadoEventoNames.PROGRAMADO,
             EstadoEventoNames.CONFIRMADO,
@@ -91,10 +98,7 @@ public class PagoServiceImpl implements PagoService {
                 .orElseThrow(() -> new EventoNotFoundException(dto.getEventoId()));
 
         String estadoActual = evento.getEstadoEvento().getNombre();
-        if (estadoActual.equals("CANCELADO")
-                || estadoActual.equals("CANCELACION_PENDIENTE")
-                || estadoActual.equals("FINALIZADO")
-                || estadoActual.equals("COTIZACION")) {
+        if (!ESTADOS_EVENTO_PERMITIDOS_PARA_REGISTRAR.contains(estadoActual)) {
             throw new PagoException(
                     "No se pueden registrar pagos en eventos con estado: " + estadoActual);
         }
@@ -135,7 +139,7 @@ public class PagoServiceImpl implements PagoService {
     @Transactional
     public PagoResponseDTO confirmarPago(Long pagoId) {
 
-        Pago pago = pagoRepository.findById(pagoId)
+        Pago pago = pagoRepository.findByIdWithRelations(pagoId)
                 .orElseThrow(() -> new PagoNotFoundException(pagoId));
 
         if (!pago.getEstadoPago().getEstadoNombre().equals("PENDIENTE")) {
@@ -168,7 +172,7 @@ public class PagoServiceImpl implements PagoService {
         pago.setEstadoPago(estadoPagado);
         pago.setFecha(LocalDateTime.now());
         pagoRepository.save(pago);
-        pagoRepository.flush(); // ⚠️ Forzar flush para que la vista_pagos_evento vea el pago como PAGADO
+        pagoRepository.flush(); // Forzar flush para que la vista_pagos_evento vea el pago como PAGADO
 
         Evento evento = eventoActualizado;
 
@@ -186,14 +190,19 @@ public class PagoServiceImpl implements PagoService {
         // Verificar cobro completo → auto-transición PENDIENTE_COBRO → FINALIZADO
         eventoService.finalizarDesdeCobroCompleto(evento.getId());
 
-        return pagoMapper.toDTO(pago);
+        // Recargar pago para reflejar estado actualizado del evento
+        // (evita devolver estadoEventoNombre desactualizado tras transiciones automáticas)
+        Pago pagoRecargado = pagoRepository.findByIdWithRelations(pago.getId())
+                .orElseThrow(() -> new PagoNotFoundException(pago.getId()));
+
+        return pagoMapper.toDTO(pagoRecargado);
     }
 
     @Override
     @Transactional
     public PagoResponseDTO anularPago(Long pagoId) {
 
-        Pago pago = pagoRepository.findById(pagoId)
+        Pago pago = pagoRepository.findByIdWithRelations(pagoId)
                 .orElseThrow(() -> new PagoNotFoundException(pagoId));
 
         String estadoActual = pago.getEstadoPago().getEstadoNombre();
