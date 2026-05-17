@@ -36,6 +36,20 @@ import static com.catolica.Artepax.common.constant.AuditoriaAcciones.AJUSTAR_STO
 import static com.catolica.Artepax.common.constant.AuditoriaTablas.MOVIMIENTO_INVENTARIO;
 import static com.catolica.Artepax.common.constant.AuditoriaTablas.PRODUCTO;
 
+/**
+ * Implementation of {@link MovimientoService} for inventory movement management.
+ * <p>
+ * Handles ENTRADA (stock increase), SALIDA (stock decrease), and AJUSTE
+ * (physical-count-based adjustment) operations. Each movement records an audit
+ * trail via {@link com.catolica.Artepax.common.service.AuditoriaService} and
+ * checks low-stock thresholds to trigger admin notifications.
+ * </p>
+ * <p>
+ * Note that this service uses {@link jakarta.transaction.Transactional @Transactional}
+ * (Jakarta) instead of the Spring variant — this is a known inconsistency in the
+ * codebase.
+ * </p>
+ */
 @Slf4j
 @Service
 public class MovimientoServiceImpl implements MovimientoService {
@@ -73,6 +87,8 @@ public class MovimientoServiceImpl implements MovimientoService {
     @Override
     @Transactional
     public void registrarEntrada(MovimientoRequestDTO dto) {
+        // Validates the origin type, locks the product row, increases stock,
+        // creates the movement record, and audits the change.
         String origen = dto.getTipoOrigen() != null ? dto.getTipoOrigen() : "REPOSICION";
 
         if (!ORIGENES_ENTRADA.contains(origen)) {
@@ -106,6 +122,8 @@ public class MovimientoServiceImpl implements MovimientoService {
     @Override
     @Transactional
     public void registrarSalida(MovimientoRequestDTO dto) {
+        // Validates the origin type, locks the product row, checks available stock,
+        // decreases stock, creates the movement record, and audits the change.
         String origen = dto.getTipoOrigen() != null ? dto.getTipoOrigen() : "DAÑO";
 
         if (!ORIGENES_SALIDA.contains(origen)) {
@@ -149,6 +167,9 @@ public class MovimientoServiceImpl implements MovimientoService {
     @Override
     @Transactional
     public void registrarAjuste(Long productoId, AjusteInventarioRequestDTO request) {
+        // Locks the product, validates active reservations don't exceed the new
+        // physical count, calculates the difference, and creates ENTRADA or SALIDA
+        // movements accordingly.
         Producto producto = productoRepository.findByIdForUpdate(productoId)
                 .orElseThrow(() -> new ProductoNotFoundException(productoId));
 
@@ -210,6 +231,7 @@ public class MovimientoServiceImpl implements MovimientoService {
 
     @Override
     public StockProductoResponseDTO obtenerStock(Long productoId) {
+        // Queries the stock view for the given product and maps it to a DTO.
         StockProducto stock = stockProductoRepository.findById(productoId)
                 .orElseThrow(() -> new ProductoNotFoundException(productoId));
         return toStockDTO(stock);
@@ -217,6 +239,8 @@ public class MovimientoServiceImpl implements MovimientoService {
 
     @Override
     public Page<MovimientoResponseDTO> obtenerMovimientosPorProducto(Long productoId, Pageable pageable) {
+        // Verifies the product exists, then returns a paginated list of its
+        // movements with eager-loaded relations.
         if (!productoRepository.existsById(productoId)) {
             throw new ProductoNotFoundException(productoId);
         }
@@ -226,11 +250,19 @@ public class MovimientoServiceImpl implements MovimientoService {
 
     @Override
     public Page<MovimientoResponseDTO> obtenerTodosMovimientos(Pageable pageable) {
+        // Returns a paginated list of all movements across all products.
         return movimientoRepository.findAllWithProductoYEvento(pageable)
                 .map(movimientoMapper::toDTO);
     }
 
     // ─── HELPERS ──────────────────────────────────────────────────────────────
+
+    /**
+     * Validates that the product is in {@code ACTIVO} state.
+     *
+     * @param producto the product to check
+     * @throws IllegalArgumentException if the product is not active
+     */
     private void validarProductoActivo(Producto producto) {
         if (!"ACTIVO".equalsIgnoreCase(producto.getEstado())) {
             throw new IllegalArgumentException(
@@ -238,11 +270,24 @@ public class MovimientoServiceImpl implements MovimientoService {
         }
     }
 
+    /**
+     * Finds a product by ID or throws an exception if not found.
+     *
+     * @param id the product ID
+     * @return the found product
+     * @throws ProductoNotFoundException if not found
+     */
     private Producto obtenerProductoOFallar(Long id) {
         return productoRepository.findById(id)
                 .orElseThrow(() -> new ProductoNotFoundException(id));
     }
 
+    /**
+     * Checks whether the product's available stock has fallen below the minimum
+     * threshold and notifies admins if so.
+     *
+     * @param producto the product to check
+     */
     private void verificarYNotificarStockBajo(Producto producto) {
         StockProducto stock = stockProductoRepository.findById(producto.getId())
                 .orElse(null);
@@ -261,8 +306,18 @@ public class MovimientoServiceImpl implements MovimientoService {
         }
     }
 
+    /**
+     * Creates and saves a new inventory movement record.
+     *
+     * @param producto the affected product
+     * @param tipo     the movement type (ENTRADA or SALIDA)
+     * @param origen   the origin type (REPOSICION, AJUSTE_MANUAL, DAÑO, PERDIDA)
+     * @param cantidad the quantity moved
+     * @param motivo   the reason for the movement
+     * @return the saved movement entity
+     */
     private MovimientoInventario registrarMovimiento(Producto producto, String tipo,
-                                      String origen, int cantidad, String motivo) {
+                                       String origen, int cantidad, String motivo) {
         MovimientoInventario m = new MovimientoInventario();
         m.setProducto(producto);
         m.setTipoMovimiento(tipo);
@@ -275,6 +330,12 @@ public class MovimientoServiceImpl implements MovimientoService {
 
 
 
+    /**
+     * Converts a {@link StockProducto} view entity to a response DTO.
+     *
+     * @param s the stock view entity
+     * @return the populated response DTO
+     */
     private StockProductoResponseDTO toStockDTO(StockProducto s) {
         StockProductoResponseDTO dto = new StockProductoResponseDTO();
         dto.setIdProducto(s.getIdProducto());
@@ -287,6 +348,12 @@ public class MovimientoServiceImpl implements MovimientoService {
         return dto;
     }
 
+    /**
+     * Retrieves the currently authenticated user, or {@code null} if no valid
+     * authentication context is available.
+     *
+     * @return the authenticated {@link Usuario}, or {@code null}
+     */
     private Usuario obtenerUsuarioAutenticado() {
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();

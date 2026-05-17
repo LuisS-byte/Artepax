@@ -8,6 +8,17 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
+/**
+ * Entity representing a complete stock movement history record.
+ * <p>
+ * Tracks every inventory change (ENTRADA or SALIDA) with the affected product,
+ * optional associated event, movement origin type, quantity, and the user who
+ * registered the movement. The {@code fecha} field is auto-set by
+ * {@link org.hibernate.annotations.CreationTimestamp @CreationTimestamp} at
+ * persist time via JPA's {@link jakarta.persistence.PrePersist @PrePersist}
+ * lifecycle callback.
+ * </p>
+ */
 @Entity
 @Table(name = "movimiento_inventario")
 public class MovimientoInventario {

@@ -5,6 +5,14 @@ package com.catolica.Artepax.inventario.decoracion.entity;
 import com.catolica.Artepax.inventario.producto.entity.Producto;
 import jakarta.persistence.*;
 
+/**
+ * Junction entity linking a decoration package to a product.
+ * <p>
+ * Uses a composite key ({@link DecoracionProductoId}) and stores the
+ * required quantity of the product for the decoration. Each row represents
+ * a single product within a decoration bundle.
+ * </p>
+ */
 @Entity
 @Table(name = "decoracionxproducto")
 public class DecoracionProducto {

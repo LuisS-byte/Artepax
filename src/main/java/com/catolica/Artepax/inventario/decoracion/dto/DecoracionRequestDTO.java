@@ -10,6 +10,11 @@ import java.math.BigDecimal;
 import java.util.List;
 
 
+/**
+ * DTO for creating a new decoration package.
+ * Carries the name, description, sale price, optional initial state,
+ * and the list of products that make up the decoration.
+ */
 public class DecoracionRequestDTO {
 
     @NotBlank(message = "El nombre es obligatorio")

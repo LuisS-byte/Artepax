@@ -3,6 +3,11 @@ package com.catolica.Artepax.inventario.movimiento.dto;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
+/**
+ * DTO for registering an inventory movement (entry or exit).
+ * Carries the product ID, quantity, optional reason, and the movement origin type
+ * ({@code REPOSICION}, {@code AJUSTE_MANUAL}, {@code DAÑO}, or {@code PERDIDA}).
+ */
 public class MovimientoRequestDTO {
 
     @NotNull(message = "El id del producto es obligatorio")

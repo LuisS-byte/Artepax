@@ -6,6 +6,15 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * Core entity representing a physical inventory item.
+ * <p>
+ * Each product has a total quantity ({@code cantidadTotal}) representing physical stock,
+ * a minimum stock threshold ({@code stockMinimo}) for low-stock alerts, and a state
+ * ({@code estado}) that can be {@code ACTIVO} or {@code INACTIVO}. Products are
+ * soft-deleted by setting state to {@code INACTIVO} rather than removing the row.
+ * </p>
+ */
 @Entity
 @Table(name = "producto")
 public class Producto {

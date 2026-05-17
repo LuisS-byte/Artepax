@@ -1,5 +1,9 @@
 package com.catolica.Artepax.inventario.decoracion.dto;
 
+/**
+ * DTO for returning a product association within a decoration response.
+ * Includes the product ID, name, and the required quantity.
+ */
 public class DecoracionProductoResponseDTO {
     private Long productoId;
     private String productoNombre;

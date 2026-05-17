@@ -7,9 +7,20 @@ import com.catolica.Artepax.inventario.producto.entity.Producto;
 
 import org.springframework.stereotype.Component;
 
+/**
+ * Mapper between {@link Producto} entity and its DTOs.
+ * Handles conversion from {@link ProductoRequestDTO} to entity, entity to
+ * {@link ProductoResponseDTO}, and partial updates via {@link ProductoUpdateDTO}.
+ */
 @Component
 public class ProductoMapper {
 
+    /**
+     * Converts a creation request DTO into a new {@link Producto} entity.
+     *
+     * @param dto the request data with product fields
+     * @return a new {@code Producto} with fields mapped from the DTO
+     */
     public Producto toEntity(ProductoRequestDTO dto) {
         Producto producto = new Producto();
         producto.setNombre(dto.getNombre());
@@ -19,6 +30,12 @@ public class ProductoMapper {
         return producto;
     }
 
+    /**
+     * Converts a {@link Producto} entity into a response DTO.
+     *
+     * @param producto the product entity to convert
+     * @return a {@code ProductoResponseDTO} with all product fields populated
+     */
     public ProductoResponseDTO toDTO(Producto producto) {
         ProductoResponseDTO dto = new ProductoResponseDTO();
         dto.setId(producto.getId());
@@ -32,6 +49,13 @@ public class ProductoMapper {
         return dto;
     }
 
+    /**
+     * Applies non-null fields from an update DTO to an existing entity.
+     * Fields that are {@code null} in the DTO are left unchanged.
+     *
+     * @param producto the existing entity to update
+     * @param dto      the DTO carrying the new values
+     */
     public void updateEntity(Producto producto, ProductoUpdateDTO dto) {
         if (dto.getNombre() != null) producto.setNombre(dto.getNombre());
         if (dto.getDescripcion() != null) producto.setDescripcion(dto.getDescripcion());

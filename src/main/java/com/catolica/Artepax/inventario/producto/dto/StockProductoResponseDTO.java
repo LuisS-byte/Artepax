@@ -1,6 +1,12 @@
 package com.catolica.Artepax.inventario.producto.dto;
 
-public class StockProductoResponseDTO {private Long idProducto;
+/**
+ * DTO for returning stock information from the {@code vista_stock_producto} view.
+ * Includes total quantity, reserved quantity, available quantity, minimum stock threshold,
+ * and a low-stock alert flag.
+ */
+public class StockProductoResponseDTO {
+    private Long idProducto;
     private String nombre;
     private Integer cantidadTotal;
     private Integer cantidadReservada;

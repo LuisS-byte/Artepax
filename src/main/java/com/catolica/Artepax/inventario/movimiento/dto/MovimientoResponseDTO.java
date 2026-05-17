@@ -2,6 +2,11 @@ package com.catolica.Artepax.inventario.movimiento.dto;
 
 import java.time.LocalDateTime;
 
+/**
+ * DTO for returning inventory movement data in API responses.
+ * Includes the product and optional event information, movement type, origin,
+ * quantity, date, and reason.
+ */
 public class MovimientoResponseDTO {
 
     private Long id;

@@ -6,6 +6,15 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * Entity representing a decoration package — a collection of products sold
+ * together at a specific sale price.
+ * <p>
+ * A decoration is a pre-defined bundle of inventory items that can be
+ * assigned to events. It has a state ({@code ACTIVO} / {@code INACTIVO})
+ * for soft-delete control and a creation timestamp.
+ * </p>
+ */
 @Entity
 @Table(name = "decoracion")
 public class Decoracion {

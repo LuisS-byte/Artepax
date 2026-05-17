@@ -12,9 +12,20 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+/**
+ * Mapper between {@link Decoracion} entity and its DTOs.
+ * Handles conversion from request DTOs to entity, entity to response DTOs,
+ * product associations, and partial updates via {@link DecoracionUpdateDTO}.
+ */
 @Component
 public class DecoracionMapper {
 
+    /**
+     * Converts a creation request DTO into a new {@link Decoracion} entity.
+     *
+     * @param dto the request data with decoration fields
+     * @return a new {@code Decoracion} with fields mapped from the DTO
+     */
     public Decoracion toEntity(DecoracionRequestDTO dto) {
         Decoracion decoracion = new Decoracion();
         decoracion.setNombre(dto.getNombre());
@@ -24,6 +35,14 @@ public class DecoracionMapper {
         return decoracion;
     }
 
+    /**
+     * Converts a {@link Decoracion} entity and its associated products into a
+     * full response DTO including the product list.
+     *
+     * @param decoracion the decoration entity
+     * @param productos  the list of product associations
+     * @return a response DTO with decoration data and its products
+     */
     public DecoracionResponseDTO toDTO(Decoracion decoracion, List<DecoracionProducto> productos) {
         DecoracionResponseDTO dto = new DecoracionResponseDTO();
         dto.setId(decoracion.getId());
@@ -41,6 +60,12 @@ public class DecoracionMapper {
         return dto;
     }
 
+    /**
+     * Converts a single product association into its response DTO.
+     *
+     * @param dp the decoration-product association entity
+     * @return a response DTO with product ID, name, and required quantity
+     */
     public DecoracionProductoResponseDTO toProductoDTO(DecoracionProducto dp) {
         DecoracionProductoResponseDTO dto = new DecoracionProductoResponseDTO();
         dto.setProductoId(dp.getProducto().getId());
@@ -49,6 +74,13 @@ public class DecoracionMapper {
         return dto;
     }
 
+    /**
+     * Applies non-null fields from an update DTO to an existing decoration entity.
+     * Fields that are {@code null} in the DTO are left unchanged.
+     *
+     * @param decoracion the existing entity to update
+     * @param dto        the DTO carrying the new values
+     */
     public void updateEntity(Decoracion decoracion, DecoracionUpdateDTO dto) {
         if (dto.getNombre() != null) decoracion.setNombre(dto.getNombre());
         if (dto.getDescripcion() != null) decoracion.setDescripcion(dto.getDescripcion());

@@ -5,6 +5,11 @@ import java.io.Serializable;
 import java.util.Objects;
 import jakarta.persistence.Embeddable;
 
+/**
+ * Composite primary key for the {@link DecoracionProducto} junction entity.
+ * Combines the decoration ID and the product ID to uniquely identify
+ * a product within a decoration package.
+ */
 @Embeddable
 public class DecoracionProductoId implements Serializable {
     private Long decoracionId;

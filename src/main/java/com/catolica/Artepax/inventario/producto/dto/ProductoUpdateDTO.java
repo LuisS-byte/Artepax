@@ -6,6 +6,11 @@ import jakarta.validation.constraints.NotBlank;
 
 import java.math.BigDecimal;
 
+/**
+ * DTO for updating an existing {@code Producto}.
+ * Carries the modifiable fields: name, description, state, unit price, and minimum stock.
+ * Only non-null fields are applied during the update.
+ */
 public class ProductoUpdateDTO {
 
     @NotBlank(message = "El nombre es obligatorio")

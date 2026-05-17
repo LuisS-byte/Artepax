@@ -3,6 +3,11 @@ package com.catolica.Artepax.inventario.producto.dto;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * DTO for returning {@code Producto} data in API responses.
+ * Includes all product fields: id, name, description, total quantity, unit price,
+ * minimum stock threshold, state, and creation timestamp.
+ */
 public class ProductoResponseDTO {
 
     private Long id;

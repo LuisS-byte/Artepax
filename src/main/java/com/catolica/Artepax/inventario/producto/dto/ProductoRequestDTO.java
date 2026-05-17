@@ -4,6 +4,11 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
+/**
+ * DTO for creating a new {@code Producto}.
+ * Carries the required fields for product creation: name, description, total quantity,
+ * and optional initial state.
+ */
 public class ProductoRequestDTO {
 
     @NotBlank(message = "El nombre es obligatorio")

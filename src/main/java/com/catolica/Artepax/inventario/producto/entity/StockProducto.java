@@ -4,6 +4,14 @@ package com.catolica.Artepax.inventario.producto.entity;
 import jakarta.persistence.*;
 import org.hibernate.annotations.Immutable;
 
+/**
+ * Read-only entity mapped to the database view {@code vista_stock_producto}.
+ * <p>
+ * Computes available stock as {@code cantidad_total - cantidad_reservada} and
+ * provides a low-stock alert flag. This entity is {@link jakarta.persistence.Immutable @Immutable}
+ * and cannot be modified through JPA.
+ * </p>
+ */
 @Entity
 @Immutable
 @Table(name = "vista_stock_producto")

@@ -12,6 +12,14 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.util.List;
 
+/**
+ * REST controller for product management.
+ * <p>
+ * Provides CRUD endpoints for inventory products, including search by name
+ * and state transitions (soft-delete / reactivate). All endpoints require
+ * the {@code ADMIN} role.
+ * </p>
+ */
 @RestController
 @RequestMapping("/api/productos")
 @PreAuthorize("hasRole('ADMIN')")
@@ -23,7 +31,12 @@ public class ProductoController {
         this.productoService = productoService;
     }
 
-    // ✅ Crear producto
+    /**
+     * Creates a new product.
+     *
+     * @param requestDTO the request body with product data
+     * @return the created product with HTTP 201
+     */
     @PostMapping
     public ResponseEntity<ProductoResponseDTO> crearProducto(
             @Valid @RequestBody ProductoRequestDTO requestDTO) {
@@ -32,14 +45,23 @@ public class ProductoController {
         return ResponseEntity.status(201).body(producto);
     }
 
-    // ✅ Obtener todos los productos
+    /**
+     * Retrieves all products.
+     *
+     * @return the list of all products
+     */
     @GetMapping
     public ResponseEntity<List<ProductoResponseDTO>> obtenerTodos() {
         List<ProductoResponseDTO> productos = productoService.obtenerTodos();
         return ResponseEntity.ok(productos);
     }
 
-    // ✅ Obtener producto por ID
+    /**
+     * Retrieves a single product by its ID.
+     *
+     * @param id the product ID
+     * @return the product if found
+     */
     @GetMapping("/{id}")
     public ResponseEntity<ProductoResponseDTO> obtenerPorId(
             @PathVariable Long id) {
@@ -48,7 +70,13 @@ public class ProductoController {
         return ResponseEntity.ok(producto);
     }
 
-    // ✅ Actualizar producto
+    /**
+     * Updates an existing product with the given data.
+     *
+     * @param id       the product ID to update
+     * @param updateDTO the request body with fields to update
+     * @return the updated product
+     */
     @PutMapping("/{id}")
     public ResponseEntity<ProductoResponseDTO> actualizarProducto(
             @PathVariable Long id,
@@ -58,8 +86,12 @@ public class ProductoController {
         return ResponseEntity.ok(actualizado);
     }
 
-
-    // GET /productos/buscar?nombre=globo
+    /**
+     * Searches for products whose name contains the given string (case-insensitive).
+     *
+     * @param nombre the search string
+     * @return the list of matching products
+     */
     @GetMapping("/buscar")
     public ResponseEntity<List<ProductoResponseDTO>> buscarPorNombre(
             @RequestParam String nombre) {
@@ -68,14 +100,26 @@ public class ProductoController {
         return ResponseEntity.ok(productos);
     }
 
+    /**
+     * Soft-deletes a product by setting its state to {@code INACTIVO}.
+     *
+     * @param id the product ID to deactivate
+     * @return HTTP 204 No Content
+     */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminarProducto(@PathVariable Long id) {
         productoService.eliminar(id);
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Reactivates a previously deactivated product.
+     *
+     * @param id the product ID to reactivate
+     * @return the reactivated product
+     */
     @PatchMapping("/{id}/reactivar")
     public ResponseEntity<ProductoResponseDTO> reactivar(@PathVariable Long id) {
         return ResponseEntity.ok(productoService.reactivar(id));
-}
+    }
 }

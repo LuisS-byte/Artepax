@@ -4,6 +4,10 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * DTO for returning decoration package data in API responses.
+ * Includes the decoration metadata and its associated products.
+ */
 public class DecoracionResponseDTO {
 
     private Long id;

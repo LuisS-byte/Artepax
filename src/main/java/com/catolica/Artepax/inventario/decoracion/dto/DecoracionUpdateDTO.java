@@ -6,6 +6,11 @@ import jakarta.validation.constraints.NotBlank;
 
 import java.math.BigDecimal;
 import java.util.List;
+/**
+ * DTO for updating an existing decoration package.
+ * Carries the modifiable fields: name, description, price, state,
+ * and optionally the products that make up the decoration.
+ */
 public class DecoracionUpdateDTO {
 
     @NotBlank(message = "El nombre es obligatorio")

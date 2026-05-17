@@ -2,6 +2,11 @@ package com.catolica.Artepax.inventario.decoracion.dto;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+/**
+ * DTO for associating a product with a decoration package.
+ * Carries the product ID and the required quantity of that product
+ * for the decoration.
+ */
 public class DecoracionProductoRequestDTO {
 
     @NotNull(message = "El producto es obligatorio")

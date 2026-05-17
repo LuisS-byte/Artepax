@@ -16,6 +16,13 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * REST controller for inventory management operations.
+ * <p>
+ * Provides endpoints for stock entries, exits, physical-count adjustments,
+ * stock queries, and movement history. All endpoints require the {@code ADMIN} role.
+ * </p>
+ */
 @RestController
 @RequestMapping("/api/inventario")
 @PreAuthorize("hasRole('ADMIN')")
@@ -27,21 +34,38 @@ public class MovimientoController {
         this.movimientoService = movimientoService;
     }
 
-    // REPOSICION o AJUSTE_MANUAL
+    /**
+     * Registers a stock entry movement (REPOSICION or AJUSTE_MANUAL).
+     *
+     * @param dto the movement request with product ID, quantity, and origin
+     * @return HTTP 204 No Content
+     */
     @PostMapping("/entrada")
     public ResponseEntity<Void> entrada(@Valid @RequestBody MovimientoRequestDTO dto) {
         movimientoService.registrarEntrada(dto);
         return ResponseEntity.noContent().build();
     }
 
-    // DAÑO, PERDIDA o AJUSTE_MANUAL
+    /**
+     * Registers a stock exit movement (DAÑO, PERDIDA, or AJUSTE_MANUAL).
+     *
+     * @param dto the movement request with product ID, quantity, and origin
+     * @return HTTP 204 No Content
+     */
     @PostMapping("/salida")
     public ResponseEntity<Void> salida(@Valid @RequestBody MovimientoRequestDTO dto) {
         movimientoService.registrarSalida(dto);
         return ResponseEntity.noContent().build();
     }
 
-    // Ajuste por conteo físico — calcula diferencia automáticamente
+    /**
+     * Adjusts stock based on a physical count for the given product.
+     * Calculates the difference automatically and creates the required movement.
+     *
+     * @param productoId the product ID to adjust
+     * @param request    the observed physical quantity and reason
+     * @return HTTP 204 No Content
+     */
     @PostMapping("/ajuste/{productoId}")
     public ResponseEntity<Void> ajustarStock(
             @PathVariable Long productoId,
@@ -50,13 +74,24 @@ public class MovimientoController {
         return ResponseEntity.noContent().build();
     }
 
-    // Stock real desde vista_stock_producto
+    /**
+     * Retrieves current stock information for a product from the stock view.
+     *
+     * @param id the product ID
+     * @return the stock information DTO
+     */
     @GetMapping("/productos/{id}/stock")
     public ResponseEntity<StockProductoResponseDTO> obtenerStock(@PathVariable Long id) {
         return ResponseEntity.ok(movimientoService.obtenerStock(id));
     }
 
-    // Historial de movimientos (paginado)
+    /**
+     * Returns a paginated history of movements for a specific product.
+     *
+     * @param id       the product ID
+     * @param pageable pagination and sorting parameters (default: size 50, sorted by fecha DESC)
+     * @return a page of movement DTOs
+     */
     @GetMapping("/productos/{id}/movimientos")
     public ResponseEntity<Page<MovimientoResponseDTO>> obtenerMovimientos(
             @PathVariable Long id,
@@ -64,6 +99,12 @@ public class MovimientoController {
         return ResponseEntity.ok(movimientoService.obtenerMovimientosPorProducto(id, pageable));
     }
 
+    /**
+     * Returns a paginated history of all inventory movements across all products.
+     *
+     * @param pageable pagination and sorting parameters
+     * @return a page of movement DTOs
+     */
     @GetMapping("/movimientos")
     public ResponseEntity<Page<MovimientoResponseDTO>> obtenerTodosMovimientos(
             @PageableDefault(size = 50, sort = "fecha", direction = Sort.Direction.DESC) Pageable pageable) {

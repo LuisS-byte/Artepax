@@ -28,6 +28,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * Implementation of {@link DecoracionService} for decoration package management.
+ * <p>
+ * Handles creation, update, and soft-delete of decoration packages, including
+ * management of the product associations through the junction entity. Validates
+ * product stock availability before associating products with a decoration.
+ * </p>
+ */
 @Service
 @RequiredArgsConstructor
 public class DecoracionServiceImpl implements DecoracionService {
@@ -42,6 +50,14 @@ public class DecoracionServiceImpl implements DecoracionService {
     private final StockProductoRepository stockProductoRepository;
     private final DecoracionMapper decoracionMapper;
 
+    /**
+     * Normalizes and validates a decoration state value.
+     * Defaults to {@code ACTIVO} if the input is null or blank.
+     *
+     * @param estado the raw state value
+     * @return the normalized uppercase state
+     * @throws IllegalArgumentException if the value is not ACTIVO or INACTIVO
+     */
     private String normalizarEstado(String estado) {
         if (estado == null || estado.isBlank()) return ESTADO_ACTIVO;
         String normalizado = estado.trim().toUpperCase();
@@ -51,10 +67,24 @@ public class DecoracionServiceImpl implements DecoracionService {
         return normalizado;
     }
 
+    /**
+     * Normalizes a decoration name by trimming whitespace and collapsing multiple spaces.
+     *
+     * @param nombre the raw name to normalize
+     * @return the normalized name, or {@code null} if input was null
+     */
     private String normalizarNombre(String nombre) {
         return nombre == null ? null : nombre.trim().replaceAll("\\s+", " ");
     }
 
+    /**
+     * Validates that no other decoration already uses the given name (case-insensitive).
+     * When {@code idActual} is provided, the check excludes the decoration being updated.
+     *
+     * @param nombre   the name to check for uniqueness
+     * @param idActual the ID of the decoration being updated, or {@code null} for creation
+     * @throws IllegalArgumentException if a duplicate name is found
+     */
     private void validarNombreDisponible(String nombre, Long idActual) {
         decoracionRepository.findByNombreIgnoreCase(nombre)
                 .filter(d -> idActual == null || !d.getId().equals(idActual))
@@ -66,6 +96,8 @@ public class DecoracionServiceImpl implements DecoracionService {
     @Override
     @Transactional
     public DecoracionResponseDTO crearDecoracion(DecoracionRequestDTO dto) {
+        // Normalizes the name, validates uniqueness, checks product stock,
+        // saves the decoration, creates product associations, and returns the result.
         String nombreNormalizado = normalizarNombre(dto.getNombre());
         validarNombreDisponible(nombreNormalizado, null);
         dto.setNombre(nombreNormalizado);
@@ -105,6 +137,8 @@ public class DecoracionServiceImpl implements DecoracionService {
 
     @Override
     public List<DecoracionResponseDTO> obtenerTodas(String estado) {
+        // Fetches decorations (optionally filtered by state) and eagerly loads their
+        // product associations in batch.
         List<Decoracion> decoraciones = estado != null
                 ? decoracionRepository.findByEstado(estado)
                 : decoracionRepository.findAll();
@@ -128,6 +162,7 @@ public class DecoracionServiceImpl implements DecoracionService {
 
     @Override
     public DecoracionResponseDTO obtenerPorId(Long id) {
+        // Finds the decoration by ID and eagerly loads its product associations.
         Decoracion decoracion = decoracionRepository.findById(id)
                 .orElseThrow(() -> new DecoracionNotFoundException(id));
 
@@ -140,6 +175,8 @@ public class DecoracionServiceImpl implements DecoracionService {
     @Override
     @Transactional
     public DecoracionResponseDTO actualizar(Long id, DecoracionUpdateDTO dto) {
+        // Finds the existing decoration, validates name uniqueness if changed,
+        // applies partial updates, optionally replaces product associations.
 
         Decoracion decoracion = decoracionRepository.findById(id)
                 .orElseThrow(() -> new DecoracionNotFoundException(id));
@@ -201,6 +238,7 @@ public class DecoracionServiceImpl implements DecoracionService {
     @Override
     @Transactional
     public void eliminar(Long id) {
+        // Soft-deletes the decoration by setting its state to INACTIVO.
         Decoracion decoracion = decoracionRepository.findById(id)
                 .orElseThrow(() -> new DecoracionNotFoundException(id));
 
@@ -208,6 +246,14 @@ public class DecoracionServiceImpl implements DecoracionService {
         decoracionRepository.save(decoracion);
     }
 
+    /**
+     * Validates that all products in the list have sufficient available stock
+     * for the required quantity and are not in critical stock or inactive state.
+     *
+     * @param productos the list of product requests with IDs and required quantities
+     * @throws IllegalArgumentException if any product has insufficient stock,
+     *                                  is in critical stock, or is not found
+     */
     private void validarStockProductos(List<com.catolica.Artepax.inventario.decoracion.dto.DecoracionProductoRequestDTO> productos) {
         Map<Long, Integer> cantidadesRequeridas = productos.stream()
                 .collect(Collectors.toMap(
