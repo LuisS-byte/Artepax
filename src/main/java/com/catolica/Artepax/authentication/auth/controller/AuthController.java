@@ -12,6 +12,16 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * REST controller for authentication endpoints.
+ * <p>
+ * Provides two login mechanisms:
+ * <ul>
+ *   <li>{@code POST /auth/google} &mdash; Google OAuth authentication</li>
+ *   <li>{@code POST /auth/login} &mdash; Local email+password authentication</li>
+ * </ul>
+ * Both endpoints return an {@link AuthResponse} containing a JWT token.
+ */
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
@@ -20,7 +30,15 @@ public class AuthController {
     private final GoogleAuthService googleAuthService;
     private final LocalAuthService localAuthService;
 
-    // 🔐 LOGIN CON GOOGLE
+    /**
+     * Authenticates a user via Google OAuth.
+     * <p>
+     * Delegates to {@link GoogleAuthService#authenticateWithGoogle(GoogleAuthRequest)}
+     * to verify the Google ID token and returns a signed JWT.
+     *
+     * @param request the Google auth request containing the ID token
+     * @return 200 OK with {@link AuthResponse} containing the JWT
+     */
     @PostMapping("/google")
     public ResponseEntity<AuthResponse> loginWithGoogle(@Valid @RequestBody GoogleAuthRequest request) {
 

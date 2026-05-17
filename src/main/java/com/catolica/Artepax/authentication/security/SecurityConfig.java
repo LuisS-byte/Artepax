@@ -16,6 +16,19 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 import org.springframework.web.cors.CorsConfigurationSource;
 
+/**
+ * Spring Security configuration.
+ * <p>
+ * Configures a stateless REST API security filter chain:
+ * <ul>
+ *   <li>CORS via {@link CorsConfig#corsConfigurationSource()}</li>
+ *   <li>CSRF disabled (stateless JWT-based auth)</li>
+ *   <li>Session management set to {@link SessionCreationPolicy#STATELESS}</li>
+ *   <li>Permits {@code /auth/**}, {@code /error}, Swagger UI, and API docs</li>
+ *   <li>Requires authentication for all other requests</li>
+ *   <li>JWT filter added before {@link UsernamePasswordAuthenticationFilter}</li>
+ * </ul>
+ */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -25,6 +38,13 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final CorsConfigurationSource corsConfigurationSource;
 
+    /**
+     * Builds the security filter chain.
+     *
+     * @param http the {@link HttpSecurity} to configure
+     * @return the configured {@link SecurityFilterChain}
+     * @throws Exception if configuration fails
+     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 

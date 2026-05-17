@@ -18,6 +18,13 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Locale;
 
+/**
+ * Service for Google OAuth authentication.
+ * <p>
+ * Verifies a Google ID token via {@link GoogleConfig#verifyToken(String)},
+ * resolves the authenticated {@link Usuario}, and returns a signed JWT.
+ * Only active ADMIN users registered with the system are allowed through.
+ */
 @Service
 @RequiredArgsConstructor
 public class GoogleAuthService {
@@ -26,7 +33,14 @@ public class GoogleAuthService {
     private final UsuarioService usuarioService;
     private final JwtService jwtService;
 
-    // 🔥 ESTE ES EL QUE USA EL CONTROLLER
+    /**
+     * Entry point called by {@link AuthController#loginWithGoogle}.
+     * <p>
+     * Delegates to {@link #authenticate(String)} and wraps the result.
+     *
+     * @param request the Google auth request containing the ID token
+     * @return {@link AuthResponse} with a signed JWT
+     */
     public AuthResponse authenticateWithGoogle(GoogleAuthRequest request) {
 
         String token = authenticate(request.getIdToken());
@@ -36,7 +50,21 @@ public class GoogleAuthService {
                 .build();
     }
 
-    // 🔐 LÓGICA REAL
+    /**
+     * Performs the full Google authentication flow:
+     * <ol>
+     *   <li>Verifies the ID token with Google's API</li>
+     *   <li>Looks up the user by email in the local database</li>
+     *   <li>Checks that the user is active</li>
+     *   <li>Checks that the user has the ADMIN role</li>
+     *   <li>Generates and returns a signed JWT</li>
+     * </ol>
+     *
+     * @param idToken the raw Google ID token string
+     * @return a signed JWT for the authenticated user
+     * @throws org.springframework.web.server.ResponseStatusException 401 if the token is invalid,
+     *                                                                 403 if the user is not found, inactive, or not an ADMIN
+     */
     public String authenticate(String idToken) {
 
         GoogleIdToken.Payload payload = googleConfig.verifyToken(idToken);

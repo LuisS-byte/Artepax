@@ -13,10 +13,12 @@ import lombok.Data;
 @Data
 public class LoginRequest {
 
+    /** The user's email address — must be a valid email format and not blank. */
     @NotBlank
     @Email
     private String email;
 
+    /** The user's password — must not be blank. */
     @NotBlank
     private String password;
 }

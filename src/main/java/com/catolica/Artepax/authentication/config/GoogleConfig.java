@@ -13,6 +13,13 @@ import org.springframework.context.annotation.Configuration;
 
 import java.util.Collections;
 
+/**
+ * Configuration and utility bean for Google OAuth ID token verification.
+ * <p>
+ * Reads the {@code google.client.id} property and builds a
+ * {@link GoogleIdTokenVerifier} to validate incoming Google ID tokens.
+ * Startup validation ensures the required property is present.
+ */
 @Configuration
 public class GoogleConfig {
 
@@ -21,6 +28,11 @@ public class GoogleConfig {
     @Value("${google.client.id}")
     private String googleClientId;
 
+    /**
+     * Validates that {@code google.client.id} is configured at application startup.
+     *
+     * @throws IllegalStateException if the property is missing or blank
+     */
     @PostConstruct
     public void validateConfig() {
         if (googleClientId == null || googleClientId.isBlank()) {
@@ -29,6 +41,15 @@ public class GoogleConfig {
         }
     }
 
+    /**
+     * Verifies a Google ID token and returns its payload.
+     * <p>
+     * Uses the configured {@code google.client.id} as the expected audience.
+     * If verification fails or an exception occurs, {@code null} is returned.
+     *
+     * @param idTokenString the raw ID token string from Google's OAuth response
+     * @return the token payload if verification succeeds, {@code null} otherwise
+     */
     public GoogleIdToken.Payload verifyToken(String idTokenString) {
 
         try {

@@ -22,6 +22,13 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
+/**
+ * Service for user management operations.
+ * <p>
+ * Implements {@link UserDetailsService} for Spring Security integration.
+ * Provides user lookup, creation, listing, and state toggle functionality.
+ * All public endpoints that produce DTOs intentionally exclude the password field.
+ */
 @Service
 @RequiredArgsConstructor
 public class UsuarioService implements UserDetailsService {
@@ -30,14 +37,33 @@ public class UsuarioService implements UserDetailsService {
     private final RolRepository rolRepository;
     private final PasswordEncoder passwordEncoder;
 
-    // 🔐 ESTE METODO LO USA SPRING SECURITY (OBLIGATORIO)
+    /**
+     * Loads a user by email — required by Spring Security's {@link UserDetailsService}.
+     * <p>
+     * This method is called automatically during authentication to resolve
+     * the {@link org.springframework.security.core.userdetails.UserDetails}
+     * from the email extracted from the JWT.
+     *
+     * @param correo the user's email address
+     * @return the {@link Usuario} entity
+     * @throws UsernameNotFoundException if no user is found with the given email
+     */
     @Override
     public UserDetails loadUserByUsername(String correo) throws UsernameNotFoundException {
         return usuarioRepository.findByCorreo(correo)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
     }
 
-    // 🔍 Buscar usuario (para Google login)
+    /**
+     * Finds a user by email, returning {@code null} if not found.
+     * <p>
+     * Used by {@link com.catolica.Artepax.authentication.auth.service.GoogleAuthService}
+     * during Google OAuth login where a missing user is treated as "unauthorized"
+     * rather than an exceptional state.
+     *
+     * @param correo the user's email address
+     * @return the {@link Usuario} entity, or {@code null} if not found
+     */
     public Usuario findByCorreo(String correo) {
         return usuarioRepository.findByCorreo(correo)
                 .orElse(null);
