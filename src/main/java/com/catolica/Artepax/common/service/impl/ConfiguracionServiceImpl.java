@@ -13,6 +13,23 @@ import java.util.List;
 import java.math.BigDecimal;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Implementación de {@link ConfiguracionService} con caché en memoria.
+ * <p>
+ * Usa un {@link ConcurrentHashMap} como caché de valores crudos (String).
+ * Los accessors tipados ({@link #getInt}, {@link #getDecimal}, {@link #getBoolean})
+ * parsean el valor cacheado y lanzan {@link IllegalStateException} si la
+ * conversión falla.
+ * <p>
+ * <strong>Importante:</strong> después de actualizar un valor mediante
+ * {@link #actualizar(String, String)}, el caché se invalida automáticamente.
+ * Si se modifica la base de datos por fuera (ej. script directo), se debe
+ * llamar a {@link #invalidarCache(String)} para evitar lecturas stale.
+ * <p>
+ * Los métodos {@link #listar()} y {@link #obtener(String)} leen directamente
+ * de la base de datos (no del caché) para garantizar datos frescos en las
+ * operaciones CRUD.
+ */
 @Service
 public class ConfiguracionServiceImpl implements ConfiguracionService {
 
@@ -26,6 +43,14 @@ public class ConfiguracionServiceImpl implements ConfiguracionService {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * Obtiene el valor crudo de una clave desde el caché, cargándolo desde la
+     * base de datos si no está presente (cache-aside pattern).
+     *
+     * @param clave la clave de configuración
+     * @return el valor textual almacenado
+     * @throws ConfiguracionNotFoundException si la clave no existe en la BD
+     */
     private String getRaw(String clave) {
         return cache.computeIfAbsent(clave, k ->
                 repo.findById(k)
@@ -34,6 +59,12 @@ public class ConfiguracionServiceImpl implements ConfiguracionService {
         );
     }
 
+    /**
+     * Invalida la entrada en caché para una clave específica.
+     * La próxima lectura recargará el valor desde la base de datos.
+     *
+     * @param clave la clave de configuración a invalidar
+     */
     public void invalidarCache(String clave) {
         cache.remove(clave);
     }
@@ -99,6 +130,13 @@ public class ConfiguracionServiceImpl implements ConfiguracionService {
         return toDTO(guardada);
     }
 
+    /**
+     * Valida que el valor sea compatible con el tipo de configuración.
+     *
+     * @param tipo  el tipo esperado (INT, DECIMAL, BOOLEAN, JSON, STRING)
+     * @param valor el valor a validar
+     * @throws IllegalArgumentException si el valor no es válido para el tipo
+     */
     private void validarValorPorTipo(String tipo, String valor) {
         switch (tipo) {
             case "INT" -> validarInt(valor);
@@ -111,6 +149,12 @@ public class ConfiguracionServiceImpl implements ConfiguracionService {
         }
     }
 
+    /**
+     * Valida que el valor sea un entero válido.
+     *
+     * @param valor el valor a validar
+     * @throws IllegalArgumentException si no es un entero
+     */
     private void validarInt(String valor) {
         try {
             Integer.parseInt(valor);
@@ -120,6 +164,12 @@ public class ConfiguracionServiceImpl implements ConfiguracionService {
         }
     }
 
+    /**
+     * Valida que el valor sea un decimal válido.
+     *
+     * @param valor el valor a validar
+     * @throws IllegalArgumentException si no es un decimal
+     */
     private void validarDecimal(String valor) {
         try {
             new BigDecimal(valor);
@@ -129,6 +179,12 @@ public class ConfiguracionServiceImpl implements ConfiguracionService {
         }
     }
 
+    /**
+     * Valida que el valor sea "true" o "false" (case-insensitive).
+     *
+     * @param valor el valor a validar
+     * @throws IllegalArgumentException si no es un booleano válido
+     */
     private void validarBoolean(String valor) {
         if (!valor.equalsIgnoreCase("true") && !valor.equalsIgnoreCase("false")) {
             throw new IllegalArgumentException(
@@ -136,6 +192,12 @@ public class ConfiguracionServiceImpl implements ConfiguracionService {
         }
     }
 
+    /**
+     * Valida que el valor sea un JSON válido.
+     *
+     * @param valor el valor a validar
+     * @throws IllegalArgumentException si no es un JSON válido
+     */
     private void validarJson(String valor) {
         try {
             objectMapper.readTree(valor);

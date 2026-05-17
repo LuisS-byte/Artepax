@@ -20,11 +20,17 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Job que alerta sobre eventos con saldo pendiente próximos a su fecha.
- * Se ejecuta diariamente a las 8:00 AM.
- * Lee DIAS_AVISO_SALDO_PENDIENTE de configuración para definir el rango de búsqueda.
- * Incluye control de idempotencia para evitar notificaciones duplicadas
- * y JOIN FETCH para evitar LazyInitializationException en relaciones.
+ * Job programado que alerta sobre eventos con saldo pendiente (estado
+ * {@code PENDIENTE_COBRO} u otro activo) que están próximos a su fecha.
+ * <p>
+ * Se ejecuta diariamente a las 8:00 AM. Lee la clave de configuración
+ * {@code DIAS_AVISO_SALDO_PENDIENTE} para definir el horizonte de búsqueda
+ * (desde hoy hasta hoy + días de aviso).
+ * <p>
+ * Excluye eventos en estados terminales ({@code CANCELADO}, {@code FINALIZADO},
+ * {@code CANCELACION_PENDIENTE}) y verifica que el saldo pendiente sea mayor a cero.
+ * Incluye control de idempotencia y usa JOIN FETCH para evitar
+ * LazyInitializationException.
  */
 @Component
 @Slf4j
@@ -41,6 +47,12 @@ public class JobSaldoPendiente {
     private final NotificacionRepository notificacionRepository;
     private final NotificacionService notificacionService;
 
+    /**
+     * Ejecuta el procesamiento de alertas de saldo pendiente.
+     * Busca eventos próximos (hoy hasta hoy + {@code DIAS_AVISO_SALDO_PENDIENTE}),
+     * filtra aquellos con saldo {@code > 0} y estados activos, y genera
+     * notificaciones saltando las ya emitidas hoy.
+     */
     @Scheduled(cron = "0 0 8 * * *")
     public void procesarSaldosPendientes() {
         int diasAviso = configuracionService.getInt("DIAS_AVISO_SALDO_PENDIENTE");

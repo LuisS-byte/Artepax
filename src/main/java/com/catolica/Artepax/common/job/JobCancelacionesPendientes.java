@@ -13,8 +13,14 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * Job que procesa eventos en CANCELACION_PENDIENTE cuyo tiempo de gracia expiró.
- * Se ejecuta cada minuto (configurable via {@code artepax.job.cancelacion.intervalo-ms}).
+ * Job programado que procesa eventos en estado {@code CANCELACION_PENDIENTE}
+ * cuyo tiempo de gracia ha expirado, transitándolos automáticamente a
+ * {@code CANCELADO}.
+ * <p>
+ * Lee el tiempo de gracia configurable desde la base de datos mediante la
+ * clave {@code TIEMPO_GRACIA_CANCELACION_MINUTOS} (fallback: 1440 minutos = 24 h).
+ * Se ejecuta en intervalos fijos configurados por la propiedad
+ * {@code artepax.job.cancelacion.intervalo-ms} (default: 60000 ms = 1 minuto).
  */
 @Component
 @Slf4j
@@ -27,6 +33,12 @@ public class JobCancelacionesPendientes {
     private final EventoService eventoService;
     private final ConfiguracionService configuracionService;
 
+    /**
+     * Ejecuta el procesamiento de cancelaciones pendientes.
+     * Busca eventos en {@code CANCELACION_PENDIENTE}, compara su fecha de cancelación
+     * contra el límite calculado con {@code TIEMPO_GRACIA_CANCELACION_MINUTOS},
+     * y confirma la cancelación para aquellos cuyo tiempo de gracia expiró.
+     */
     @Scheduled(fixedDelayString = "${artepax.job.cancelacion.intervalo-ms:60000}")
     public void procesarCancelacionesPendientes() {
         int minutosGracia = obtenerMinutosGracia();
@@ -50,8 +62,10 @@ public class JobCancelacionesPendientes {
     }
 
     /**
-     * Obtiene los minutos de gracia desde configuración, con fallback seguro
-     * si el valor falta o está mal formado.
+     * Obtiene los minutos de gracia desde configuración {@code TIEMPO_GRACIA_CANCELACION_MINUTOS},
+     * con fallback seguro si el valor falta o está mal formado.
+     *
+     * @return minutos de gracia configurados, o el fallback de 1440 si no se puede leer
      */
     private int obtenerMinutosGracia() {
         try {

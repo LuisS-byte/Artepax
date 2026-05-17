@@ -22,16 +22,40 @@ public class ConfiguracionController {
 
     private final ConfiguracionService configuracionService;
 
+    /**
+     * Lista todas las configuraciones del sistema ordenadas alfabéticamente.
+     *
+     * @return lista de configuraciones
+     */
     @GetMapping
     public ResponseEntity<List<ConfiguracionResponseDTO>> listar() {
         return ResponseEntity.ok(configuracionService.listar());
     }
 
+    /**
+     * Obtiene una configuración por su clave.
+     *
+     * @param clave la clave de configuración
+     * @return la configuración solicitada
+     */
     @GetMapping("/{clave}")
     public ResponseEntity<ConfiguracionResponseDTO> obtener(@PathVariable String clave) {
         return ResponseEntity.ok(configuracionService.obtener(clave));
     }
 
+    /**
+     * Actualiza el valor de una configuración existente.
+     * <p>
+     * El nuevo valor se envía como texto plano en el body. Si el body viene
+     * entre comillas dobles (JSON string), se normalizan automáticamente.
+     * <p>
+     * <strong>Nota:</strong> después de actualizar, el caché en memoria se invalida
+     * automáticamente para la clave modificada, garantizando lecturas frescas.
+     *
+     * @param clave      la clave de configuración a actualizar
+     * @param nuevoValor el nuevo valor como texto plano
+     * @return la configuración actualizada
+     */
     @PutMapping("/{clave}")
     public ResponseEntity<ConfiguracionResponseDTO> actualizar(
             @PathVariable String clave,
@@ -45,6 +69,9 @@ public class ConfiguracionController {
      * Normaliza el body string plano recibido en PUT.
      * Solo quita comillas envolventes si el valor completo está entre comillas dobles.
      * No elimina comillas internas para no destruir JSON.
+     *
+     * @param nuevoValor el valor recibido en el body
+     * @return el valor normalizado sin comillas envolventes
      */
     private String normalizarBodyString(String nuevoValor) {
         if (nuevoValor == null) {

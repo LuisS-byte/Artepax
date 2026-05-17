@@ -22,6 +22,28 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 
+/**
+ * Aspecto AOP que audita automáticamente operaciones CRUD y de negocio
+ * sobre Eventos, Pagos y Clientes.
+ * <p>
+ * Cada método de este aspecto es un advice ({@code @AfterReturning} o
+ * {@code @Around}) cuyo pointcut está atado a la firma completa del método
+ * en la implementación concreta del servicio ({@code EventoServiceImpl},
+ * {@code PagoServiceImpl}, {@code ClienteServiceImpl}).
+ * <p>
+ * <strong>⚠️ ADVERTENCIA — Pointcuts frágiles:</strong> renombrar, cambiar
+ * la firma (parámetros o tipos de retorno), o mover los métodos auditados
+ * entre clases ROMperá el advice SILENCIOSAMENTE. El aspecto atrapa sus
+ * propias excepciones y solo las loguea, por lo que un pointcut que no
+ * matchea no produce error de compilación ni startup — simplemente deja
+ * de auditar esa operación sin aviso.
+ * <p>
+ * Los advices {@code @Around} capturan el estado anterior ({@code valorAnterior})
+ * antes de ejecutar el método objetivo y el estado posterior después. Los
+ * advices {@code @AfterReturning} solo registran el estado posterior (no
+ * necesitan el valor anterior porque la operación es de creación o el estado
+ * anterior no es relevante).
+ */
 @Aspect
 @Component
 public class AuditoriaAspect {
@@ -48,7 +70,14 @@ public class AuditoriaAspect {
 
     // ─── EVENTOS ─────────────────────────────────────────────────────────────
 
-    // CREAR — no hay valorAnterior, @AfterReturning es suficiente
+    /**
+     * Audita la creación de un evento.
+     * Pointcut: {@code EventoServiceImpl.crearEvento(..)}.
+     * Usa {@code @AfterReturning} porque no hay valor anterior (es creación).
+     *
+     * @param jp       el join point (no se usa directamente)
+     * @param resultado el DTO {@link EventoResponseDTO} retornado por el método
+     */
     @AfterReturning(
             pointcut = "execution(* com.catolica.Artepax.evento.service.impl.EventoServiceImpl.crearEvento(..))",
             returning = "resultado")
@@ -66,7 +95,16 @@ public class AuditoriaAspect {
         }
     }
 
-    // ACTUALIZAR — captura estado anterior ANTES de ejecutar
+    /**
+     * Audita la actualización de un evento.
+     * Pointcut: {@code EventoServiceImpl.actualizarEvento(..)}.
+     * Usa {@code @Around} para capturar el estado anterior del evento antes
+     * de aplicar los cambios.
+     *
+     * @param pjp el proceeding join point para ejecutar el método objetivo
+     * @return el resultado del método objetivo ({@link EventoResponseDTO})
+     * @throws Throwable si el método objetivo lanza una excepción
+     */
     @Around("execution(* com.catolica.Artepax.evento.service.impl.EventoServiceImpl.actualizarEvento(..))")
     public Object auditarActualizarEvento(ProceedingJoinPoint pjp) throws Throwable {
         try {
@@ -89,7 +127,15 @@ public class AuditoriaAspect {
         }
     }
 
-   //CANCELAR — captura estado anterior ANTES de ejecutar
+    /**
+     * Audita el inicio de cancelación de un evento.
+     * Pointcut: {@code EventoServiceImpl.iniciarCancelacion(..)}.
+     * Captura el estado anterior antes de la cancelación e incluye el motivo.
+     *
+     * @param pjp el proceeding join point para ejecutar el método objetivo
+     * @return el resultado del método objetivo ({@link EventoResponseDTO})
+     * @throws Throwable si el método objetivo lanza una excepción
+     */
     @Around("execution(* com.catolica.Artepax.evento.service.impl.EventoServiceImpl.iniciarCancelacion(..))")
     public Object auditarCancelarEvento(ProceedingJoinPoint pjp) throws Throwable {
         try {
@@ -113,6 +159,14 @@ public class AuditoriaAspect {
         }
     }
 
+    /**
+     * Audita la reversión de una cancelación de evento.
+     * Pointcut: {@code EventoServiceImpl.revertirCancelacion(..)}.
+     * Usa {@code @AfterReturning} porque el estado anterior se pierde al revertir.
+     *
+     * @param jp       el join point (no se usa directamente)
+     * @param resultado el DTO {@link EventoResponseDTO} retornado
+     */
     @AfterReturning(
             pointcut = "execution(* com.catolica.Artepax.evento.service.impl.EventoServiceImpl.revertirCancelacion(..))",
             returning = "resultado")
@@ -130,6 +184,14 @@ public class AuditoriaAspect {
         }
     }
 
+    /**
+     * Audita la finalización de un evento.
+     * Pointcut: {@code EventoServiceImpl.finalizarEvento(..)}.
+     * Usa {@code @AfterReturning} porque la finalización genera movimientos de salida.
+     *
+     * @param jp       el join point (no se usa directamente)
+     * @param resultado el DTO {@link EventoResponseDTO} retornado
+     */
     @AfterReturning(
             pointcut = "execution(* com.catolica.Artepax.evento.service.impl.EventoServiceImpl.finalizarEvento(..))",
             returning = "resultado")
@@ -147,7 +209,13 @@ public class AuditoriaAspect {
         }
     }
 
-    // INICIAR MONTAJE — CONFIRMADO → EN_MONTAJE, retorna EventoResponseDTO (AfterReturning)
+    /**
+     * Audita el inicio de montaje de un evento (CONFIRMADO → EN_MONTAJE).
+     * Pointcut: {@code EventoServiceImpl.iniciarMontaje(..)}.
+     *
+     * @param jp       el join point (no se usa directamente)
+     * @param resultado el DTO {@link EventoResponseDTO} retornado
+     */
     @AfterReturning(
             pointcut = "execution(* com.catolica.Artepax.evento.service.impl.EventoServiceImpl.iniciarMontaje(..))",
             returning = "resultado")
@@ -165,7 +233,16 @@ public class AuditoriaAspect {
         }
     }
 
-    // CONFIRMAR CANCELACIÓN — CANCELACION_PENDIENTE → CANCELADO, retorna void (Around)
+    /**
+     * Audita la confirmación definitiva de cancelación (CANCELACION_PENDIENTE → CANCELADO).
+     * Pointcut: {@code EventoServiceImpl.confirmarCancelacion(..)}.
+     * Usa {@code @Around} porque el método retorna {@code void}, y se debe
+     * leer el estado posterior de la base de datos.
+     *
+     * @param pjp el proceeding join point para ejecutar el método objetivo
+     * @return el resultado del método objetivo (puede ser {@code null} si es void)
+     * @throws Throwable si el método objetivo lanza una excepción
+     */
     @Around("execution(* com.catolica.Artepax.evento.service.impl.EventoServiceImpl.confirmarCancelacion(..))")
     public Object auditarConfirmarCancelacion(ProceedingJoinPoint pjp) throws Throwable {
         try {
@@ -191,7 +268,15 @@ public class AuditoriaAspect {
         }
     }
 
-    // FINALIZAR DESDE COBRO — PENDIENTE_COBRO → FINALIZADO, retorna void (Around)
+    /**
+     * Audita la finalización automática por cobro completo (PENDIENTE_COBRO → FINALIZADO).
+     * Pointcut: {@code EventoServiceImpl.finalizarDesdeCobroCompleto(..)}.
+     * Usa {@code @Around} porque el método retorna {@code void}.
+     *
+     * @param pjp el proceeding join point para ejecutar el método objetivo
+     * @return el resultado del método objetivo (puede ser {@code null})
+     * @throws Throwable si el método objetivo lanza una excepción
+     */
     @Around("execution(* com.catolica.Artepax.evento.service.impl.EventoServiceImpl.finalizarDesdeCobroCompleto(..))")
     public Object auditarFinalizarDesdeCobroCompleto(ProceedingJoinPoint pjp) throws Throwable {
         try {
@@ -219,6 +304,13 @@ public class AuditoriaAspect {
 
     // ─── PAGOS ────────────────────────────────────────────────────────────────
 
+    /**
+     * Audita el registro de un nuevo pago.
+     * Pointcut: {@code PagoServiceImpl.registrarPago(..)}.
+     *
+     * @param jp       el join point (no se usa directamente)
+     * @param resultado el DTO {@link PagoResponseDTO} retornado
+     */
     @AfterReturning(
             pointcut = "execution(* com.catolica.Artepax.pago.service.impl.PagoServiceImpl.registrarPago(..))",
             returning = "resultado")
@@ -236,7 +328,15 @@ public class AuditoriaAspect {
         }
     }
 
-    // CONFIRMAR PAGO — captura estado PENDIENTE antes de cambiar a PAGADO
+    /**
+     * Audita la confirmación de un pago (PENDIENTE → PAGADO).
+     * Pointcut: {@code PagoServiceImpl.confirmarPago(..)}.
+     * Captura el estado anterior (PENDIENTE) antes de cambiar a PAGADO.
+     *
+     * @param pjp el proceeding join point para ejecutar el método objetivo
+     * @return el resultado del método objetivo ({@link PagoResponseDTO})
+     * @throws Throwable si el método objetivo lanza una excepción
+     */
     @Around("execution(* com.catolica.Artepax.pago.service.impl.PagoServiceImpl.confirmarPago(..))")
     public Object auditarConfirmarPago(ProceedingJoinPoint pjp) throws Throwable {
         try {
@@ -260,6 +360,13 @@ public class AuditoriaAspect {
         }
     }
 
+    /**
+     * Audita la anulación de un pago.
+     * Pointcut: {@code PagoServiceImpl.anularPago(..)}.
+     *
+     * @param jp       el join point (no se usa directamente)
+     * @param resultado el DTO {@link PagoResponseDTO} retornado
+     */
     @AfterReturning(
             pointcut = "execution(* com.catolica.Artepax.pago.service.impl.PagoServiceImpl.anularPago(..))",
             returning = "resultado")
@@ -279,6 +386,13 @@ public class AuditoriaAspect {
 
     // ─── CLIENTES ─────────────────────────────────────────────────────────────
 
+    /**
+     * Audita la creación de un nuevo cliente.
+     * Pointcut: {@code ClienteServiceImpl.crearCliente(..)}.
+     *
+     * @param jp       el join point (no se usa directamente)
+     * @param resultado el DTO {@link ClienteResponseDTO} retornado
+     */
     @AfterReturning(
             pointcut = "execution(* com.catolica.Artepax.clientes.service.impl.ClienteServiceImpl.crearCliente(..))",
             returning = "resultado")
@@ -296,7 +410,15 @@ public class AuditoriaAspect {
         }
     }
 
-    // ACTUALIZAR CLIENTE — captura estado anterior ANTES de ejecutar
+    /**
+     * Audita la actualización de un cliente.
+     * Pointcut: {@code ClienteServiceImpl.actualizar(..)}.
+     * Captura el estado anterior del cliente antes de aplicar los cambios.
+     *
+     * @param pjp el proceeding join point para ejecutar el método objetivo
+     * @return el resultado del método objetivo ({@link ClienteResponseDTO})
+     * @throws Throwable si el método objetivo lanza una excepción
+     */
     @Around("execution(* com.catolica.Artepax.clientes.service.impl.ClienteServiceImpl.actualizar(..))")
     public Object auditarActualizarCliente(ProceedingJoinPoint pjp) throws Throwable {
         try {
@@ -322,6 +444,14 @@ public class AuditoriaAspect {
 
     // ─── HELPER ───────────────────────────────────────────────────────────────
 
+    /**
+     * Serializa un objeto a JSON string usando ObjectMapper.
+     * Si falla la serialización, retorna un JSON vacío {@code "{}"} para no
+     * interrumpir el registro de auditoría.
+     *
+     * @param obj el objeto a serializar
+     * @return representación JSON del objeto, o {@code "{}"} si hay error
+     */
     private String toJson(Object obj) {
         try {
             return objectMapper.writeValueAsString(obj);

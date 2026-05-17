@@ -43,11 +43,19 @@ public class Auditoria {
     @Setter
     private Long idRegistro;
 
+    /**
+     * Snapshot JSONB del valor anterior del registro auditado.
+     * Almacenado como jsonb nativo de PostgreSQL mediante {@link JdbcTypeCode}.
+     */
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "valor_anterior")
     @Setter
     private String valorAnterior;
 
+    /**
+     * Snapshot JSONB del valor nuevo del registro auditado después de la mutación.
+     * Almacenado como jsonb nativo de PostgreSQL mediante {@link JdbcTypeCode}.
+     */
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "valor_nuevo")
     @Setter

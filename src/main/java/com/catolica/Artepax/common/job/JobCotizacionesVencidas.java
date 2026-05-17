@@ -15,10 +15,14 @@ import java.time.LocalTime;
 import java.util.List;
 
 /**
- * Job que notifica sobre cotizaciones vencidas.
- * Se ejecuta diariamente a las 8:00 AM.
- * Usa fechaExpiracion < hoy (estrictamente menor), no cambia el estado del evento.
- * Incluye control de idempotencia para evitar notificaciones duplicadas.
+ * Job programado que detecta cotizaciones vencidas y genera notificaciones
+ * para que los administradores realicen seguimiento.
+ * <p>
+ * Se ejecuta diariamente a las 8:00 AM. Busca eventos en estado {@code COTIZACION}
+ * cuya {@code fechaExpiracion} sea estrictamente menor a la fecha actual y genera
+ * notificaciones de tipo {@code COTIZACION_VENCIDA}. No modifica el estado del
+ * evento (solo alerta). Incluye control de idempotencia para evitar notificaciones
+ * duplicadas en el mismo día.
  */
 @Component
 @Slf4j
@@ -31,6 +35,11 @@ public class JobCotizacionesVencidas {
     private final NotificacionRepository notificacionRepository;
     private final NotificacionService notificacionService;
 
+    /**
+     * Ejecuta el procesamiento de cotizaciones vencidas.
+     * Busca eventos cuya fecha de expiración ya pasó y genera notificaciones
+     * a los administradores, saltando aquellas ya notificadas hoy por idempotencia.
+     */
     @Scheduled(cron = "0 0 8 * * *")
     public void procesarCotizacionesVencidas() {
         List<Evento> vencidas = eventoRepository.findCotizacionesVencidas(LocalDate.now());

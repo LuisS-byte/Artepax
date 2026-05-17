@@ -19,11 +19,16 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Job que genera recordatorios de eventos próximos.
- * Se ejecuta diariamente a las 8:00 AM.
- * Lee DIAS_RECORDATORIO_EVENTO de configuración para calcular la fecha objetivo.
- * Incluye control de idempotencia para evitar notificaciones duplicadas
- * y JOIN FETCH para evitar LazyInitializationException en relaciones.
+ * Job programado que genera recordatorios sobre eventos próximos a realizarse.
+ * <p>
+ * Se ejecuta diariamente a las 8:00 AM. Lee la clave de configuración
+ * {@code DIAS_RECORDATORIO_EVENTO} para calcular la fecha objetivo
+ * (hoy + días de aviso) y busca eventos cuya fecha coincida con ese rango.
+ * <p>
+ * Excluye eventos en estados {@code CANCELADO}, {@code FINALIZADO},
+ * {@code CANCELACION_PENDIENTE} y {@code PENDIENTE_COBRO}. Incluye control
+ * de idempotencia para evitar notificaciones duplicadas en el mismo día
+ * y usa JOIN FETCH para evitar LazyInitializationException.
  */
 @Component
 @Slf4j
@@ -40,6 +45,12 @@ public class JobRecordatorioEvento {
     private final NotificacionRepository notificacionRepository;
     private final NotificacionService notificacionService;
 
+    /**
+     * Ejecuta el procesamiento de recordatorios de eventos.
+     * Calcula la fecha objetivo según {@code DIAS_RECORDATORIO_EVENTO},
+     * busca eventos en ese rango excluyendo estados terminales, y genera
+     * notificaciones saltando aquellas ya emitidas hoy.
+     */
     @Scheduled(cron = "0 0 8 * * *")
     public void procesarRecordatorios() {
         int diasAviso = configuracionService.getInt("DIAS_RECORDATORIO_EVENTO");

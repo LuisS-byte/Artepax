@@ -9,6 +9,14 @@ import lombok.Setter;
  * Parámetros globales editables por administración.
  * Soporta tipos heterogéneos (INT, DECIMAL, BOOLEAN, STRING, JSON).
  */
+/**
+ * Parámetros globales editables por administración.
+ * <p>
+ * Cada fila almacena una clave única con su valor en TEXT y un tipo
+ * que {@link com.catolica.Artepax.common.service.ConfiguracionService}
+ * usa para validar y castear al tipo Java correspondiente
+ * (INT, DECIMAL, BOOLEAN, STRING, JSON).
+ */
 @Entity
 @Table(name = "configuracion")
 @Getter
