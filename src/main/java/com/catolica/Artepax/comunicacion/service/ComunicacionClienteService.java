@@ -11,6 +11,13 @@ import org.springframework.web.util.HtmlUtils;
 import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 
+/**
+ * Service for customer-facing email communication.
+ * <p>
+ * Builds HTML email templates for booking confirmations, event reminders,
+ * pending-balance notices, and payment receipts. All template content is
+ * HTML-escaped before sending. Delegates actual delivery to {@link EmailService}.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -23,7 +30,10 @@ public class ComunicacionClienteService {
     private static final String CONFIG_NEGOCIO_TELEFONO = "NEGOCIO_TELEFONO";
 
     /**
-     * Envía confirmación de reserva con PDF adjunto al cliente.
+     * Sends a booking confirmation email with a PDF attachment to the event client.
+     *
+     * @param evento   the event for which the confirmation is sent
+     * @param pdfBytes byte array containing the confirmation PDF document
      */
     public void enviarConfirmacionReserva(Evento evento, byte[] pdfBytes) {
         String correo = evento.getCliente().getCorreo();
@@ -42,7 +52,9 @@ public class ComunicacionClienteService {
     }
 
     /**
-     * Envía recordatorio de evento próximo al cliente (sin adjunto).
+     * Sends an upcoming-event reminder email to the client (no attachment).
+     *
+     * @param evento the event to remind about
      */
     public void enviarRecordatorioEvento(Evento evento) {
         String correo = evento.getCliente().getCorreo();
@@ -60,7 +72,11 @@ public class ComunicacionClienteService {
     }
 
     /**
-     * Envía aviso de saldo pendiente al cliente con documento PDF adjunto.
+     * Sends a pending-balance notice with a PDF document to the client.
+     *
+     * @param evento   the event with an outstanding balance
+     * @param pdfBytes byte array containing the formal notice PDF
+     * @throws IllegalArgumentException if the client has no registered email
      */
     public void enviarAvisoSaldoPendienteConDocumento(Evento evento, byte[] pdfBytes) {
         String correo = evento.getCliente().getCorreo();
@@ -78,7 +94,10 @@ public class ComunicacionClienteService {
     }
 
     /**
-     * Envía aviso de saldo pendiente al cliente (sin adjunto).
+     * Sends a pending-balance reminder to the client (no attachment).
+     *
+     * @param evento         the event with an outstanding balance
+     * @param saldoPendiente the amount still owed by the client
      */
     public void enviarAvisoSaldoPendiente(Evento evento, BigDecimal saldoPendiente) {
         String correo = evento.getCliente().getCorreo();
@@ -96,7 +115,10 @@ public class ComunicacionClienteService {
     }
 
     /**
-     * Envía comprobante de pago al cliente (sin adjunto).
+     * Sends a payment receipt to the client (no attachment).
+     *
+     * @param evento the event associated with the payment
+     * @param pago   the confirmed payment to be notified
      */
     public void enviarComprobantePago(Evento evento, Pago pago) {
         String correo = evento.getCliente().getCorreo();

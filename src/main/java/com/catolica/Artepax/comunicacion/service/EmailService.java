@@ -9,6 +9,13 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
+/**
+ * Service for sending emails via the configured {@link JavaMailSender}.
+ * <p>
+ * Provides two delivery modes: simple HTML text and HTML text with a PDF
+ * attachment. Both methods validate input parameters and wrap
+ * {@link jakarta.mail.MessagingException} into {@link RuntimeException}.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -17,6 +24,17 @@ public class EmailService {
     private final JavaMailSender mailSender;
     private final MailProperties mailProperties;
 
+    /**
+     * Sends an email with a PDF attachment to the given recipient.
+     *
+     * @param destinatario recipient email address (must not be blank)
+     * @param asunto       email subject (must not be blank)
+     * @param cuerpo       email body in HTML format (must not be blank)
+     * @param pdfBytes     byte array containing the PDF content (must not be empty)
+     * @param nombreArchivo  file name for the attached PDF (must not be blank)
+     * @throws IllegalArgumentException if any parameter is null or blank
+     * @throws RuntimeException         if the email cannot be sent
+     */
     public void enviarConAdjunto(String destinatario, String asunto,
                                  String cuerpo, byte[] pdfBytes, String nombreArchivo) {
         if (destinatario == null || destinatario.isBlank()) {
@@ -56,6 +74,15 @@ public class EmailService {
         }
     }
 
+    /**
+     * Sends a plain HTML email without attachments.
+     *
+     * @param destinatario recipient email address (must not be blank)
+     * @param asunto       email subject (must not be blank)
+     * @param cuerpo       email body in HTML format (must not be blank)
+     * @throws IllegalArgumentException if any parameter is null or blank
+     * @throws RuntimeException         if the email cannot be sent
+     */
     public void enviarSimple(String destinatario, String asunto, String cuerpo) {
         if (destinatario == null || destinatario.isBlank()) {
             throw new IllegalArgumentException("El destinatario no puede estar vacío.");
