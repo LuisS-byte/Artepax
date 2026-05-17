@@ -64,6 +64,9 @@ public class CronogramaServiceImpl implements CronogramaService {
         this.cronogramaPolicy = cronogramaPolicy;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     @Transactional
     public CronogramaResponseDTO crear(CronogramaRequestDTO dto) {
@@ -81,6 +84,9 @@ public class CronogramaServiceImpl implements CronogramaService {
         return cronogramaMapper.toDTO(saved);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<CronogramaResponseDTO> obtenerPorEvento(Long idEvento) {
         log.debug("Obteniendo cronograma para evento {}", idEvento);
@@ -88,12 +94,18 @@ public class CronogramaServiceImpl implements CronogramaService {
                 .stream().map(cronogramaMapper::toDTO).toList();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Page<CronogramaResponseDTO> obtenerTodos(Pageable pageable) {
         return cronogramaRepository.findAllWithEvento(pageable)
                 .map(cronogramaMapper::toDTO);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public CronogramaResponseDTO obtenerPorId(Long id) {
         Cronograma cronograma = cronogramaRepository.findByIdWithEvento(id)
@@ -101,6 +113,9 @@ public class CronogramaServiceImpl implements CronogramaService {
         return cronogramaMapper.toDTO(cronograma);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     @Transactional
     public CronogramaResponseDTO actualizar(Long id, CronogramaUpdateDTO dto) {
@@ -122,6 +137,9 @@ public class CronogramaServiceImpl implements CronogramaService {
         return cronogramaMapper.toDTO(saved);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     @Transactional
     public CronogramaResponseDTO cambiarEstado(Long id, String nuevoEstado) {
@@ -146,6 +164,9 @@ public class CronogramaServiceImpl implements CronogramaService {
         return cronogramaMapper.toDTO(saved);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     @Transactional
     public void cancelar(Long id) {
@@ -165,6 +186,9 @@ public class CronogramaServiceImpl implements CronogramaService {
         log.info("Actividad cancelada: id={}", id);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     @Transactional
     public void cancelarPorEvento(Long eventoId) {
@@ -172,6 +196,9 @@ public class CronogramaServiceImpl implements CronogramaService {
         log.info("Cronograma cancelado en cascada para evento {}: {} actividades afectadas", eventoId, afectadas);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     @Transactional
     public CronogramaUsuarioResponseDTO asignarUsuario(Long cronogramaId,
@@ -217,6 +244,9 @@ public class CronogramaServiceImpl implements CronogramaService {
         return toUsuarioDTO(saved);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<CronogramaUsuarioResponseDTO> obtenerUsuarios(Long cronogramaId) {
         obtenerOFallar(cronogramaId);
@@ -224,6 +254,9 @@ public class CronogramaServiceImpl implements CronogramaService {
                 .stream().map(this::toUsuarioDTO).toList();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     @Transactional
     public void removerUsuario(Long cronogramaId, Long usuarioId) {
@@ -237,11 +270,24 @@ public class CronogramaServiceImpl implements CronogramaService {
                 cronogramaId, usuarioId);
     }
 
+    /**
+     * Obtiene una actividad por su id o lanza {@link CronogramaNotFoundException}.
+     *
+     * @param id identificador de la actividad
+     * @return la actividad encontrada
+     * @throws CronogramaNotFoundException si no existe
+     */
     private Cronograma obtenerOFallar(Long id) {
         return cronogramaRepository.findById(id)
                 .orElseThrow(() -> new CronogramaNotFoundException(id));
     }
 
+    /**
+     * Convierte una entidad {@link CronogramaUsuario} a su DTO de respuesta.
+     *
+     * @param cu entidad de asignación usuario-cronograma
+     * @return DTO con datos de la asignación
+     */
     private CronogramaUsuarioResponseDTO toUsuarioDTO(CronogramaUsuario cu) {
         CronogramaUsuarioResponseDTO dto = new CronogramaUsuarioResponseDTO();
         dto.setCronogramaId(cu.getId().getIdCronograma());

@@ -27,6 +27,18 @@ public class CronogramaPolicy {
             EstadoEventoNames.EN_MONTAJE
     );
 
+    /**
+     * Valida que la transición de estado sea permitida según la máquina de estados del cronograma.
+     * <ul>
+     *   <li>PENDIENTE → EN_PROGRESO | CANCELADO</li>
+     *   <li>EN_PROGRESO → COMPLETADO | CANCELADO</li>
+     *   <li>COMPLETADO / CANCELADO → ninguna (estados terminales)</li>
+     * </ul>
+     *
+     * @param estadoActual estado actual de la actividad
+     * @param estadoNuevo  estado destino deseado
+     * @throws CronogramaException si la transición no está permitida
+     */
     public void validarTransicion(String estadoActual, String estadoNuevo) {
         if (estadoActual.equals(estadoNuevo)) {
             return;
@@ -48,6 +60,13 @@ public class CronogramaPolicy {
         }
     }
 
+    /**
+     * Valida que una actividad pueda ser editada según su estado actual.
+     * Las actividades en COMPLETADO o CANCELADO no son editables.
+     *
+     * @param estadoActual estado actual de la actividad
+     * @throws CronogramaException si la actividad no es editable
+     */
     public void validarActividadEditable(String estadoActual) {
         if (CronogramaEstados.COMPLETADO.equals(estadoActual)
                 || CronogramaEstados.CANCELADO.equals(estadoActual)) {
@@ -57,6 +76,13 @@ public class CronogramaPolicy {
         }
     }
 
+    /**
+     * Valida que el evento permita operaciones de cronograma.
+     * Solo eventos en PROGRAMADO, CONFIRMADO o EN_MONTAJE pueden tener actividades.
+     *
+     * @param evento evento a validar
+     * @throws CronogramaException si el evento no está en un estado válido
+     */
     public void validarEventoPermiteCronograma(Evento evento) {
         String estadoEvento = evento.getEstadoEvento().getNombre();
         if (!ESTADOS_EVENTO_PERMITIDOS.contains(estadoEvento)) {
@@ -67,6 +93,19 @@ public class CronogramaPolicy {
         }
     }
 
+    /**
+     * Valida que las fechas de una actividad sean coherentes y estén dentro del rango del evento.
+     * <ul>
+     *   <li>La fecha de inicio debe ser anterior a la fecha de fin.</li>
+     *   <li>Ambas fechas deben caer en el mismo día calendario que el evento.</li>
+     *   <li>Los horarios deben estar dentro del horario del evento.</li>
+     * </ul>
+     *
+     * @param fechaInicio fecha y hora de inicio de la actividad
+     * @param fechaFin    fecha y hora de fin de la actividad
+     * @param evento      evento al que pertenece la actividad
+     * @throws CronogramaException si las fechas son inválidas
+     */
     public void validarFechasActividad(LocalDateTime fechaInicio,
                                        LocalDateTime fechaFin,
                                        Evento evento) {
@@ -98,16 +137,34 @@ public class CronogramaPolicy {
         }
     }
 
+    /**
+     * Indica si una actividad es editable según su estado actual.
+     *
+     * @param estadoActual estado actual de la actividad
+     * @return {@code true} si no está en estado terminal (COMPLETADO o CANCELADO)
+     */
     public boolean isEditable(String estadoActual) {
         return !CronogramaEstados.COMPLETADO.equals(estadoActual)
                 && !CronogramaEstados.CANCELADO.equals(estadoActual);
     }
 
+    /**
+     * Indica si una actividad puede ser cancelada según su estado actual.
+     *
+     * @param estadoActual estado actual de la actividad
+     * @return {@code true} si está en PENDIENTE o EN_PROGRESO
+     */
     public boolean isCancelable(String estadoActual) {
         return CronogramaEstados.PENDIENTE.equals(estadoActual)
                 || CronogramaEstados.EN_PROGRESO.equals(estadoActual);
     }
 
+    /**
+     * Retorna las acciones de UI permitidas para el estado actual.
+     *
+     * @param estadoActual estado actual de la actividad
+     * @return lista de acciones (INICIAR, COMPLETAR, CANCELAR) o vacía para estados terminales
+     */
     public List<String> getAccionesPermitidas(String estadoActual) {
         return switch (estadoActual) {
             case CronogramaEstados.PENDIENTE -> List.of(CronogramaAcciones.INICIAR, CronogramaAcciones.CANCELAR);
@@ -116,6 +173,12 @@ public class CronogramaPolicy {
         };
     }
 
+    /**
+     * Retorna los estados destino permitidos desde el estado actual.
+     *
+     * @param estadoActual estado actual de la actividad
+     * @return lista de estados siguientes o vacía para estados terminales
+     */
     public List<String> getEstadosSiguientesPermitidos(String estadoActual) {
         return switch (estadoActual) {
             case CronogramaEstados.PENDIENTE -> List.of(CronogramaEstados.EN_PROGRESO, CronogramaEstados.CANCELADO);

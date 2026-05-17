@@ -19,6 +19,11 @@ public enum CronogramaEstado {
         this.valor = valor;
     }
 
+    /**
+     * Retorna el valor textual del estado.
+     *
+     * @return el nombre del estado (PENDIENTE, EN_PROGRESO, COMPLETADO, CANCELADO)
+     */
     public String getValor() {
         return valor;
     }
@@ -36,6 +41,9 @@ public enum CronogramaEstado {
 
     /**
      * Verifica si un string corresponde a un estado válido del cronograma.
+     *
+     * @param valor el string a validar
+     * @return {@code true} si coincide con algún estado del enum
      */
     public static boolean isValid(String valor) {
         for (CronogramaEstado e : values()) {

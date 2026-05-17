@@ -36,6 +36,12 @@ public class CronogramaController {
         this.cronogramaService = cronogramaService;
     }
 
+    /**
+     * Crea una nueva actividad de cronograma para un evento.
+     *
+     * @param dto datos de la actividad a crear
+     * @return la actividad creada con estado 201
+     */
     @PostMapping
     public ResponseEntity<CronogramaResponseDTO> crear(
             @Valid @RequestBody CronogramaRequestDTO dto) {
@@ -43,17 +49,36 @@ public class CronogramaController {
         return ResponseEntity.status(201).body(cronogramaService.crear(dto));
     }
 
+    /**
+     * Obtiene todas las actividades de cronograma de un evento.
+     *
+     * @param idEvento identificador del evento
+     * @return lista de actividades del cronograma
+     */
     @GetMapping("/evento/{idEvento}")
     public ResponseEntity<List<CronogramaResponseDTO>> obtenerPorEvento(
             @PathVariable Long idEvento) {
         return ResponseEntity.ok(cronogramaService.obtenerPorEvento(idEvento));
     }
 
+    /**
+     * Obtiene una actividad de cronograma por su identificador.
+     *
+     * @param id identificador de la actividad
+     * @return la actividad encontrada
+     */
     @GetMapping("/{id}")
     public ResponseEntity<CronogramaResponseDTO> obtenerPorId(@PathVariable Long id) {
         return ResponseEntity.ok(cronogramaService.obtenerPorId(id));
     }
 
+    /**
+     * Actualiza parcialmente una actividad de cronograma.
+     *
+     * @param id  identificador de la actividad
+     * @param dto datos a actualizar (campos no nulos)
+     * @return la actividad actualizada
+     */
     @PutMapping("/{id}")
     public ResponseEntity<CronogramaResponseDTO> actualizar(
             @PathVariable Long id,
@@ -62,6 +87,13 @@ public class CronogramaController {
         return ResponseEntity.ok(cronogramaService.actualizar(id, dto));
     }
 
+    /**
+     * Cambia el estado de una actividad de cronograma.
+     *
+     * @param id  identificador de la actividad
+     * @param dto contiene el nuevo estado
+     * @return la actividad con el estado actualizado
+     */
     @PatchMapping("/{id}/estado")
     public ResponseEntity<CronogramaResponseDTO> cambiarEstado(
             @PathVariable Long id,
@@ -70,6 +102,12 @@ public class CronogramaController {
         return ResponseEntity.ok(cronogramaService.cambiarEstado(id, dto.getEstado()));
     }
 
+    /**
+     * Cancela una actividad de cronograma.
+     *
+     * @param id identificador de la actividad a cancelar
+     * @return 204 sin contenido
+     */
     @PatchMapping("/{id}/cancelar")
     public ResponseEntity<Void> cancelar(@PathVariable Long id) {
         log.info("Cancelando actividad de cronograma {}", id);
@@ -77,6 +115,13 @@ public class CronogramaController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Asigna un usuario a una actividad de cronograma.
+     *
+     * @param id  identificador de la actividad
+     * @param dto datos de asignación (usuario, pago, tipo de pago)
+     * @return la asignación creada con estado 201
+     */
     @PostMapping("/{id}/usuarios")
     public ResponseEntity<CronogramaUsuarioResponseDTO> asignarUsuario(
             @PathVariable Long id,
@@ -86,12 +131,25 @@ public class CronogramaController {
                 cronogramaService.asignarUsuario(id, dto));
     }
 
+    /**
+     * Obtiene los usuarios asignados a una actividad de cronograma.
+     *
+     * @param id identificador de la actividad
+     * @return lista de asignaciones de usuarios
+     */
     @GetMapping("/{id}/usuarios")
     public ResponseEntity<List<CronogramaUsuarioResponseDTO>> obtenerUsuarios(
             @PathVariable Long id) {
         return ResponseEntity.ok(cronogramaService.obtenerUsuarios(id));
     }
 
+    /**
+     * Remueve un usuario de una actividad de cronograma.
+     *
+     * @param id        identificador de la actividad
+     * @param usuarioId identificador del usuario a remover
+     * @return 204 sin contenido
+     */
     @DeleteMapping("/{id}/usuarios/{usuarioId}")
     public ResponseEntity<Void> removerUsuario(
             @PathVariable Long id,
@@ -101,6 +159,12 @@ public class CronogramaController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Obtiene todas las actividades de cronograma paginadas.
+     *
+     * @param pageable parámetros de paginación (por defecto 50 elementos, ordenado por fechaInicio)
+     * @return página de actividades
+     */
     @GetMapping
     public ResponseEntity<Page<CronogramaResponseDTO>> obtenerTodos(
             @PageableDefault(size = 50, sort = "fechaInicio") Pageable pageable) {

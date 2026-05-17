@@ -13,8 +13,21 @@ import java.util.List;
  */
 public interface CronogramaUsuarioRepository extends JpaRepository<CronogramaUsuario, CronogramaUsuarioId> {
 
+    /**
+     * Busca asignaciones por id de la actividad del cronograma.
+     *
+     * @param idCronograma id de la actividad
+     * @return lista de asignaciones
+     */
     List<CronogramaUsuario> findByIdIdCronograma(Long idCronograma);
 
+    /**
+     * Busca asignaciones por id de cronograma con join a {@code usuario}.
+     * Ordenado por nombre de usuario ascendente.
+     *
+     * @param cronogramaId id de la actividad
+     * @return lista de asignaciones con datos del usuario
+     */
     @Query("""
             SELECT cu
             FROM CronogramaUsuario cu
@@ -26,6 +39,9 @@ public interface CronogramaUsuarioRepository extends JpaRepository<CronogramaUsu
 
     /**
      * Obtiene todas las actividades asignadas a un usuario.
+     *
+     * @param idUsuario id del usuario
+     * @return lista de asignaciones del usuario
      */
     List<CronogramaUsuario> findByIdIdUsuario(Long idUsuario);
 }

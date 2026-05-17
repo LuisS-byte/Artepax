@@ -9,7 +9,9 @@ import java.util.Set;
  */
 public enum CronogramaPagoTipo {
 
+    /** Monto fijo por la actividad completa. */
     FIJO("FIJO"),
+    /** Pago proporcional a las horas dedicadas. */
     POR_HORA("POR_HORA");
 
     private final String valor;
@@ -18,9 +20,15 @@ public enum CronogramaPagoTipo {
         this.valor = valor;
     }
 
+    /**
+     * Retorna el valor textual del tipo de pago.
+     *
+     * @return "FIJO" o "POR_HORA"
+     */
     public String getValor() {
         return valor;
     }
 
+    /** Conjunto inmutable con todos los valores válidos. */
     public static final Set<String> VALORES = Set.of(FIJO.valor, POR_HORA.valor);
 }

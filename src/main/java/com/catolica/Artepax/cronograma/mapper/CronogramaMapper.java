@@ -22,6 +22,10 @@ public class CronogramaMapper {
     /**
      * Convierte un request DTO a entidad Cronograma.
      * El estado inicial se establece por defecto en la entidad (PENDIENTE).
+     *
+     * @param dto    datos de entrada de la actividad
+     * @param evento evento al que pertenecerá la actividad
+     * @return entidad Cronograma con los valores del DTO
      */
     public Cronograma toEntity(CronogramaRequestDTO dto, Evento evento) {
         Cronograma cronograma = new Cronograma();
@@ -35,6 +39,9 @@ public class CronogramaMapper {
     /**
      * Convierte una entidad Cronograma a response DTO.
      * Si el evento o sus relaciones son nulas, los campos denormalizados quedan null.
+     *
+     * @param cronograma entidad a convertir
+     * @return DTO de respuesta con datos de la actividad y del evento
      */
     public CronogramaResponseDTO toDTO(Cronograma cronograma) {
         CronogramaResponseDTO dto = new CronogramaResponseDTO();
