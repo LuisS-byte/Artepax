@@ -40,6 +40,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -410,11 +414,12 @@ class EventoServiceImplTest {
 
     @Test
     void obtenerEventosUsaQueryConRelaciones() {
-        when(eventoRepository.findAllWithRelations()).thenReturn(List.of());
+        Pageable pageable = PageRequest.of(0, 50);
+        when(eventoRepository.findAllWithRelations(pageable)).thenReturn(Page.empty());
 
-        service.obtenerEventos();
+        service.obtenerEventos(pageable);
 
-        verify(eventoRepository).findAllWithRelations();
+        verify(eventoRepository).findAllWithRelations(pageable);
     }
 
     @Test
