@@ -285,6 +285,7 @@ class EventoServiceImplTest {
         dto.setUbicacion(evento.getUbicacion());
 
         Decoracion nuevaDecoracion = crearDecoracion("Premium", new BigDecimal("3200.00"), "ACTIVO");
+        setField(nuevaDecoracion, "id", 99L);
 
         when(eventoRepository.findById(10L)).thenReturn(Optional.of(evento));
         when(decoracionRepository.findById(99L)).thenReturn(Optional.of(nuevaDecoracion));
@@ -744,6 +745,195 @@ class EventoServiceImplTest {
                 .existsByDecoracion_IdAndTipoEvento_Id(any(), any());
     }
 
+    // --- New edit policy tests ---
+
+    @Test
+    void actualizarEventoEnCotizacionBloqueaCliente() {
+        Evento evento = crearEventoBase(COTIZACION);
+
+        when(eventoRepository.findById(10L)).thenReturn(Optional.of(evento));
+
+        EventoUpdateDTO dto = new EventoUpdateDTO();
+        dto.setClienteId(99L);
+
+        EventoException ex = assertThrows(EventoException.class,
+                () -> service.actualizarEvento(10L, dto));
+        assertTrue(ex.getMessage().contains("cliente no puede ser modificado"));
+        verify(eventoRepository, never()).save(any(Evento.class));
+    }
+
+    @Test
+    void actualizarEventoEnProgramadoBloqueaDecoracion() {
+        Evento evento = crearEventoBase("PROGRAMADO");
+
+        when(eventoRepository.findById(10L)).thenReturn(Optional.of(evento));
+
+        EventoUpdateDTO dto = new EventoUpdateDTO();
+        dto.setDecoracionId(5L);
+
+        EventoException ex = assertThrows(EventoException.class,
+                () -> service.actualizarEvento(10L, dto));
+        assertTrue(ex.getMessage().contains("no se puede cambiar la decoración"));
+        verify(eventoRepository, never()).save(any(Evento.class));
+    }
+
+    @Test
+    void actualizarEventoEnProgramadoBloqueaTipoEvento() {
+        Evento evento = crearEventoBase("PROGRAMADO");
+
+        when(eventoRepository.findById(10L)).thenReturn(Optional.of(evento));
+
+        EventoUpdateDTO dto = new EventoUpdateDTO();
+        dto.setTipoEventoId(7L);
+
+        EventoException ex = assertThrows(EventoException.class,
+                () -> service.actualizarEvento(10L, dto));
+        assertTrue(ex.getMessage().contains("no se puede cambiar el tipo de evento"));
+        verify(eventoRepository, never()).save(any(Evento.class));
+    }
+
+    @Test
+    void actualizarEventoEnCotizacionCambiaTipoEvento() {
+        Evento evento = crearEventoBase(COTIZACION);
+        TipoEvento nuevoTipo = crearTipoEvento(true);
+        setField(nuevoTipo, "id", 7L);
+        setField(nuevoTipo, "tipoNombre", "XV_AÑOS");
+
+        when(eventoRepository.findById(10L)).thenReturn(Optional.of(evento));
+        when(tipoEventoRepository.findById(7L)).thenReturn(Optional.of(nuevoTipo));
+        when(decoracionTipoEventoRepository.existsByDecoracion_IdAndTipoEvento_Id(2L, 7L))
+                .thenReturn(true);
+        when(eventoRepository.existeSolapamientoExcluyendoEvento(any(), any(), any(), any(), any()))
+                .thenReturn(false);
+        when(eventoRepository.save(any(Evento.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        EventoUpdateDTO dto = new EventoUpdateDTO();
+        dto.setTipoEventoId(7L);
+        dto.setFecha(LocalDate.now().plusDays(10));
+        dto.setHoraInicio(LocalTime.of(11, 0));
+        dto.setHoraFin(LocalTime.of(14, 0));
+        dto.setUbicacion("Salon central");
+
+        EventoResponseDTO response = service.actualizarEvento(10L, dto);
+
+        assertEquals(7L, response.getTipoEventoId().longValue());
+        assertEquals("XV_AÑOS", response.getTipoEventoNombre());
+        verify(decoracionTipoEventoRepository).existsByDecoracion_IdAndTipoEvento_Id(2L, 7L);
+    }
+
+    @Test
+    void actualizarEventoEnCotizacionCambiaDecoracionYTipoEvento() {
+        Evento evento = crearEventoBase(COTIZACION);
+        TipoEvento nuevoTipo = crearTipoEvento(true);
+        setField(nuevoTipo, "id", 7L);
+        setField(nuevoTipo, "tipoNombre", "XV_AÑOS");
+
+        Decoracion nuevaDecoracion = crearDecoracion("Premium", new BigDecimal("3200.00"), "ACTIVO");
+        setField(nuevaDecoracion, "id", 99L);
+
+        when(eventoRepository.findById(10L)).thenReturn(Optional.of(evento));
+        when(tipoEventoRepository.findById(7L)).thenReturn(Optional.of(nuevoTipo));
+        when(decoracionRepository.findById(99L)).thenReturn(Optional.of(nuevaDecoracion));
+        when(decoracionTipoEventoRepository.existsByDecoracion_IdAndTipoEvento_Id(99L, 7L))
+                .thenReturn(true);
+        when(eventoRepository.existeSolapamientoExcluyendoEvento(any(), any(), any(), any(), any()))
+                .thenReturn(false);
+        when(eventoRepository.save(any(Evento.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        EventoUpdateDTO dto = new EventoUpdateDTO();
+        dto.setTipoEventoId(7L);
+        dto.setDecoracionId(99L);
+        dto.setFecha(LocalDate.now().plusDays(10));
+        dto.setHoraInicio(LocalTime.of(11, 0));
+        dto.setHoraFin(LocalTime.of(14, 0));
+        dto.setUbicacion("Salon central");
+
+        EventoResponseDTO response = service.actualizarEvento(10L, dto);
+
+        assertEquals(7L, response.getTipoEventoId().longValue());
+        assertEquals("XV_AÑOS", response.getTipoEventoNombre());
+        assertEquals(99L, response.getDecoracionId().longValue());
+        assertEquals("Premium", response.getDecoracionNombre());
+        assertEquals(new BigDecimal("3200.00"), response.getPrecioBase());
+        verify(decoracionTipoEventoRepository).existsByDecoracion_IdAndTipoEvento_Id(99L, 7L);
+    }
+
+    @Test
+    void actualizarEventoEnCotizacionCambiaTipoEventoIncompatible() {
+        Evento evento = crearEventoBase(COTIZACION);
+        TipoEvento nuevoTipo = crearTipoEvento(true);
+        setField(nuevoTipo, "id", 7L);
+
+        when(eventoRepository.findById(10L)).thenReturn(Optional.of(evento));
+        when(tipoEventoRepository.findById(7L)).thenReturn(Optional.of(nuevoTipo));
+        when(decoracionTipoEventoRepository.existsByDecoracion_IdAndTipoEvento_Id(2L, 7L))
+                .thenReturn(false);
+
+        EventoUpdateDTO dto = new EventoUpdateDTO();
+        dto.setTipoEventoId(7L);
+        dto.setFecha(LocalDate.now().plusDays(10));
+        dto.setHoraInicio(LocalTime.of(11, 0));
+        dto.setHoraFin(LocalTime.of(14, 0));
+        dto.setUbicacion("Salon central");
+
+        EventoException ex = assertThrows(EventoException.class,
+                () -> service.actualizarEvento(10L, dto));
+        assertTrue(ex.getMessage().contains("no es compatible"));
+        verify(eventoRepository, never()).save(any());
+    }
+
+    @Test
+    void actualizarEventoEnCotizacionCambiaTipoEventoInactivo() {
+        Evento evento = crearEventoBase(COTIZACION);
+        TipoEvento tipoInactivo = crearTipoEvento(false);
+        setField(tipoInactivo, "id", 7L);
+
+        when(eventoRepository.findById(10L)).thenReturn(Optional.of(evento));
+        when(tipoEventoRepository.findById(7L)).thenReturn(Optional.of(tipoInactivo));
+
+        EventoUpdateDTO dto = new EventoUpdateDTO();
+        dto.setTipoEventoId(7L);
+
+        EventoException ex = assertThrows(EventoException.class,
+                () -> service.actualizarEvento(10L, dto));
+        assertTrue(ex.getMessage().contains("no encontrado o inactivo"));
+        verify(eventoRepository, never()).save(any());
+    }
+
+    @Test
+    void actualizarEventoEnCotizacionNotaPrecioEsAceptada() {
+        Evento evento = crearEventoBase(COTIZACION);
+        evento.setPrecioAdicional(new BigDecimal("100.00"));
+        evento.setNotaPrecio("Cargo previo");
+
+        when(eventoRepository.findById(10L)).thenReturn(Optional.of(evento));
+        when(eventoRepository.save(any(Evento.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        EventoUpdateDTO dto = new EventoUpdateDTO();
+        dto.setNotaPrecio("Nota actualizada");
+
+        EventoResponseDTO response = service.actualizarEvento(10L, dto);
+
+        assertEquals("Nota actualizada", response.getNotaPrecio());
+    }
+
+    @Test
+    void actualizarEventoEnProgramadoNotaPrecioEsAceptada() {
+        Evento evento = crearEventoBase("PROGRAMADO");
+        evento.setPrecioAdicional(new BigDecimal("100.00"));
+        evento.setNotaPrecio("Cargo previo");
+
+        when(eventoRepository.findById(10L)).thenReturn(Optional.of(evento));
+        when(eventoRepository.save(any(Evento.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        EventoUpdateDTO dto = new EventoUpdateDTO();
+        dto.setNotaPrecio("Nota actualizada en programado");
+
+        EventoResponseDTO response = service.actualizarEvento(10L, dto);
+
+        assertEquals("Nota actualizada en programado", response.getNotaPrecio());
+    }
+
     private void stubCatalogosActivosCreacion() {
         when(clienteRepository.findById(1L)).thenReturn(Optional.of(crearCliente(true)));
         when(decoracionRepository.findById(2L)).thenReturn(Optional.of(crearDecoracion("Clasica", new BigDecimal("2500.00"), "ACTIVO")));
@@ -797,7 +987,9 @@ class EventoServiceImplTest {
         Evento evento = new Evento();
         evento.setId(10L);
         evento.setCliente(crearCliente(true));
-        evento.setDecoracion(crearDecoracion("Clasica", new BigDecimal("2500.00"), "ACTIVO"));
+        Decoracion decoracion = crearDecoracion("Clasica", new BigDecimal("2500.00"), "ACTIVO");
+        setField(decoracion, "id", 2L);
+        evento.setDecoracion(decoracion);
         evento.setTipoEvento(crearTipoEvento(true));
         evento.setEstadoEvento(crearEstadoEvento(estadoNombre));
         evento.setFecha(LocalDate.now().plusDays(7));
