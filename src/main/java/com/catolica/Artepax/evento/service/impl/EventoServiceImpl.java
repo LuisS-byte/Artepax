@@ -547,27 +547,41 @@ public class EventoServiceImpl implements EventoService {
         Evento evento = obtenerOFallar(id);
         ModoEdicion modo = validarEventoEditable(evento);
 
+        // Policy: clienteId is always immutable regardless of state
+        if (dto.getClienteId() != null) {
+            throw new EventoException("El cliente no puede ser modificado");
+        }
+
+        // PARCIAL (PROGRAMADO): reject decoracionId and tipoEventoId
         if (modo == ModoEdicion.PARCIAL) {
             validarCamposNoEditablesEnParcial(dto);
         }
 
-        Cliente cliente = dto.getClienteId() != null
-                ? clienteRepository.findById(dto.getClienteId())
-                .orElseThrow(() -> new EventoException("Cliente no encontrado o inactivo"))
-                : evento.getCliente();
+        Cliente cliente = evento.getCliente();
         validarClienteActivo(cliente);
 
-        Decoracion decoracion = dto.getDecoracionId() != null
-                ? decoracionRepository.findById(dto.getDecoracionId())
-                .orElseThrow(() -> new EventoException("Decoración no encontrada"))
-                : evento.getDecoracion();
-        validarDecoracionActiva(decoracion);
-        validarTipoEventoActivo(evento.getTipoEvento());
+        // --- Decoracion: only modifiable in COMPLETA (COTIZACION) ---
+        Decoracion decoracion = evento.getDecoracion();
+        if (modo == ModoEdicion.COMPLETA && dto.getDecoracionId() != null) {
+            decoracion = decoracionRepository.findById(dto.getDecoracionId())
+                    .orElseThrow(() -> new EventoException("Decoración no encontrada"));
+            validarDecoracionActiva(decoracion);
+        }
 
-        // Si cambió la decoración, validar compatibilidad con el tipo de evento actual
-        if (dto.getDecoracionId() != null) {
-            Long tipoEventoActualId = evento.getTipoEvento().getId();
-            validarCompatibilidadDecoracionTipo(dto.getDecoracionId(), tipoEventoActualId);
+        // --- TipoEvento: only modifiable in COMPLETA (COTIZACION) ---
+        TipoEvento tipoEvento = evento.getTipoEvento();
+        if (modo == ModoEdicion.COMPLETA && dto.getTipoEventoId() != null) {
+            tipoEvento = tipoEventoRepository.findById(dto.getTipoEventoId())
+                    .orElseThrow(() -> new EventoException("Tipo de evento no encontrado o inactivo"));
+            validarTipoEventoActivo(tipoEvento);
+        }
+        // Always validate current tipo is active
+        validarTipoEventoActivo(tipoEvento);
+
+        // When decoracion or tipoEvento changed in COMPLETA, validate compatibility
+        if (modo == ModoEdicion.COMPLETA
+                && (dto.getDecoracionId() != null || dto.getTipoEventoId() != null)) {
+            validarCompatibilidadDecoracionTipo(decoracion.getId(), tipoEvento.getId());
         }
 
         LocalDate fechaFinal = dto.getFecha() != null ? dto.getFecha() : evento.getFecha();
@@ -599,9 +613,14 @@ public class EventoServiceImpl implements EventoService {
         }
         validarNotaPrecioAdicional(evento.getPrecioAdicional(), notaPrecioFinal);
 
-        eventoMapper.updateEntityFromDTO(evento, dto, cliente, decoracion);
-        evento.setCliente(cliente);
-        evento.setDecoracion(decoracion);
+        // Apply all scalar fields via mapper (cliente excluded — immutable by policy)
+        eventoMapper.updateEntityFromDTO(evento, dto, null, decoracion);
+        if (modo == ModoEdicion.COMPLETA && dto.getDecoracionId() != null) {
+            evento.setDecoracion(decoracion);
+        }
+        if (modo == ModoEdicion.COMPLETA && dto.getTipoEventoId() != null) {
+            evento.setTipoEvento(tipoEvento);
+        }
 
         // Solo recalcular precioBase en edición COMPLETA (COTIZACION)
         // cuando explícitamente se cambia la decoración.
@@ -924,14 +943,20 @@ public class EventoServiceImpl implements EventoService {
 
     /**
      * Valida que en edición parcial no se intenten modificar campos restringidos.
+     * <p>
+     * En PROGRAMADO solo se permite cambiar fecha, horario, ubicación, nota y notaPrecio.
      *
      * @param dto DTO con los campos a validar
-     * @throws EventoException si se intenta cambiar el cliente en estado PROGRAMADO
+     * @throws EventoException si se intenta cambiar un campo restringido en estado PROGRAMADO
      */
     private void validarCamposNoEditablesEnParcial(EventoUpdateDTO dto) {
-        if (dto.getClienteId() != null) {
+        if (dto.getDecoracionId() != null) {
             throw new EventoException(
-                    "En estado PROGRAMADO no se puede cambiar el cliente");
+                    "En estado PROGRAMADO no se puede cambiar la decoración");
+        }
+        if (dto.getTipoEventoId() != null) {
+            throw new EventoException(
+                    "En estado PROGRAMADO no se puede cambiar el tipo de evento");
         }
     }
 
