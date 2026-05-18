@@ -92,4 +92,29 @@ public class DecoracionController {
         decoracionService.eliminar(id);
         return ResponseEntity.noContent().build();
     }
+
+    /**
+     * Reactivates a decoration package by setting its state to {@code ACTIVO}.
+     * <p>
+     * Mirror operation of {@code DELETE}. The decoration must exist (active or inactive).
+     *
+     * @param id the decoration ID to reactivate
+     * @return the reactivated decoration with its products
+     */
+    @PatchMapping("/{id}/reactivar")
+    public ResponseEntity<DecoracionResponseDTO> reactivar(@PathVariable Long id) {
+        return ResponseEntity.ok(decoracionService.reactivar(id));
+    }
+
+    /**
+     * Retrieves all active decorations that are compatible with the given event type.
+     *
+     * @param tipoEventoId the tipo-evento ID for filtering compatible decorations
+     * @return the list of active compatible decorations
+     */
+    @GetMapping("/compatibles")
+    public ResponseEntity<List<DecoracionResponseDTO>> obtenerCompatibles(
+            @RequestParam Long tipoEventoId) {
+        return ResponseEntity.ok(decoracionService.obtenerCompatiblesPorTipoEvento(tipoEventoId));
+    }
 }

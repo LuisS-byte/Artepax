@@ -5,13 +5,17 @@ package com.catolica.Artepax.inventario.decoracion.service.impl;
 import com.catolica.Artepax.inventario.decoracion.dto.DecoracionRequestDTO;
 import com.catolica.Artepax.inventario.decoracion.dto.DecoracionResponseDTO;
 import com.catolica.Artepax.inventario.decoracion.dto.DecoracionUpdateDTO;
+import com.catolica.Artepax.evento.model.TipoEvento;
+import com.catolica.Artepax.evento.repository.TipoEventoRepository;
 import com.catolica.Artepax.inventario.decoracion.entity.Decoracion;
 import com.catolica.Artepax.inventario.decoracion.entity.DecoracionProducto;
 import com.catolica.Artepax.inventario.decoracion.entity.DecoracionProductoId;
+import com.catolica.Artepax.inventario.decoracion.entity.DecoracionTipoEvento;
 import com.catolica.Artepax.inventario.decoracion.exception.DecoracionNotFoundException;
 import com.catolica.Artepax.inventario.decoracion.mapper.DecoracionMapper;
 import com.catolica.Artepax.inventario.decoracion.repository.DecoracionProductoRepository;
 import com.catolica.Artepax.inventario.decoracion.repository.DecoracionRepository;
+import com.catolica.Artepax.inventario.decoracion.repository.DecoracionTipoEventoRepository;
 import com.catolica.Artepax.inventario.decoracion.service.DecoracionService;
 import com.catolica.Artepax.inventario.producto.entity.Producto;
 import com.catolica.Artepax.inventario.producto.entity.StockProducto;
@@ -25,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -49,6 +54,8 @@ public class DecoracionServiceImpl implements DecoracionService {
     private final ProductoRepository productoRepository;
     private final StockProductoRepository stockProductoRepository;
     private final DecoracionMapper decoracionMapper;
+    private final DecoracionTipoEventoRepository decoracionTipoEventoRepository;
+    private final TipoEventoRepository tipoEventoRepository;
 
     /**
      * Normalizes and validates a decoration state value.
@@ -97,11 +104,13 @@ public class DecoracionServiceImpl implements DecoracionService {
     @Transactional
     public DecoracionResponseDTO crearDecoracion(DecoracionRequestDTO dto) {
         // Normalizes the name, validates uniqueness, checks product stock,
-        // saves the decoration, creates product associations, and returns the result.
+        // validates tipo-evento compatibility, saves the decoration, creates
+        // product and tipo-evento associations, and returns the result.
         String nombreNormalizado = normalizarNombre(dto.getNombre());
         validarNombreDisponible(nombreNormalizado, null);
         dto.setNombre(nombreNormalizado);
 
+        List<TipoEvento> tipos = validarTiposCompatibles(dto.getTipoEventoIds());
         validarStockProductos(dto.getProductos());
 
         // guardar decoracion
@@ -132,13 +141,19 @@ public class DecoracionServiceImpl implements DecoracionService {
 
         decoracionProductoRepository.saveAll(productos);
 
-        return decoracionMapper.toDTO(guardada, productos);
+        // asociar tipos de evento compatibles
+        guardarCompatibilidades(guardada, tipos);
+
+        List<DecoracionTipoEvento> compatibilidades =
+                decoracionTipoEventoRepository.findByDecoracion_IdWithTipoEvento(guardada.getId());
+
+        return decoracionMapper.toDTO(guardada, productos, compatibilidades);
     }
 
     @Override
     public List<DecoracionResponseDTO> obtenerTodas(String estado) {
         // Fetches decorations (optionally filtered by state) and eagerly loads their
-        // product associations in batch.
+        // product associations and tipo-evento compatibilities in batch.
         List<Decoracion> decoraciones = estado != null
                 ? decoracionRepository.findByEstado(estado)
                 : decoracionRepository.findAll();
@@ -154,29 +169,66 @@ public class DecoracionServiceImpl implements DecoracionService {
                         .stream()
                         .collect(Collectors.groupingBy(dp -> dp.getDecoracion().getId()));
 
+        Map<Long, List<DecoracionTipoEvento>> tiposPorDecoracion =
+                decoracionTipoEventoRepository.findByDecoracionIds(ids)
+                        .stream()
+                        .collect(Collectors.groupingBy(dte -> dte.getDecoracion().getId()));
+
         return decoraciones.stream()
                 .map(d -> decoracionMapper.toDTO(d,
-                        productosPorDecoracion.getOrDefault(d.getId(), List.of())))
+                        productosPorDecoracion.getOrDefault(d.getId(), List.of()),
+                        tiposPorDecoracion.getOrDefault(d.getId(), List.of())))
                 .toList();
     }
 
     @Override
     public DecoracionResponseDTO obtenerPorId(Long id) {
-        // Finds the decoration by ID and eagerly loads its product associations.
         Decoracion decoracion = decoracionRepository.findById(id)
                 .orElseThrow(() -> new DecoracionNotFoundException(id));
 
         List<DecoracionProducto> productos =
                 decoracionProductoRepository.findByDecoracionIdWithProducto(id);
 
-        return decoracionMapper.toDTO(decoracion, productos);
+        List<DecoracionTipoEvento> tipos =
+                decoracionTipoEventoRepository.findByDecoracion_IdWithTipoEvento(id);
+
+        return decoracionMapper.toDTO(decoracion, productos, tipos);
+    }
+
+    @Override
+    @Transactional
+    public void eliminar(Long id) {
+        Decoracion decoracion = decoracionRepository.findById(id)
+                .orElseThrow(() -> new DecoracionNotFoundException(id));
+
+        decoracion.setEstado("INACTIVO");
+        decoracionRepository.save(decoracion);
+    }
+
+    @Override
+    @Transactional
+    public DecoracionResponseDTO reactivar(Long id) {
+        Decoracion decoracion = decoracionRepository.findById(id)
+                .orElseThrow(() -> new DecoracionNotFoundException(id));
+
+        decoracion.setEstado(ESTADO_ACTIVO);
+        Decoracion guardada = decoracionRepository.save(decoracion);
+
+        List<DecoracionProducto> productos =
+                decoracionProductoRepository.findByDecoracionIdWithProducto(guardada.getId());
+
+        List<DecoracionTipoEvento> tipos =
+                decoracionTipoEventoRepository.findByDecoracion_IdWithTipoEvento(guardada.getId());
+
+        return decoracionMapper.toDTO(guardada, productos, tipos);
     }
 
     @Override
     @Transactional
     public DecoracionResponseDTO actualizar(Long id, DecoracionUpdateDTO dto) {
         // Finds the existing decoration, validates name uniqueness if changed,
-        // applies partial updates, optionally replaces product associations.
+        // applies partial updates, optionally replaces product associations
+        // and tipo-evento compatibilities.
 
         Decoracion decoracion = decoracionRepository.findById(id)
                 .orElseThrow(() -> new DecoracionNotFoundException(id));
@@ -191,6 +243,11 @@ public class DecoracionServiceImpl implements DecoracionService {
 
         if (dto.getEstado() != null) {
             decoracion.setEstado(normalizarEstado(dto.getEstado()));
+        }
+
+        // si vienen tipos nuevos, reemplazar compatibilidades
+        if (dto.getTipoEventoIds() != null) {
+            reemplazarCompatibilidades(decoracion, dto.getTipoEventoIds());
         }
 
         decoracionRepository.save(decoracion);
@@ -227,23 +284,90 @@ public class DecoracionServiceImpl implements DecoracionService {
 
             decoracionProductoRepository.saveAll(nuevos);
 
-            return decoracionMapper.toDTO(decoracion, nuevos);
+            List<DecoracionTipoEvento> tipos =
+                    decoracionTipoEventoRepository.findByDecoracion_IdWithTipoEvento(id);
+            return decoracionMapper.toDTO(decoracion, nuevos, tipos);
         }
 
         List<DecoracionProducto> productos =
                 decoracionProductoRepository.findByDecoracionIdWithProducto(id);
-        return decoracionMapper.toDTO(decoracion, productos);
+        List<DecoracionTipoEvento> tipos =
+                decoracionTipoEventoRepository.findByDecoracion_IdWithTipoEvento(id);
+        return decoracionMapper.toDTO(decoracion, productos, tipos);
     }
 
     @Override
-    @Transactional
-    public void eliminar(Long id) {
-        // Soft-deletes the decoration by setting its state to INACTIVO.
-        Decoracion decoracion = decoracionRepository.findById(id)
-                .orElseThrow(() -> new DecoracionNotFoundException(id));
+    @Transactional(readOnly = true)
+    public List<DecoracionResponseDTO> obtenerCompatiblesPorTipoEvento(Long tipoEventoId) {
+        TipoEvento tipo = tipoEventoRepository.findById(tipoEventoId)
+                .orElseThrow(() -> new IllegalArgumentException("El tipo de evento no existe."));
+        if (!Boolean.TRUE.equals(tipo.getTipoActivo())) {
+            throw new IllegalArgumentException("El tipo de evento está inactivo.");
+        }
 
-        decoracion.setEstado("INACTIVO");
-        decoracionRepository.save(decoracion);
+        return decoracionTipoEventoRepository
+                .findDecoracionesActivasCompatibles(tipoEventoId)
+                .stream()
+                .map(d -> decoracionMapper.toDTO(d,
+                        decoracionProductoRepository.findByDecoracionIdWithProducto(d.getId()),
+                        decoracionTipoEventoRepository.findByDecoracion_IdWithTipoEvento(d.getId())))
+                .toList();
+    }
+
+    /**
+     * Validates that the given tipo-evento IDs exist, are active, and are non-empty.
+     *
+     * @param tipoEventoIds list of tipo-evento IDs to validate
+     * @return the list of validated TipoEvento entities
+     * @throws IllegalArgumentException if validation fails
+     */
+    private List<TipoEvento> validarTiposCompatibles(List<Long> tipoEventoIds) {
+        if (tipoEventoIds == null || tipoEventoIds.isEmpty()) {
+            throw new IllegalArgumentException("Debe seleccionar al menos un tipo de evento compatible.");
+        }
+        List<Long> idsUnicos = tipoEventoIds.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (idsUnicos.isEmpty()) {
+            throw new IllegalArgumentException("Debe seleccionar al menos un tipo de evento compatible.");
+        }
+        List<TipoEvento> tipos = tipoEventoRepository.findAllById(idsUnicos);
+        if (tipos.size() != idsUnicos.size()) {
+            throw new IllegalArgumentException("Uno o más tipos de evento no existen.");
+        }
+        boolean hayInactivo = tipos.stream()
+                .anyMatch(tipo -> !Boolean.TRUE.equals(tipo.getTipoActivo()));
+        if (hayInactivo) {
+            throw new IllegalArgumentException("No se pueden asociar tipos de evento inactivos.");
+        }
+        return tipos;
+    }
+
+    /**
+     * Persists compatibility relationships between a decoration and multiple event types.
+     *
+     * @param decoracion the decoration entity
+     * @param tipos      the list of validated tipo-evento entities
+     */
+    private void guardarCompatibilidades(Decoracion decoracion, List<TipoEvento> tipos) {
+        List<DecoracionTipoEvento> relaciones = tipos.stream()
+                .map(tipo -> new DecoracionTipoEvento(decoracion, tipo))
+                .toList();
+        decoracionTipoEventoRepository.saveAll(relaciones);
+    }
+
+    /**
+     * Replaces all compatibility relationships for a decoration with the given IDs.
+     * Validates the new IDs first, deletes existing relationships, then inserts the new ones.
+     *
+     * @param decoracion   the decoration entity
+     * @param tipoEventoIds the new tipo-evento IDs
+     */
+    private void reemplazarCompatibilidades(Decoracion decoracion, List<Long> tipoEventoIds) {
+        List<TipoEvento> tipos = validarTiposCompatibles(tipoEventoIds);
+        decoracionTipoEventoRepository.deleteByDecoracion_Id(decoracion.getId());
+        guardarCompatibilidades(decoracion, tipos);
     }
 
     /**

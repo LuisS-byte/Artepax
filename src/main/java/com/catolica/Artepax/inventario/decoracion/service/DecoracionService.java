@@ -55,4 +55,21 @@ public interface DecoracionService {
      * @param id the decoration ID to deactivate
      */
     void eliminar(Long id);
+
+    /**
+     * Reactivates a decoration package by setting its state to {@code ACTIVO}.
+     *
+     * @param id the decoration ID to reactivate
+     * @return the reactivated decoration as a response DTO
+     */
+    DecoracionResponseDTO reactivar(Long id);
+
+    /**
+     * Retrieves all active decorations that are compatible with the given event type.
+     *
+     * @param tipoEventoId the tipo-evento ID
+     * @return the list of compatible active decorations with their products
+     * @throws IllegalArgumentException if the tipo-evento does not exist or is inactive
+     */
+    List<DecoracionResponseDTO> obtenerCompatiblesPorTipoEvento(Long tipoEventoId);
 }

@@ -44,6 +44,7 @@ import com.catolica.Artepax.inventario.decoracion.entity.Decoracion;
 import com.catolica.Artepax.inventario.decoracion.entity.DecoracionProducto;
 import com.catolica.Artepax.inventario.decoracion.repository.DecoracionProductoRepository;
 import com.catolica.Artepax.inventario.decoracion.repository.DecoracionRepository;
+import com.catolica.Artepax.inventario.decoracion.repository.DecoracionTipoEventoRepository;
 import com.catolica.Artepax.inventario.producto.entity.Producto;
 import com.catolica.Artepax.inventario.producto.repository.ProductoRepository;
 import org.slf4j.Logger;
@@ -101,6 +102,7 @@ public class EventoServiceImpl implements EventoService {
     private final AuditoriaService auditoriaService;
     private final PagoCancelacionHandler pagoCancelacionHandler;
     private final DecoracionProductoRepository decoracionProductoRepository;
+    private final DecoracionTipoEventoRepository decoracionTipoEventoRepository;
 
     public EventoServiceImpl(EventoRepository eventoRepository,
                              ClienteRepository clienteRepository,
@@ -121,7 +123,8 @@ public class EventoServiceImpl implements EventoService {
                               EventoPagoValidator pagoValidator,
                               AuditoriaService auditoriaService,
                               PagoCancelacionHandler pagoCancelacionHandler,
-                              DecoracionProductoRepository decoracionProductoRepository) {
+                              DecoracionProductoRepository decoracionProductoRepository,
+                              DecoracionTipoEventoRepository decoracionTipoEventoRepository) {
         this.eventoRepository = eventoRepository;
         this.clienteRepository = clienteRepository;
         this.decoracionRepository = decoracionRepository;
@@ -142,6 +145,7 @@ public class EventoServiceImpl implements EventoService {
         this.auditoriaService = auditoriaService;
         this.pagoCancelacionHandler = pagoCancelacionHandler;
         this.decoracionProductoRepository = decoracionProductoRepository;
+        this.decoracionTipoEventoRepository = decoracionTipoEventoRepository;
     }
 
     @Override
@@ -160,6 +164,8 @@ public class EventoServiceImpl implements EventoService {
         TipoEvento tipoEvento = tipoEventoRepository.findById(dto.getTipoEventoId())
                 .orElseThrow(() -> new EventoException("Tipo de evento no encontrado o inactivo"));
         validarTipoEventoActivo(tipoEvento);
+
+        validarCompatibilidadDecoracionTipo(dto.getDecoracionId(), dto.getTipoEventoId());
 
         validarFechaNoPasada(dto.getFecha());
         validarHorario(dto.getHoraInicio(), dto.getHoraFin());
@@ -558,6 +564,12 @@ public class EventoServiceImpl implements EventoService {
         validarDecoracionActiva(decoracion);
         validarTipoEventoActivo(evento.getTipoEvento());
 
+        // Si cambió la decoración, validar compatibilidad con el tipo de evento actual
+        if (dto.getDecoracionId() != null) {
+            Long tipoEventoActualId = evento.getTipoEvento().getId();
+            validarCompatibilidadDecoracionTipo(dto.getDecoracionId(), tipoEventoActualId);
+        }
+
         LocalDate fechaFinal = dto.getFecha() != null ? dto.getFecha() : evento.getFecha();
         LocalTime horaInicioFinal = dto.getHoraInicio() != null ? dto.getHoraInicio() : evento.getHoraInicio();
         LocalTime horaFinFinal = dto.getHoraFin() != null ? dto.getHoraFin() : evento.getHoraFin();
@@ -771,6 +783,21 @@ public class EventoServiceImpl implements EventoService {
     private void validarTipoEventoActivo(TipoEvento tipoEvento) {
         if (!Boolean.TRUE.equals(tipoEvento.getTipoActivo())) {
             throw new EventoException("Tipo de evento no encontrado o inactivo");
+        }
+    }
+
+    /**
+     * Valida que la decoración sea compatible con el tipo de evento.
+     *
+     * @param decoracionId el ID de la decoración
+     * @param tipoEventoId el ID del tipo de evento
+     * @throws EventoException si la decoración no es compatible con el tipo de evento
+     */
+    private void validarCompatibilidadDecoracionTipo(Long decoracionId, Long tipoEventoId) {
+        boolean compatible = decoracionTipoEventoRepository
+                .existsByDecoracion_IdAndTipoEvento_Id(decoracionId, tipoEventoId);
+        if (!compatible) {
+            throw new EventoException("La decoración seleccionada no es compatible con el tipo de evento.");
         }
     }
 

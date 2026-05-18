@@ -18,6 +18,7 @@ public class DecoracionResponseDTO {
     private String estado;
     private LocalDateTime fechaCreacion;
     private List<DecoracionProductoResponseDTO> productos;
+    private List<TipoEventoSimpleDTO> tiposCompatibles;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -42,4 +43,7 @@ public class DecoracionResponseDTO {
 
     public List<DecoracionProductoResponseDTO> getProductos() { return productos; }
     public void setProductos(List<DecoracionProductoResponseDTO> productos) { this.productos = productos; }
+
+    public List<TipoEventoSimpleDTO> getTiposCompatibles() { return tiposCompatibles; }
+    public void setTiposCompatibles(List<TipoEventoSimpleDTO> tiposCompatibles) { this.tiposCompatibles = tiposCompatibles; }
 }

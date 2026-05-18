@@ -5,8 +5,10 @@ import com.catolica.Artepax.inventario.decoracion.dto.DecoracionProductoResponse
 import com.catolica.Artepax.inventario.decoracion.dto.DecoracionRequestDTO;
 import com.catolica.Artepax.inventario.decoracion.dto.DecoracionResponseDTO;
 import com.catolica.Artepax.inventario.decoracion.dto.DecoracionUpdateDTO;
+import com.catolica.Artepax.inventario.decoracion.dto.TipoEventoSimpleDTO;
 import com.catolica.Artepax.inventario.decoracion.entity.Decoracion;
 import com.catolica.Artepax.inventario.decoracion.entity.DecoracionProducto;
+import com.catolica.Artepax.inventario.decoracion.entity.DecoracionTipoEvento;
 
 import org.springframework.stereotype.Component;
 
@@ -57,6 +59,38 @@ public class DecoracionMapper {
                 productos.stream().map(this::toProductoDTO).toList()
         );
 
+        return dto;
+    }
+
+    /**
+     * Converts a {@link Decoracion} entity, its associated products, and its
+     * compatible event types into a full response DTO.
+     *
+     * @param decoracion the decoration entity
+     * @param productos  the list of product associations
+     * @param tipos      the list of tipo-evento compatibility associations
+     * @return a response DTO with decoration data, products, and compatible types
+     */
+    public DecoracionResponseDTO toDTO(Decoracion decoracion, List<DecoracionProducto> productos,
+                                       List<DecoracionTipoEvento> tipos) {
+        DecoracionResponseDTO dto = toDTO(decoracion, productos);
+        dto.setTiposCompatibles(
+                tipos.stream().map(this::toTipoEventoSimpleDTO).toList()
+        );
+        return dto;
+    }
+
+    /**
+     * Converts a single compatibility association into its simple DTO.
+     *
+     * @param dte the decoracion-tipoevento association entity
+     * @return a simple DTO with tipo-evento id, name, and active status
+     */
+    public TipoEventoSimpleDTO toTipoEventoSimpleDTO(DecoracionTipoEvento dte) {
+        TipoEventoSimpleDTO dto = new TipoEventoSimpleDTO();
+        dto.setId(dte.getTipoEvento().getId());
+        dto.setNombre(dte.getTipoEvento().getTipoNombre());
+        dto.setActivo(dte.getTipoEvento().getTipoActivo());
         return dto;
     }
 

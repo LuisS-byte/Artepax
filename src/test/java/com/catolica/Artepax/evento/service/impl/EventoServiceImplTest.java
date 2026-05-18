@@ -33,6 +33,7 @@ import com.catolica.Artepax.pago.repository.VistaPagosEventoRepository;
 import com.catolica.Artepax.inventario.decoracion.entity.Decoracion;
 import com.catolica.Artepax.inventario.decoracion.repository.DecoracionProductoRepository;
 import com.catolica.Artepax.inventario.decoracion.repository.DecoracionRepository;
+import com.catolica.Artepax.inventario.decoracion.repository.DecoracionTipoEventoRepository;
 import com.catolica.Artepax.inventario.producto.entity.Producto;
 import com.catolica.Artepax.inventario.producto.repository.ProductoRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -58,6 +59,7 @@ import static com.catolica.Artepax.evento.model.EstadoEventoNames.FINALIZADO;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -98,6 +100,8 @@ class EventoServiceImplTest {
     @Mock
     private DecoracionProductoRepository decoracionProductoRepository;
     @Mock
+    private DecoracionTipoEventoRepository decoracionTipoEventoRepository;
+    @Mock
     private EventoStockHandler stockHandler;
     @Mock
     private EventoNotificacionHandler notificacionHandler;
@@ -132,7 +136,8 @@ class EventoServiceImplTest {
                 pagoValidator,
                 auditoriaService,
                 pagoCancelacionHandler,
-                decoracionProductoRepository);
+                decoracionProductoRepository,
+                decoracionTipoEventoRepository);
 
         lenient().when(configuracionService.getInt("MINUTOS_GAP_ENTRE_EVENTOS")).thenReturn(0);
     }
@@ -283,6 +288,8 @@ class EventoServiceImplTest {
 
         when(eventoRepository.findById(10L)).thenReturn(Optional.of(evento));
         when(decoracionRepository.findById(99L)).thenReturn(Optional.of(nuevaDecoracion));
+        when(decoracionTipoEventoRepository.existsByDecoracion_IdAndTipoEvento_Id(99L, 3L))
+                .thenReturn(true);
         when(eventoRepository.existeSolapamientoExcluyendoEvento(eq(10L), eq(dto.getFecha()), any(LocalTime.class), any(LocalTime.class), eq(dto.getUbicacion())))
                 .thenReturn(false);
         when(eventoRepository.save(any(Evento.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -631,10 +638,118 @@ class EventoServiceImplTest {
         assertEquals(true, disponible);
     }
 
+    // --- Compatibilidad Decoracion ↔ TipoEvento ---
+
+    @Test
+    void crearEvento_conDecoracionCompatible_conTipoEventoPermitido() {
+        EventoRequestDTO dto = crearRequestBase();
+        stubCatalogosActivosCreacion();
+        when(decoracionTipoEventoRepository.existsByDecoracion_IdAndTipoEvento_Id(2L, 3L))
+                .thenReturn(true);
+        when(eventoRepository.existeSolapamiento(any(), any(), any(), any()))
+                .thenReturn(false);
+        when(configuracionService.getInt("DIAS_EXPIRACION_COTIZACION")).thenReturn(7);
+        when(estadoEventoRepository.findByNombre(COTIZACION))
+                .thenReturn(Optional.of(crearEstadoEvento(COTIZACION)));
+        when(eventoRepository.save(any(Evento.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        EventoResponseDTO response = service.crearEvento(dto);
+
+        assertNotNull(response);
+        verify(decoracionTipoEventoRepository).existsByDecoracion_IdAndTipoEvento_Id(2L, 3L);
+    }
+
+    @Test
+    void crearEvento_conDecoracionIncompatible_lanzaError() {
+        EventoRequestDTO dto = crearRequestBase();
+        stubCatalogosActivosCreacion();
+        when(decoracionTipoEventoRepository.existsByDecoracion_IdAndTipoEvento_Id(2L, 3L))
+                .thenReturn(false);
+
+        EventoException ex = assertThrows(EventoException.class,
+                () -> service.crearEvento(dto));
+        assertTrue(ex.getMessage().contains("no es compatible"));
+        verify(eventoRepository, never()).save(any());
+    }
+
+    @Test
+    void actualizarEvento_cambiandoDecoracion_compatible_permite() {
+        Evento evento = crearEventoBase("COTIZACION");
+        Decoracion nuevaDecoracion = crearDecoracion("Premium", new BigDecimal("3500.00"), "ACTIVO");
+        setField(nuevaDecoracion, "id", 5L);
+
+        when(eventoRepository.findById(10L)).thenReturn(Optional.of(evento));
+        when(decoracionRepository.findById(5L)).thenReturn(Optional.of(nuevaDecoracion));
+        when(decoracionTipoEventoRepository.existsByDecoracion_IdAndTipoEvento_Id(5L, 3L))
+                .thenReturn(true);
+        when(eventoRepository.existeSolapamientoExcluyendoEvento(any(), any(), any(), any(), any()))
+                .thenReturn(false);
+        when(eventoRepository.save(any(Evento.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        EventoUpdateDTO dto = new EventoUpdateDTO();
+        dto.setDecoracionId(5L);
+        dto.setFecha(LocalDate.now().plusDays(10));
+        dto.setHoraInicio(LocalTime.of(11, 0));
+        dto.setHoraFin(LocalTime.of(14, 0));
+        dto.setUbicacion("Salon VIP");
+
+        EventoResponseDTO response = service.actualizarEvento(10L, dto);
+
+        assertNotNull(response);
+        verify(decoracionTipoEventoRepository).existsByDecoracion_IdAndTipoEvento_Id(5L, 3L);
+    }
+
+    @Test
+    void actualizarEvento_cambiandoDecoracion_incompatible_lanzaError() {
+        Evento evento = crearEventoBase("COTIZACION");
+        Decoracion nuevaDecoracion = crearDecoracion("Premium", new BigDecimal("3500.00"), "ACTIVO");
+        setField(nuevaDecoracion, "id", 5L);
+
+        when(eventoRepository.findById(10L)).thenReturn(Optional.of(evento));
+        when(decoracionRepository.findById(5L)).thenReturn(Optional.of(nuevaDecoracion));
+        when(decoracionTipoEventoRepository.existsByDecoracion_IdAndTipoEvento_Id(5L, 3L))
+                .thenReturn(false);
+
+        EventoUpdateDTO dto = new EventoUpdateDTO();
+        dto.setDecoracionId(5L);
+        dto.setFecha(LocalDate.now().plusDays(10));
+        dto.setHoraInicio(LocalTime.of(11, 0));
+        dto.setHoraFin(LocalTime.of(14, 0));
+        dto.setUbicacion("Salon VIP");
+
+        EventoException ex = assertThrows(EventoException.class,
+                () -> service.actualizarEvento(10L, dto));
+        assertTrue(ex.getMessage().contains("no es compatible"));
+        verify(eventoRepository, never()).save(any());
+    }
+
+    @Test
+    void actualizarEvento_sinCambiarDecoracion_noValidaCompatibilidad() {
+        Evento evento = crearEventoBase("COTIZACION");
+
+        when(eventoRepository.findById(10L)).thenReturn(Optional.of(evento));
+        when(eventoRepository.existeSolapamientoExcluyendoEvento(any(), any(), any(), any(), any()))
+                .thenReturn(false);
+        when(eventoRepository.save(any(Evento.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        EventoUpdateDTO dto = new EventoUpdateDTO();
+        dto.setFecha(LocalDate.now().plusDays(10));
+        dto.setHoraInicio(LocalTime.of(11, 0));
+        dto.setHoraFin(LocalTime.of(14, 0));
+        dto.setUbicacion("Salon VIP");
+
+        service.actualizarEvento(10L, dto);
+
+        verify(decoracionTipoEventoRepository, never())
+                .existsByDecoracion_IdAndTipoEvento_Id(any(), any());
+    }
+
     private void stubCatalogosActivosCreacion() {
         when(clienteRepository.findById(1L)).thenReturn(Optional.of(crearCliente(true)));
         when(decoracionRepository.findById(2L)).thenReturn(Optional.of(crearDecoracion("Clasica", new BigDecimal("2500.00"), "ACTIVO")));
         when(tipoEventoRepository.findById(3L)).thenReturn(Optional.of(crearTipoEvento(true)));
+        when(decoracionTipoEventoRepository.existsByDecoracion_IdAndTipoEvento_Id(2L, 3L))
+                .thenReturn(true);
     }
 
     private EventoRequestDTO crearRequestBase() {
@@ -712,6 +827,7 @@ class EventoServiceImplTest {
 
     private TipoEvento crearTipoEvento(boolean activo) {
         TipoEvento tipoEvento = new TipoEvento();
+        tipoEvento.setId(3L);
         tipoEvento.setTipoNombre("BODA");
         tipoEvento.setTipoActivo(activo);
         return tipoEvento;

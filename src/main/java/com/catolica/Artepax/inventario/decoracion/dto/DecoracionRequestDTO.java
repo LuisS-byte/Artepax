@@ -32,6 +32,9 @@ private String nombre;
     @Valid
     private List<DecoracionProductoRequestDTO> productos;
 
+    @NotEmpty(message = "Debe seleccionar al menos un tipo de evento compatible")
+    private List<Long> tipoEventoIds;
+
     public String getNombre() { return nombre; }
     public void setNombre(String nombre) { this.nombre = nombre; }
 
@@ -46,4 +49,7 @@ private String nombre;
 
     public List<DecoracionProductoRequestDTO> getProductos() { return productos; }
     public void setProductos(List<DecoracionProductoRequestDTO> productos) { this.productos = productos; }
+
+    public List<Long> getTipoEventoIds() { return tipoEventoIds; }
+    public void setTipoEventoIds(List<Long> tipoEventoIds) { this.tipoEventoIds = tipoEventoIds; }
 }
