@@ -52,6 +52,7 @@ jobs:
           export JWT_SECRET="$(openssl rand -base64 32)"
           bash ./mvnw --batch-mode --no-transfer-progress verify
       - name: Run integration tests with Testcontainers
+        if: ${{ !cancelled() }}
         run: bash ./mvnw --batch-mode --no-transfer-progress '-Dtest=*IT' test
 
   compose:
