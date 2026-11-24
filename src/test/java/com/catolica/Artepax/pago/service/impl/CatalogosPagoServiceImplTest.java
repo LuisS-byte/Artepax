@@ -17,6 +17,8 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -42,10 +44,11 @@ class CatalogosPagoServiceImplTest {
     void crearMetodoFallaSiNombreYaExiste() {
         MetodoPago existente = new MetodoPago();
         existente.setMetodoNombre("TRANSFERENCIA");
-        when(metodoPagoRepository.findByMetodoNombre("TRANSFERENCIA")).thenReturn(Optional.of(existente));
+        when(metodoPagoRepository.findByMetodoNombreIgnoreCase("transferencia")).thenReturn(Optional.of(existente));
 
         assertThrows(MetodoPagoDuplicadoException.class,
-                () -> service.crearMetodo("TRANSFERENCIA", "Alias"));
+                () -> service.crearMetodo(" transferencia ", "Alias"));
+        verify(metodoPagoRepository, never()).save(any(MetodoPago.class));
     }
 
     @Test

@@ -10,7 +10,6 @@ import com.catolica.Artepax.evento.service.handler.EventoPagoValidator;
 import com.catolica.Artepax.notificacion.service.NotificacionService;
 import com.catolica.Artepax.pago.dto.PagoRequestDTO;
 import com.catolica.Artepax.pago.dto.PagoResponseDTO;
-import com.catolica.Artepax.pago.entity.ConceptoPago;
 import com.catolica.Artepax.pago.entity.EstadoPago;
 import com.catolica.Artepax.pago.entity.MetodoPago;
 import com.catolica.Artepax.pago.entity.Pago;
@@ -40,8 +39,9 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.inOrder;
+import org.mockito.InOrder;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -51,8 +51,6 @@ class PagoServiceImplTest {
 
     @Mock
     private PagoRepository pagoRepository;
-    @Mock
-    private PagoMapper pagoMapper;
     @Mock
     private EventoRepository eventoRepository;
     @Mock
@@ -78,7 +76,7 @@ class PagoServiceImplTest {
     void setUp() {
         service = new PagoServiceImpl(
                 pagoRepository,
-                pagoMapper,
+                new PagoMapper(),
                 eventoRepository,
                 estadoPagoRepository,
                 metodoPagoRepository,
@@ -89,17 +87,6 @@ class PagoServiceImplTest {
                 eventoPagoValidator,
                 configuracionService);
 
-        lenient().when(pagoMapper.toDTO(any(Pago.class))).thenAnswer(invocation -> {
-            Pago pago = invocation.getArgument(0);
-            PagoResponseDTO dto = new PagoResponseDTO();
-            dto.setId(pago.getId());
-            dto.setMonto(pago.getMonto());
-            dto.setFecha(pago.getFecha());
-            dto.setEstadoPago(pago.getEstadoPago() != null
-                    ? pago.getEstadoPago().getEstadoNombre() : null);
-            dto.setEventoId(pago.getEvento() != null ? pago.getEvento().getId() : null);
-            return dto;
-        });
     }
 
     @Test
@@ -117,7 +104,6 @@ class PagoServiceImplTest {
         Evento evento = crearEvento("PROGRAMADO", "1000.00");
         EstadoPago estadoPendiente = crearEstadoPago("PENDIENTE");
         MetodoPago metodoInactivo = crearMetodoPago(false);
-        ConceptoPago concepto = new ConceptoPago();
 
         when(eventoRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(evento));
         when(pagoRepository.sumMontoActivoByEventoId(10L)).thenReturn(BigDecimal.ZERO);
@@ -135,12 +121,11 @@ class PagoServiceImplTest {
         Evento evento = pago.getEvento();
         EstadoPago estadoPagado = crearEstadoPago("PAGADO");
 
-        when(pagoRepository.findById(1L)).thenReturn(Optional.of(pago));
+        when(pagoRepository.findByIdWithRelations(1L)).thenReturn(Optional.of(pago));
         when(eventoRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(evento));
         when(pagoRepository.sumPagosConfirmadosPorEventoExcluyendoPago(10L, 1L))
                 .thenReturn(new BigDecimal("400.00"));
         when(estadoPagoRepository.findByEstadoNombre("PAGADO")).thenReturn(Optional.of(estadoPagado));
-        when(pagoRepository.save(pago)).thenReturn(pago);
         when(eventoPagoValidator.tieneAnticipoSuficiente(evento)).thenReturn(true);
 
         PagoResponseDTO response = service.confirmarPago(1L);
@@ -151,9 +136,16 @@ class PagoServiceImplTest {
         assertNotNull(response.getFecha());
         verify(pago).setEstadoPago(estadoPagado);
         verify(pago).setFecha(any(LocalDateTime.class));
-        verify(pagoRepository).save(pago);
-        verify(notificacionService).notificarAdmins(eq("PAGO_RECIBIDO"), any(String.class), eq(evento));
-        verify(eventoService).confirmarDesdeAnticipo(10L);
+        InOrder orden = inOrder(pagoRepository, eventoRepository, notificacionService, eventoService);
+        orden.verify(pagoRepository).findByIdWithRelations(1L);
+        orden.verify(eventoRepository).findByIdForUpdate(10L);
+        orden.verify(pagoRepository).sumPagosConfirmadosPorEventoExcluyendoPago(10L, 1L);
+        orden.verify(pagoRepository).save(pago);
+        orden.verify(pagoRepository).flush();
+        orden.verify(notificacionService).notificarAdmins(eq("PAGO_RECIBIDO"), any(String.class), eq(evento));
+        orden.verify(eventoService).confirmarDesdeAnticipo(10L);
+        orden.verify(eventoService).finalizarDesdeCobroCompleto(10L);
+        orden.verify(pagoRepository).findByIdWithRelations(1L);
     }
 
     @Test
@@ -161,7 +153,7 @@ class PagoServiceImplTest {
         Pago pago = spy(crearPagoConEstado(1L, "PAGADO", "PROGRAMADO", "1000.00", "300.00"));
         EstadoPago estadoOriginal = pago.getEstadoPago();
 
-        when(pagoRepository.findById(1L)).thenReturn(Optional.of(pago));
+        when(pagoRepository.findByIdWithRelations(1L)).thenReturn(Optional.of(pago));
 
         assertThrows(PagoException.class, () -> service.confirmarPago(1L));
 
@@ -177,7 +169,7 @@ class PagoServiceImplTest {
         Pago pago = spy(crearPagoConEstado(1L, "CANCELADO", "PROGRAMADO", "1000.00", "300.00"));
         EstadoPago estadoOriginal = pago.getEstadoPago();
 
-        when(pagoRepository.findById(1L)).thenReturn(Optional.of(pago));
+        when(pagoRepository.findByIdWithRelations(1L)).thenReturn(Optional.of(pago));
 
         assertThrows(PagoException.class, () -> service.confirmarPago(1L));
 
@@ -218,7 +210,7 @@ class PagoServiceImplTest {
         Evento evento = pago.getEvento();
         EstadoPago estadoOriginal = pago.getEstadoPago();
 
-        when(pagoRepository.findById(1L)).thenReturn(Optional.of(pago));
+        when(pagoRepository.findByIdWithRelations(1L)).thenReturn(Optional.of(pago));
         when(eventoRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(evento));
         when(pagoRepository.sumPagosConfirmadosPorEventoExcluyendoPago(10L, 1L))
                 .thenReturn(new BigDecimal("900.01"));
@@ -239,7 +231,7 @@ class PagoServiceImplTest {
         Evento evento = segundoPago.getEvento();
         EstadoPago estadoOriginal = segundoPago.getEstadoPago();
 
-        when(pagoRepository.findById(2L)).thenReturn(Optional.of(segundoPago));
+        when(pagoRepository.findByIdWithRelations(2L)).thenReturn(Optional.of(segundoPago));
         when(eventoRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(evento));
         when(pagoRepository.sumPagosConfirmadosPorEventoExcluyendoPago(10L, 2L))
                 .thenReturn(new BigDecimal("800.00"));
@@ -259,12 +251,11 @@ class PagoServiceImplTest {
         Evento evento = pago.getEvento();
         EstadoPago estadoPagado = crearEstadoPago("PAGADO");
 
-        when(pagoRepository.findById(3L)).thenReturn(Optional.of(pago));
+        when(pagoRepository.findByIdWithRelations(3L)).thenReturn(Optional.of(pago));
         when(eventoRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(evento));
         when(pagoRepository.sumPagosConfirmadosPorEventoExcluyendoPago(10L, 3L))
                 .thenReturn(new BigDecimal("800.00"));
         when(estadoPagoRepository.findByEstadoNombre("PAGADO")).thenReturn(Optional.of(estadoPagado));
-        when(pagoRepository.save(pago)).thenReturn(pago);
 
         service.confirmarPago(3L);
 
@@ -279,7 +270,7 @@ class PagoServiceImplTest {
         Evento evento = pago.getEvento();
         EstadoPago estadoOriginal = pago.getEstadoPago();
 
-        when(pagoRepository.findById(pago.getId())).thenReturn(Optional.of(pago));
+        when(pagoRepository.findByIdWithRelations(pago.getId())).thenReturn(Optional.of(pago));
         when(eventoRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(evento));
 
         assertThrows(PagoException.class, () -> service.confirmarPago(pago.getId()));

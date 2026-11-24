@@ -23,6 +23,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -56,8 +57,6 @@ class MovimientoServiceImplTest {
                 eventoProductoRepository,
                 auditoriaService);
 
-        lenient().when(productoRepository.save(any(Producto.class))).thenAnswer(i -> i.getArgument(0));
-        lenient().when(movimientoRepository.save(any(MovimientoInventario.class))).thenAnswer(i -> i.getArgument(0));
     }
 
     private Producto crearProducto(String nombre, Integer cantidadTotal, String estado) {
@@ -73,8 +72,9 @@ class MovimientoServiceImplTest {
     @Test
     void ajustePositivo_creaEntrada() {
         Producto producto = crearProducto("Mantel", 10, "ACTIVO");
-        when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
+        when(productoRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(producto));
         when(eventoProductoRepository.sumCantidadReservadaActivaByProductoId(1L)).thenReturn(0);
+        when(movimientoRepository.save(any(MovimientoInventario.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         AjusteInventarioRequestDTO request = new AjusteInventarioRequestDTO(15, "Conteo fisico");
         movimientoService.registrarAjuste(1L, request);
@@ -90,8 +90,9 @@ class MovimientoServiceImplTest {
     @Test
     void ajusteNegativo_creaSalida() {
         Producto producto = crearProducto("Mantel", 10, "ACTIVO");
-        when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
+        when(productoRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(producto));
         when(eventoProductoRepository.sumCantidadReservadaActivaByProductoId(1L)).thenReturn(0);
+        when(movimientoRepository.save(any(MovimientoInventario.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         AjusteInventarioRequestDTO request = new AjusteInventarioRequestDTO(7, "Mercancia danada");
         movimientoService.registrarAjuste(1L, request);
@@ -106,7 +107,7 @@ class MovimientoServiceImplTest {
     @Test
     void ajusteSinDiferencia_noCreaMovimiento() {
         Producto producto = crearProducto("Mantel", 10, "ACTIVO");
-        when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
+        when(productoRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(producto));
         when(eventoProductoRepository.sumCantidadReservadaActivaByProductoId(1L)).thenReturn(0);
 
         AjusteInventarioRequestDTO request = new AjusteInventarioRequestDTO(10, "Sin cambios");
@@ -118,7 +119,7 @@ class MovimientoServiceImplTest {
 
     @Test
     void productoInexistente_lanza404() {
-        when(productoRepository.findById(99L)).thenReturn(Optional.empty());
+        when(productoRepository.findByIdForUpdate(99L)).thenReturn(Optional.empty());
 
         AjusteInventarioRequestDTO request = new AjusteInventarioRequestDTO(10, "Test");
         assertThrows(ProductoNotFoundException.class,
@@ -128,7 +129,7 @@ class MovimientoServiceImplTest {
     @Test
     void productoInactivo_lanzaError() {
         Producto producto = crearProducto("Mantel viejo", 10, "INACTIVO");
-        when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
+        when(productoRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(producto));
 
         AjusteInventarioRequestDTO request = new AjusteInventarioRequestDTO(12, "Test");
         assertThrows(IllegalArgumentException.class,
@@ -138,7 +139,7 @@ class MovimientoServiceImplTest {
     @Test
     void ajusteBajoReservasActivas_lanzaError() {
         Producto producto = crearProducto("Mantel", 10, "ACTIVO");
-        when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
+        when(productoRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(producto));
         when(eventoProductoRepository.sumCantidadReservadaActivaByProductoId(1L)).thenReturn(8);
 
         AjusteInventarioRequestDTO request = new AjusteInventarioRequestDTO(5, "Test");
@@ -149,8 +150,9 @@ class MovimientoServiceImplTest {
     @Test
     void ajusteIgualAReservasActivas_permitido() {
         Producto producto = crearProducto("Mantel", 10, "ACTIVO");
-        when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
+        when(productoRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(producto));
         when(eventoProductoRepository.sumCantidadReservadaActivaByProductoId(1L)).thenReturn(8);
+        when(movimientoRepository.save(any(MovimientoInventario.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         AjusteInventarioRequestDTO request = new AjusteInventarioRequestDTO(8, "Ajuste al limite");
         movimientoService.registrarAjuste(1L, request);
@@ -161,22 +163,26 @@ class MovimientoServiceImplTest {
     }
 
     @Test
-    void ajusteFallaMovimiento_noActualizaProducto() {
+    void ajusteFallaMovimiento_propagaErrorSinAuditar() {
         Producto producto = crearProducto("Mantel", 10, "ACTIVO");
-        when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
+        when(productoRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(producto));
         when(eventoProductoRepository.sumCantidadReservadaActivaByProductoId(1L)).thenReturn(0);
-        when(movimientoRepository.save(any(MovimientoInventario.class))).thenThrow(new RuntimeException("DB error"));
+        RuntimeException error = new RuntimeException("DB error");
+        when(movimientoRepository.save(any(MovimientoInventario.class))).thenThrow(error);
 
         AjusteInventarioRequestDTO request = new AjusteInventarioRequestDTO(15, "Test");
-        assertThrows(RuntimeException.class,
-                () -> movimientoService.registrarAjuste(1L, request));
+        assertSame(error, assertThrows(RuntimeException.class,
+                () -> movimientoService.registrarAjuste(1L, request)));
+        verify(movimientoRepository).save(any(MovimientoInventario.class));
+        verifyNoInteractions(auditoriaService);
     }
 
     @Test
     void ajusteSinReservasActivas_ceroRetornado() {
         Producto producto = crearProducto("Mantel", 10, "ACTIVO");
-        when(productoRepository.findById(1L)).thenReturn(Optional.of(producto));
-        when(eventoProductoRepository.sumCantidadReservadaActivaByProductoId(1L)).thenReturn(0);
+        when(productoRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(producto));
+        when(eventoProductoRepository.sumCantidadReservadaActivaByProductoId(1L)).thenReturn(null);
+        when(movimientoRepository.save(any(MovimientoInventario.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         AjusteInventarioRequestDTO request = new AjusteInventarioRequestDTO(12, "Test");
         movimientoService.registrarAjuste(1L, request);
