@@ -1,44 +1,41 @@
 # Configuración local
 
-## Requisitos
+## Inicio rápido con Docker Compose
 
-Instala un JDK 21 y prepara una instancia PostgreSQL para desarrollo con una cuenta autorizada. El repositorio incluye Maven Wrapper. Docker se usa en la prueba de concurrencia basada en Testcontainers.
+Necesitas Docker con Compose v2 y, para crear el administrador, Python 3 con el paquete BCrypt. Desde la raíz del repositorio, copia la plantilla una sola vez:
+
+| Sistema | Comando |
+| --- | --- |
+| Linux o macOS | `cp -n .env.example .env` |
+| Windows PowerShell | `if (-not (Test-Path .env)) { Copy-Item .env.example .env }` |
+
+Edita `.env` y completa `DB_PASS` y `JWT_SECRET` con valores distintos y privados. Si tienes OpenSSL, puedes generar una contraseña con `openssl rand -hex 24` y la clave JWT con `openssl rand -base64 32`. En Windows y Linux también puedes usar Python con `python -c "import secrets; print(secrets.token_hex(24))"` y `python -c "import base64,secrets; print(base64.b64encode(secrets.token_bytes(32)).decode())"`. Guarda los valores solo en tu archivo local y evita mostrarlos en capturas o logs.
 
 ```sh
-git clone https://github.com/LuisS-byte/Artepax.git
-cd Artepax
+docker compose config --quiet
+docker compose up --build --wait --wait-timeout 240
 ```
 
-**Bloqueo de arranque desde una base vacía.** La plantilla usa `spring.jpa.hibernate.ddl-auto=validate`. El repositorio revisado carece de scripts de inicialización y migraciones Flyway o Liquibase. Antes del arranque, consigue del equipo un esquema compatible con las entidades, las vistas `vista_stock_producto` y `vista_pagos_evento` y los datos de referencia que requieren los flujos, como estados de evento y reserva, roles y parámetros de configuración. La URL de la plantilla apunta a `jdbc:postgresql://localhost:5432/Artepax`.
+Crea un administrador siguiendo [la guía de base de datos](../database/README.md). Abre [Swagger UI](http://localhost:8080/swagger-ui/index.html), [OpenAPI](http://localhost:8080/v3/api-docs) o [Mailpit](http://localhost:8025). Los puertos se pueden ajustar en `.env`. PostgreSQL queda disponible dentro de Compose y el SMTP de la demo apunta a Mailpit para capturar los mensajes localmente.
 
-## Variables del proceso
-
-Usa [la plantilla de entorno](../.env.example) como referencia. Spring Boot no carga automáticamente el archivo `.env` en este proyecto. Inyecta los valores mediante el entorno de ejecución del IDE o de la terminal y evita escribir credenciales en comandos que queden en el historial.
-
-| Variable | Uso | Plantilla |
-| --- | --- | --- |
-| `DB_USER` | Usuario PostgreSQL | Requerida |
-| `DB_PASS` | Contraseña PostgreSQL | Requerida |
-| `GOOGLE_CLIENT_ID` | Identificador de cliente para validar ID tokens | Requerida |
-| `JWT_SECRET` | Clave de firma JWT | Requerida |
-| `MAIL_USERNAME` | Cuenta SMTP y remitente | Requerida |
-| `MAIL_PASSWORD` | Credencial SMTP | Requerida |
-| `FRONTEND_URLS` | Orígenes permitidos por CORS | Opcional, con valores locales por defecto |
-
-Compara tu configuración con [application.properties.example](../src/main/resources/application.properties.example). La revisión detectó que `application.properties` ya está versionado, aunque `.gitignore` enumera ese archivo. Conserva el archivo versionado y proporciona las credenciales mediante las variables externas. Para una personalización local puedes preparar una copia de la plantilla en una ubicación externa al repositorio y usarla como configuración adicional de Spring Boot. `app.mail.from-name` tiene un valor distinto en el archivo versionado y en la plantilla. Revisa ese ajuste si necesitas controlar el nombre visible del remitente.
-
-## Arranque
-
-| Entorno | Comando |
+| Variable | Uso |
 | --- | --- |
-| Linux o macOS | `./mvnw spring-boot:run` |
+| `DB_USER`, `DB_PASS` | Cuenta y contraseña de la base de demo |
+| `JWT_SECRET` | Clave Base64 de al menos 32 bytes antes de codificar |
+| `GOOGLE_CLIENT_ID` | Audiencia de Google. El valor ficticio permite el login local |
+| `FRONTEND_URLS` | Orígenes permitidos por CORS |
+| `APP_PORT`, `MAILPIT_PORT` | Puertos locales del backend y del buzón de prueba |
+| `DB_URL`, `MAIL_USERNAME`, `MAIL_PASSWORD` | Ajustes cuando se ejecuta Java fuera de Compose |
+
+## Ejecución directa con Maven
+
+Usa Java 21, el Maven Wrapper y PostgreSQL 18. Restaura [el SQL de inicialización](../database/init.sql) en una base desechable vacía. El backend mantiene `spring.jpa.hibernate.ddl-auto=validate` y requiere las vistas, catálogos y restricciones que define el SQL. La URL JDBC por defecto es `jdbc:postgresql://localhost:5432/Artepax`. Puedes reemplazarla con `DB_URL`.
+
+Inyecta las variables desde tu IDE o el entorno de la terminal. Compose lee `.env` para interpolar sus valores y Spring Boot usa el entorno del proceso cuando se inicia directamente. Para probar documentos fuera de Compose, configura un SMTP de captura con `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT` y los ajustes de autenticación y TLS adecuados a ese servidor.
+
+| Sistema | Comando |
+| --- | --- |
+| Linux o macOS | `bash ./mvnw spring-boot:run` |
 | Windows PowerShell | `.\mvnw.cmd spring-boot:run` |
 
-Con la configuración de referencia, el puerto es 8080 y puedes consultar [Swagger UI](http://localhost:8080/swagger-ui/index.html) o el [JSON OpenAPI](http://localhost:8080/v3/api-docs).
-
-- Si falla la conexión a PostgreSQL, comprueba el servicio, el host, el puerto, el nombre de la base y la cuenta.
-- Si la validación de esquema falla, compara las tablas, columnas y vistas con la versión del backend.
-- Si falta un placeholder, revisa las variables del proceso que ejecuta Maven.
-- Si la API inicia y el correo falla, verifica la configuración SMTP en el entorno de desarrollo. Un documento puede quedar registrado como `FALLIDO`.
-
-La guía se verificó contra el repositorio. El arranque y el envío de correo quedan por comprobar en un entorno autorizado.
+Consulta [operación y restauración](deployment.md) antes de usar una base que ya tenga datos.

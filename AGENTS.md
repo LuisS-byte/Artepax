@@ -7,15 +7,14 @@
 - Run the app: `./mvnw spring-boot:run`
 - Run all tests: `./mvnw test`
 - Run a specific test class: `./mvnw -Dtest=ClassName test`
-- There is no repo-local lint, formatter, typecheck, CI workflow, Flyway, or Liquibase config to fall back on; Maven tests are the only checked-in automation.
+- CI runs the Maven suite, Testcontainers integration tests and an isolated Compose smoke test.
 
 ## Startup And Test Preconditions
 
-- `src/main/resources/application.properties` points to PostgreSQL at `jdbc:postgresql://localhost:5432/Artepax` and uses env placeholders for `DB_USER`, `DB_PASS`, `GOOGLE_CLIENT_ID`, `JWT_SECRET`, `MAIL_USERNAME`, `MAIL_PASSWORD`, and optional `FRONTEND_URLS`.
+- `DB_URL` overrides the local PostgreSQL JDBC default; see `docs/setup.md` for required variables.
 - `src/main/resources/application.properties` is tracked even though `.gitignore` lists it. `src/main/resources/application.properties.example` is the reference template. Supply local values through the process environment.
 - `.env.example` documents the environment variables. Spring Boot does not automatically import a local `.env` file. Export or inject the variables before running Maven.
-- `spring.jpa.hibernate.ddl-auto=validate` is enabled and there are no migration files. The schema must already exist and match the entities before the app or tests will start.
-- There is no `.github/` directory in the repo. No CI.
+- `ddl-auto=validate` requires a compatible database. `database/init.sql` initializes a fresh PostgreSQL 18 database or an empty Compose volume.
 
 ## Test Profiles And Testcontainers
 
