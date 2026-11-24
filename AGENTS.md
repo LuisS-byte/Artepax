@@ -1,21 +1,20 @@
 # Artepax
 
-- Stack: single-module Spring Boot 3.5.14 on Java 21, built with the Maven wrapper in repo root. Use `./mvnw` on Unix-like shells or `./mvnw.cmd` on Windows.
+- Stack: single-module Spring Boot 3.5.14 on Java 21, built with the Maven wrapper in repo root. Use `bash ./mvnw` on Unix-like shells or `./mvnw.cmd` on Windows.
 
 ## Commands
 
-- Run the app: `./mvnw spring-boot:run`
-- Run all tests: `./mvnw test`
-- Run a specific test class: `./mvnw -Dtest=ClassName test`
-- There is no repo-local lint, formatter, typecheck, CI workflow, Flyway, or Liquibase config to fall back on; Maven tests are the only checked-in automation.
+- Run the app: `bash ./mvnw spring-boot:run`
+- Run all tests: `bash ./mvnw test`
+- Run a specific test class: `bash ./mvnw -Dtest=ClassName test`
+- CI runs the Maven suite, Testcontainers integration tests and an isolated Compose smoke test.
 
 ## Startup And Test Preconditions
 
-- `src/main/resources/application.properties` points to PostgreSQL at `jdbc:postgresql://localhost:5432/Artepax` and uses env placeholders for `DB_USER`, `DB_PASS`, `GOOGLE_CLIENT_ID`, `JWT_SECRET`, `MAIL_USERNAME`, `MAIL_PASSWORD`, and optional `FRONTEND_URLS`.
+- `DB_URL` overrides the local PostgreSQL JDBC default; see `docs/setup.md` for required variables.
 - `src/main/resources/application.properties` is tracked even though `.gitignore` lists it. `src/main/resources/application.properties.example` is the reference template. Supply local values through the process environment.
 - `.env.example` documents the environment variables. Spring Boot does not automatically import a local `.env` file. Export or inject the variables before running Maven.
-- `spring.jpa.hibernate.ddl-auto=validate` is enabled and there are no migration files. The schema must already exist and match the entities before the app or tests will start.
-- There is no `.github/` directory in the repo. No CI.
+- `ddl-auto=validate` requires a compatible database. `database/init.sql` initializes a fresh PostgreSQL 18 database or an empty Compose volume.
 
 ## Test Profiles And Testcontainers
 
@@ -23,7 +22,7 @@
 - `ArtepaxApplicationTests` is a plain `@SpringBootTest(contextLoads)` — it WILL fail without a running PostgreSQL and exported env vars.
 - Integration tests follow the `*IT.java` naming convention and use Testcontainers (`@Testcontainers(disabledWithoutDocker = true)` + `@Container PostgreSQLContainer`). They skip gracefully when Docker is unavailable.
 - The `test` profile (`src/test/resources/application-test.properties`) sets `ddl-auto=create-drop`, disables scheduling (`spring.task.scheduling.enabled=false`), and provides dummy credentials for Google, JWT, and email — so integration tests are self-contained.
-- Run integration tests specifically with `./mvnw -Dtest="*IT" test` (Docker required).
+- Run integration tests specifically with `bash ./mvnw -Dtest="*IT" test` (Docker required).
 
 ## Code Layout
 

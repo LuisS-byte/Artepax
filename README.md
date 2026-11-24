@@ -47,14 +47,17 @@ La API ofrece inicio de sesión local con correo y contraseña y acceso mediante
 
 ## Ejecución local
 
-Requiere Java 21, PostgreSQL y las variables que describe la [guía de configuración](docs/setup.md). El repositorio necesita un esquema PostgreSQL compatible, con vistas y datos de referencia. En la versión revisada no se incluye un mecanismo para inicializar ese esquema desde cero.
+La demo utiliza Docker Compose con Java 21, PostgreSQL 18 y Mailpit. Configura `.env` a partir de la plantilla y ejecuta:
 
-| Entorno | Comando |
-| --- | --- |
-| Linux o macOS | `./mvnw spring-boot:run` |
-| Windows PowerShell | `.\mvnw.cmd spring-boot:run` |
+```sh
+docker compose up --build --wait --wait-timeout 240
+```
 
-Con el servicio local iniciado, la interfaz Swagger está disponible en `http://localhost:8080/swagger-ui/index.html`. La guía de pruebas explica qué suites requieren PostgreSQL o Docker.
+Sigue la [guía de configuración](docs/setup.md) para generar las claves locales y [crear el primer administrador](database/README.md). Una vez iniciado el backend, abre [Swagger UI](http://localhost:8080/swagger-ui/index.html). Las cuentas y los PDF se conservan en volúmenes locales.
+
+## Validación de la demo
+
+GitHub Actions verificó la restauración de PostgreSQL desde un volumen vacío, el arranque con Hibernate y el flujo de API desde el login local hasta la confirmación de un pago. Pasaron 257 pruebas de la suite Maven y una prueba de concurrencia con Testcontainers. [Ver ejecución de referencia](https://github.com/LuisS-byte/Artepax/actions/runs/45329625551).
 
 ## Documentación
 
@@ -63,9 +66,11 @@ Con el servicio local iniciado, la interfaz Swagger está disponible en `http://
 - [Reglas de negocio](docs/business-rules.md)
 - [API REST y autenticación](docs/api.md)
 - [Pruebas](docs/testing.md)
+- [Modelo PostgreSQL](docs/database.md)
+- [Operación y despliegue](docs/deployment.md)
 
 ## Estado y contribuciones
 
-El alcance de este repositorio es el backend. Para reproducir una demo local, se necesita el esquema PostgreSQL del proyecto, incluidas las vistas y los datos de referencia. Esta actualización documental se comprobó contra el código versionado. Consulta la guía de pruebas para preparar un entorno de validación.
+El alcance de este repositorio es el backend. La inicialización de PostgreSQL se aplica en un volumen vacío. Mailpit captura el correo de la demo en un buzón local de desarrollo. El login con Google y el envío SMTP real quedan fuera de la validación de la demo.
 
 Artepax es un proyecto académico desarrollado en equipo. El historial de Git registra las [contribuciones al repositorio](https://github.com/LuisS-byte/Artepax/graphs/contributors).
