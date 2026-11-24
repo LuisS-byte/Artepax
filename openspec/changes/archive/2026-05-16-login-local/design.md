@@ -17,7 +17,7 @@ New `LocalAuthService` mirrors `GoogleAuthService` pattern — validate → find
 ## Data Flow
 
 ```
-POST /auth/login  {"email":"a@b.com", "password":"..."}
+POST /auth/login  {"email":"usuario1@example.com", "password":"..."}
        │
        ▼
 AuthController.loginLocal(@Valid LoginRequest)
@@ -50,7 +50,7 @@ LocalAuthService.login(request)
 | `security/SecurityConfig.java` | **Modify** | Add `@Bean PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(); }`. |
 | `user/repository/UsuarioRepository.java` | **Modify** | Add `Optional<Usuario> findByCorreoAndTipoAuth(String correo, String tipoAuth);`. |
 | `auth/service/LocalAuthServiceTest.java` | **Create** | 7 test methods: success, wrong password, unknown email, GOOGLE user, inactive user, non-ADMIN role, **non-BCrypt password hash**. Mockito + JUnit 5. |
-| `db/seed/auth-seed.sql` | **Create** | Seed correction: fix `ernestomendoza587@gmail.com` `usu_tipo_auth` to 'GOOGLE', add LOCAL test user with BCrypt hash. |
+| `db/seed/auth-seed.sql` | **Create** | Seed correction: fix `usuario2@example.com` `usu_tipo_auth` to 'GOOGLE', add LOCAL test user with BCrypt hash. |
 
 ## Component Responsibilities
 

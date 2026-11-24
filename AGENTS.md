@@ -12,8 +12,8 @@
 ## Startup And Test Preconditions
 
 - `src/main/resources/application.properties` points to PostgreSQL at `jdbc:postgresql://localhost:5432/Artepax` and uses env placeholders for `DB_USER`, `DB_PASS`, `GOOGLE_CLIENT_ID`, `JWT_SECRET`, `MAIL_USERNAME`, `MAIL_PASSWORD`, and optional `FRONTEND_URLS`.
-- `src/main/resources/application.properties` is in `.gitignore`. Reference: `src/main/resources/application.properties.example` (checked-in template).
-- A `.env` file exists at the repo root (gitignored) with the values for those placeholders. Spring Boot does NOT auto-import `.env` — export the env vars in the shell before running Maven.
+- `src/main/resources/application.properties` is tracked even though `.gitignore` lists it. `src/main/resources/application.properties.example` is the reference template. Supply local values through the process environment.
+- `.env.example` documents the environment variables. Spring Boot does not automatically import a local `.env` file. Export or inject the variables before running Maven.
 - `spring.jpa.hibernate.ddl-auto=validate` is enabled and there are no migration files. The schema must already exist and match the entities before the app or tests will start.
 - There is no `.github/` directory in the repo. No CI.
 
@@ -35,8 +35,8 @@
 ## Security And API Shape
 
 - `authentication/security/SecurityConfig.java` only permits `/auth/**`, `/error`, `/swagger-ui/**`, `/swagger-ui.html`, and `/v3/api-docs/**`; everything else is authenticated.
-- Observed controllers under `/api/**` use class-level `@PreAuthorize("hasRole('ADMIN')")`. Check the controller before assuming a route is public.
-- Authentication is Google-login-to-JWT: `authentication/auth` handles Google auth, `authentication/security/JwtAuthenticationFilter.java` applies the token, and `authentication/user/UsuarioService.java` is the `UserDetailsService`.
+- Most `/api/**` controllers require `ADMIN` through `@PreAuthorize`. `GET /api/usuarios/me` requires authentication without a method-level role restriction.
+- `authentication/auth` issues JWTs through local email/password login and Google ID token login, `authentication/security/JwtAuthenticationFilter.java` applies the token, and `authentication/user/UsuarioService.java` is the `UserDetailsService`.
 
 ## Business Logic Gotchas
 

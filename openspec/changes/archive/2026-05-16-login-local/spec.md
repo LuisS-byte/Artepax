@@ -134,7 +134,7 @@ The database seed/dump MUST have consistent `usu_tipo_auth` values.
 
 - GIVEN a user authenticated via Google whose `usu_password` contains a non-BCrypt placeholder (e.g., `'GOOGLE_AUTH'`)
 - WHEN the seed is reviewed and corrected
-- THEN `usu_tipo_auth` is `'GOOGLE'` — the classification matches the authentication method (e.g., `ernestomendoza587@gmail.com` corrected from LOCAL to GOOGLE)
+- THEN `usu_tipo_auth` is `'GOOGLE'` — the classification matches the authentication method (e.g., `usuario2@example.com` corrected from LOCAL to GOOGLE)
 
 #### Scenario: LOCAL users have BCrypt-hashed password
 

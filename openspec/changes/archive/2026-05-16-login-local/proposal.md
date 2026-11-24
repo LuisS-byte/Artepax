@@ -14,7 +14,7 @@ Sistema actualmente solo soporta autenticación Google OAuth2. Se necesita login
 4. **LocalAuthService** — valida credenciales, filtra por `tipoAuth = 'LOCAL'`, verifica estado activo y rol ADMIN, valida password con BCrypt, genera JWT. Mismo patrón que `GoogleAuthService`, sin tocarlo.
 5. **POST /auth/login en AuthController** — endpoint público (ya cubierto por `SecurityConfig` que permite `/auth/**`).
 6. **Tests unitarios de LocalAuthService** — JUnit 5 + Mockito, cobertura de flujos feliz, credenciales inválidas, usuario GOOGLE, usuario inactivo, sin rol ADMIN.
-7. **Corrección de seed/dump** — `ernestomendoza587@gmail.com` tiene `usu_password = 'GOOGLE_AUTH'` con `usu_tipo_auth = 'LOCAL'` (inconsistente). Debe corregirse a `usu_tipo_auth = 'GOOGLE'`. Además, seed de usuarios LOCALES con password BCrypt hasheado.
+7. **Corrección de seed/dump** — `usuario2@example.com` tiene `usu_password = 'GOOGLE_AUTH'` con `usu_tipo_auth = 'LOCAL'` (inconsistente). Debe corregirse a `usu_tipo_auth = 'GOOGLE'`. Además, seed de usuarios LOCALES con password BCrypt hasheado.
 8. **Actualización de contrato Auth y matriz frontend** — documentar el nuevo endpoint, request/response, códigos de error, y actualizar la matriz de endpoints disponibles en el frontend.
 
 ### Out of Scope
@@ -139,7 +139,7 @@ public class AuthController {
 |------|------------|--------|------------|
 | Usuarios GOOGLE intentan login local | Low | Low | `LocalAuthService` usa `findByCorreoAndTipoAuth("LOCAL")` — usuarios GOOGLE no matchean |
 | Contraseñas legacy sin hashear (ej: `GOOGLE_AUTH` en campo password) | Medium | Low | BCrypt.matches falla gracefulmente, error genérico "Credenciales inválidas". No crashea. |
-| Data inconsistency: `ernestomendoza587@gmail.com` con `usu_tipo_auth = 'LOCAL'` pero `usu_password = 'GOOGLE_AUTH'` | Medium | Low | Corregido en seed/dump: `usu_tipo_auth = 'GOOGLE'`. Incluido en deliverable 7. |
+| Data inconsistency: `usuario2@example.com` con `usu_tipo_auth = 'LOCAL'` pero `usu_password = 'GOOGLE_AUTH'` | Medium | Low | Corregido en seed/dump: `usu_tipo_auth = 'GOOGLE'`. Incluido en deliverable 7. |
 | Código no tiene infraestructura de password local (sin BCrypt, sin PasswordEncoder, sin AuthenticationManager) | — | — | No es riesgo, es estado actual. Los deliverables 2, 3, 4 construyen esta infraestructura desde cero. |
 | Duplicación mínima con GoogleAuthService | Low | Low | ~8 líneas compartidas; no justifica abstracción. Servicios separados es más claro. |
 
@@ -160,4 +160,4 @@ Revertir commit. O en caliente: quitar `@PostMapping("/login")` del controller y
 - [ ] `POST /auth/login` sin rol ADMIN devuelve 403 Forbidden.
 - [ ] Login Google existente sigue funcionando (no se tocó `GoogleAuthService`).
 - [ ] Tests unitarios de `LocalAuthService` cubren todos los flujos (happy path + 4 errores).
-- [ ] `ernestomendoza587@gmail.com` tiene `usu_tipo_auth = 'GOOGLE'` en el dump/seed.
+- [ ] `usuario2@example.com` tiene `usu_tipo_auth = 'GOOGLE'` en el dump/seed.

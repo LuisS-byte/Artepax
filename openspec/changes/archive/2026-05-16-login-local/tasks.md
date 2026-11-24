@@ -41,7 +41,7 @@ Chain strategy: not-needed
 -- 1. Corregir usuario mal clasificado (es Google, no LOCAL)
 UPDATE usuario
 SET usu_tipo_auth = 'GOOGLE'
-WHERE usu_correo = 'ernestomendoza587@gmail.com'
+WHERE usu_correo = 'usuario2@example.com'
   AND usu_password = 'GOOGLE_AUTH';
 
 -- 2. Asegurar que usuarios LOCAL tengan BCrypt válido
