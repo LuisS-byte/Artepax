@@ -39,3 +39,15 @@ build/
 .claude/
 .atl/
 src/main/resources/application.properties
+
+# Private database exports and generated documents
+*.sql
+!/database/init.sql
+!/database/verify.sql
+*.dump
+*.backup
+*.bak
+/storage/
+.venv/
+/__pycache__/
+/database/__pycache__/
