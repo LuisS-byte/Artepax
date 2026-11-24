@@ -21,3 +21,12 @@ El [POM](../pom.xml) carece de configuración explícita de Failsafe. La suite p
 ## CI y smoke de Compose
 
 El workflow restaura PostgreSQL 18 y comprueba los objetos y catálogos. Luego ejecuta Maven con Java 21 y selecciona por separado las clases `*IT`. Otro job construye el stack de Compose, verifica Swagger, crea una cuenta local con credenciales efímeras y recorre catálogos, cliente, evento, reserva y pago. Los informes de OpenSpec corresponden a verificaciones históricas. Consulta el estado de cada ejecución en la pestaña Actions.
+
+## Resultados de referencia
+
+| Verificación | Ejecutadas | Superadas | Fallidas | Errores | Omitidas |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Suite Maven con Java 21 | 257 | 257 | 0 | 0 | 0 |
+| Concurrencia con Testcontainers | 1 | 1 | 0 | 0 | 0 |
+
+Compose restauró PostgreSQL 18, arrancó el backend con el esquema validado y comprobó Swagger, acceso autenticado, catálogos, alta de cliente, cotización, reserva y confirmación de pago. Mailpit es el buzón de captura de desarrollo. El login con Google, el SMTP real y un despliegue público quedan fuera del alcance de esta ejecución. [Ver ejecución de referencia](https://github.com/LuisS-byte/Artepax/actions/runs/45329625551).
